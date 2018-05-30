@@ -1,39 +1,51 @@
-# Puppetserver::Ca
+# Puppet Server's CA CLI Library
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/puppetserver/ca`. To experiment with that code, run `bin/console` for an interactive prompt.
+This gem provides the functionality behind the Puppet Server CA interactions.
+The actual CLI executable lives within the Puppet Server project.
 
-TODO: Delete this and the text above, and describe your gem
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'puppetserver-ca'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
+You may install it yourself with:
 
     $ gem install puppetserver-ca
 
+
 ## Usage
 
-TODO: Write usage instructions here
+This is still a Work in Progress and is not intended for public usage yet.
+Use at your own risk!
+
+This code in this project is licensed under the Apache Software License v2,
+please see the included [License](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/LICENSE.md)
+for more details.
+
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then,
+run `rake spec` to run the tests. You can also run `bin/console` for an
+interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
 
-## Contributing
+To release a new version, update the version number in `version.rb`, and then
+speak with Release Engineering.
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/justinstoller/puppetserver-ca. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
-## Code of Conduct
+## Contributing & Support
 
-Everyone interacting in the Puppetserver::Ca project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/justinstoller/puppetserver-ca/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and feature requests are welcome in JIRA at
+https://tickets.puppetlabs.com/projects/SERVER/issues.
+
+For interactive questions feel free to post to #puppet or #puppet-dev on
+Freenode, or the Puppet Community Slack channel.
+
+Contributions are welcome at https://github.com/puppetlabs/puppetserver-ca-cli/pulls.
+Contributors should both be sure to read the
+[contributing document](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/CONTRIBUTING.md)
+and sign the [contributor license agreement](https://cla.puppet.com/).
+
+Everyone interacting with the project’s codebase, issue tracker, etc is expected
+to follow the
+[code of conduct](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/CODE_OF_CONDUCT.md).
