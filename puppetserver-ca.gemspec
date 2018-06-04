@@ -7,7 +7,8 @@ Gem::Specification.new do |spec|
   spec.name          = "puppetserver-ca"
   spec.version       = Puppetserver::Ca::VERSION
   spec.authors       = ["Puppet, Inc."]
-  spec.email         = ["puppetserver-team@puppet.com"]
+  spec.email         = ["release@puppet.com"]
+  spec.license       = "Apache-2.0"
 
   spec.summary       = %q{A simple CLI tool for interacting with Puppet Server's Certificate Authority}
   spec.homepage      = "https://github.com/puppetlabs/puppetserver-ca-cli/"
