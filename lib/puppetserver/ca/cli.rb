@@ -19,6 +19,15 @@ module Puppetserver
           opts.on('--help', 'This setup specific help output') do |help|
             input['help'] = true
           end
+          opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
+            input['private-key'] = key
+          end
+          opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
+            input['cert-bundle'] = bundle
+          end
+          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
+            input['crl-chain'] = chain
+          end
         end
 
         if VALID_COMMANDS.include?(cli_args.first)
@@ -28,7 +37,18 @@ module Puppetserver
             if input['help']
               out.puts setup_parser.help
             else
-              out.puts setup_parser.help
+              if input['cert-bundle'] && input['private-key']
+                unless input['crl-chain']
+                  err.puts 'Warning:'
+                  err.puts '  No CRL chain given'
+                  err.puts '  Full CRL chain checking will not be possible'
+                end
+                # do stuff
+              else
+                err.puts "Warning: missing required argument"
+                err.puts "  Both --cert-bundle and --private-key are required"
+              end
+              err.puts setup_parser.help
               return 1
             end
           end
@@ -38,7 +58,7 @@ module Puppetserver
           if input['help']
             out.puts general_parser.help
           else
-            out.puts general_parser.help
+            err.puts general_parser.help
             return 1
           end
         end
