@@ -1,8 +1,9 @@
 require 'optparse'
+require 'puppetserver/ca/version'
 
 module Puppetserver
-  module CA
-    class CLI
+  module Ca
+    class Cli
       VALID_COMMANDS = ['setup']
 
       def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
@@ -12,12 +13,18 @@ module Puppetserver
           opts.on('--help', 'This general help output') do |help|
             input['help'] = true
           end
+          opts.on('--version', 'Output the version') do |v|
+            input['version'] = true
+          end
         end
 
         setup_parser = OptionParser.new do |opts|
           opts.banner = 'usage: puppetserver ca setup [options]'
           opts.on('--help', 'This setup specific help output') do |help|
             input['help'] = true
+          end
+          opts.on('--version', 'Output the version') do |v|
+            input['version'] = true
           end
           opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
             input['private-key'] = key
@@ -33,9 +40,13 @@ module Puppetserver
         if VALID_COMMANDS.include?(cli_args.first)
           case cli_args.shift
           when 'setup'
-            setup_parser.parse!(cli_args)
+            setup_parser.parse(cli_args)
+
             if input['help']
               out.puts setup_parser.help
+            elsif input['version']
+              out.puts Puppetserver::Ca::VERSION
+              return 0
             else
               if input['cert-bundle'] && input['private-key']
                 unless input['crl-chain']
@@ -44,6 +55,7 @@ module Puppetserver
                   err.puts '  Full CRL chain checking will not be possible'
                 end
                 # do stuff
+                return 0
               else
                 err.puts "Warning: missing required argument"
                 err.puts "  Both --cert-bundle and --private-key are required"
@@ -53,10 +65,12 @@ module Puppetserver
             end
           end
         else
-          general_parser.parse!(cli_args)
+          general_parser.parse(cli_args)
 
           if input['help']
             out.puts general_parser.help
+          elsif input['version']
+            out.puts Puppetserver::Ca::VERSION
           else
             err.puts general_parser.help
             return 1
