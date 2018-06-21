@@ -80,13 +80,14 @@ module Puppetserver
                 end
 
                 unless errors.empty?
-                  errors.each {|error| err.puts error }
+                  err.puts 'Error:'
+                  errors.each {|error| err.puts "    #{error}" }
                   return 1
                 end
 
                 return 0
               else
-                err.puts "Warning: missing required argument"
+                err.puts "Error: missing required argument"
                 err.puts "  Both --cert-bundle and --private-key are required"
               end
               err.puts setup_parser.help
