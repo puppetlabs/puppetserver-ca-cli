@@ -1,6 +1,13 @@
 require 'optparse'
 require 'puppetserver/ca/version'
 
+# Option parser declares several default options that,
+# unless overridden will raise a SystemExit. We delete
+# version and help here as that behavior was breaking
+# test driving those flags.
+OptionParser::Officious.delete('version')
+OptionParser::Officious.delete('help')
+
 module Puppetserver
   module Ca
     class Cli
