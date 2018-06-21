@@ -1,4 +1,5 @@
 require 'optparse'
+require 'openssl'
 require 'puppetserver/ca/version'
 
 # Option parser declares several default options that,
@@ -84,6 +85,20 @@ module Puppetserver
                   err.puts '    No CRL chain given'
                   err.puts '    Full CRL chain checking will not be possible'
                   err.puts ''
+                end
+
+                bundle_string = File.read(bundle)
+                cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
+                begin
+                  certs = cert_strings.map do |cert_string|
+                    OpenSSL::X509::Certificate.new(cert_string)
+                  end
+                rescue OpenSSL::X509::CertificateError
+                end
+
+                if certs.empty?
+                  err.puts "Could not parse #{bundle}"
+                  return 1
                 end
 
                 # do stuff

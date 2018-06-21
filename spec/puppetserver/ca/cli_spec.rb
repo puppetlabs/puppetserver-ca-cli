@@ -4,10 +4,67 @@ require 'puppetserver/ca/cli'
 require 'tmpdir'
 require 'stringio'
 require 'fileutils'
+require 'openssl'
 
 RSpec.describe Puppetserver::Ca::Cli do
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
+
+  def with_files_in(tmpdir, &block)
+    bundle_file = File.join(tmpdir, 'bundle.pem')
+    key_file = File.join(tmpdir, 'key.pem')
+    chain_file = File.join(tmpdir, 'chain.pem')
+    key = OpenSSL::PKey::RSA.new(2048)
+
+    File.open(key_file, 'w') do |f|
+      f.puts key.to_pem
+    end
+
+    not_before = Time.now - 1
+
+    cert = OpenSSL::X509::Certificate.new
+    cert.public_key = key.public_key
+    cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
+    cert.issuer = cert.subject
+    cert.version = 2
+    cert.serial = rand(2**128)
+    cert.not_before = not_before
+    cert.not_after = not_before + 360
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.issuer_certificate = cert
+    ef.subject_certificate = cert
+
+    [
+      ["basicConstraints", "CA:TRUE", true],
+      ["keyUsage", "keyCertSign, cRLSign", true],
+      ["subjectKeyIdentifier", "hash", false],
+      ["authorityKeyIdentifier", "keyid:always", false]
+    ].each do |ext|
+      extension = ef.create_extension(*ext)
+      cert.add_extension(extension)
+    end
+    cert.sign(key, OpenSSL::Digest::SHA256.new)
+
+    File.open(bundle_file, 'w') do |f|
+      f.puts cert.to_pem
+    end
+
+    crl = OpenSSL::X509::CRL.new
+    crl.version = 1
+    crl.issuer = cert.subject
+    crl.add_extension(
+      ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+    crl.add_extension(
+      OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
+    crl.last_update = not_before
+    crl.next_update = not_before + 360
+    crl.sign(key, OpenSSL::Digest::SHA256.new)
+
+    File.open(chain_file, 'w') {|f| f.puts crl.to_pem }
+
+
+    block.call(bundle_file, key_file, chain_file)
+  end
 
   shared_examples 'basic cli args' do |subcommand, usage|
     it 'responds to a --help flag' do
@@ -51,17 +108,15 @@ RSpec.describe Puppetserver::Ca::Cli do
 
     it 'does not print the help output if called correctly' do
       Dir.mktmpdir do |tmpdir|
-        bundle = File.join(tmpdir, 'bundle.pem')
-        key = File.join(tmpdir, 'key.pem')
-        chain = File.join(tmpdir, 'chain.pem')
-        [bundle, key, chain].each {|file| FileUtils.touch(file) }
-        exit_code = Puppetserver::Ca::Cli.run!(['setup',
-                                                '--cert-bundle', bundle,
-                                                '--private-key', key,
-                                                '--crl-chain', chain],
-                                              stdout, stderr)
-        expect(stderr.string).to be_empty
-        expect(exit_code).to be 0
+        with_files_in tmpdir do |bundle, key, chain|
+          exit_code = Puppetserver::Ca::Cli.run!(['setup',
+                                                  '--cert-bundle', bundle,
+                                                  '--private-key', key,
+                                                  '--crl-chain', chain],
+                                                stdout, stderr)
+          expect(stderr.string).to be_empty
+          expect(exit_code).to be 0
+        end
       end
     end
 
@@ -86,16 +141,15 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'warns when no CRL is given' do
         Dir.mktmpdir do |tmpdir|
-          bundle = File.join(tmpdir, 'bundle.pem')
-          key = File.join(tmpdir, 'key.pem')
-          [bundle, key].each {|file| FileUtils.touch(file) }
-          exit_code = Puppetserver::Ca::Cli.run!(
-                        ['setup',
-                         '--cert-bundle', bundle,
-                         '--private-key', key],
-                        stdout,
-                        stderr)
-          expect(stderr.string).to include('Full CRL chain checking will not be possible')
+          with_files_in tmpdir do |bundle, key, chain|
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key],
+                          stdout,
+                          stderr)
+            expect(stderr.string).to include('Full CRL chain checking will not be possible')
+          end
         end
       end
 
@@ -111,6 +165,23 @@ RSpec.describe Puppetserver::Ca::Cli do
           expect(stderr.string).to match(/Could not read .*cert_bundle.pem/)
           expect(stderr.string).to match(/Could not read .*private_key.pem/)
           expect(stderr.string).to match(/Could not read .*crl_chain.pem/)
+        end
+      end
+
+      it 'validates the cert bundle contains valid certs' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            File.open(bundle, 'w') {|f| f.puts 'garbage' }
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to match(/Could not parse .*bundle.pem/)
+          end
         end
       end
     end
