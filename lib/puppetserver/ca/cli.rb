@@ -47,18 +47,10 @@ module Puppetserver
                   err.puts ''
                 end
 
-                bundle = input['cert-bundle']
-                bundle_string = File.read(bundle)
-                cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
-                begin
-                  certs = cert_strings.map do |cert_string|
-                    OpenSSL::X509::Certificate.new(cert_string)
-                  end
-                rescue OpenSSL::X509::CertificateError
-                end
+                certs = parse_certs(input['cert-bundle'])
 
                 if certs.empty?
-                  err.puts "Could not parse #{bundle}"
+                  err.puts "Could not parse #{input['cert-bundle']}"
                   return 1
                 end
 
@@ -139,6 +131,20 @@ module Puppetserver
         setup_parser.parse(inputs)
 
         return setup_parser, parsed
+      end
+
+      def self.parse_certs(bundle)
+        bundle_string = File.read(bundle)
+        cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
+        begin
+          certs = cert_strings.map do |cert_string|
+            OpenSSL::X509::Certificate.new(cert_string)
+          end
+        rescue OpenSSL::X509::CertificateError
+          certs = []
+        end
+
+        return certs
       end
     end
   end
