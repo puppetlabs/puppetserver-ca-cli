@@ -168,10 +168,14 @@ RSpec.describe Puppetserver::Ca::Cli do
         end
       end
 
-      it 'validates the cert bundle contains valid certs' do
+      it 'validates certs in bundle are parseable' do
         Dir.mktmpdir do |tmpdir|
           with_files_in tmpdir do |bundle, key, chain|
-            File.open(bundle, 'w') {|f| f.puts 'garbage' }
+            File.open(bundle, 'w') do |f|
+              f.puts '-----BEGIN CERTIFICATE-----'
+              f.puts 'garbage'
+              f.puts '-----END CERTIFICATE-----'
+            end
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
                            '--cert-bundle', bundle,
@@ -181,6 +185,7 @@ RSpec.describe Puppetserver::Ca::Cli do
                           stderr)
 
             expect(stderr.string).to match(/Could not parse .*bundle.pem/)
+            expect(stderr.string).to include('garbage')
           end
         end
       end
