@@ -15,40 +15,11 @@ module Puppetserver
       VALID_COMMANDS = ['setup']
 
       def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
-        input = {}
-        general_parser = OptionParser.new do |opts|
-          opts.banner = 'Usage: puppetserver ca <command> [options]'
-          opts.on('--help', 'This general help output') do |help|
-            input['help'] = true
-          end
-          opts.on('--version', 'Output the version') do |v|
-            input['version'] = true
-          end
-        end
-
-        setup_parser = OptionParser.new do |opts|
-          opts.banner = 'Usage: puppetserver ca setup [options]'
-          opts.on('--help', 'This setup specific help output') do |help|
-            input['help'] = true
-          end
-          opts.on('--version', 'Output the version') do |v|
-            input['version'] = true
-          end
-          opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
-            input['private-key'] = key
-          end
-          opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
-            input['cert-bundle'] = bundle
-          end
-          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
-            input['crl-chain'] = chain
-          end
-        end
 
         if VALID_COMMANDS.include?(cli_args.first)
           case cli_args.shift
           when 'setup'
-            setup_parser.parse(cli_args)
+            setup_parser, input = parse_setup_inputs(cli_args)
 
             if input['help']
               out.puts setup_parser.help
@@ -103,7 +74,7 @@ module Puppetserver
             end
           end
         else
-          general_parser.parse(cli_args)
+          general_parser, input = parse_general_inputs(cli_args)
 
           if input['help']
             out.puts general_parser.help
@@ -124,6 +95,50 @@ module Puppetserver
             "Could not read file '#{path}'"
           end
         end.compact
+      end
+
+      def self.parse_general_inputs(inputs)
+        parsed = {}
+        general_parser = OptionParser.new do |opts|
+          opts.banner = 'Usage: puppetserver ca <command> [options]'
+          opts.on('--help', 'This general help output') do |help|
+            parsed['help'] = true
+          end
+          opts.on('--version', 'Output the version') do |v|
+            parsed['version'] = true
+          end
+        end
+
+        general_parser.parse(inputs)
+
+        return general_parser, parsed
+      end
+
+      def self.parse_setup_inputs(inputs)
+        parsed = {}
+
+        setup_parser = OptionParser.new do |opts|
+          opts.banner = 'Usage: puppetserver ca setup [options]'
+          opts.on('--help', 'This setup specific help output') do |help|
+            parsed['help'] = true
+          end
+          opts.on('--version', 'Output the version') do |v|
+            parsed['version'] = true
+          end
+          opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
+            parsed['private-key'] = key
+          end
+          opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
+            parsed['cert-bundle'] = bundle
+          end
+          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
+            parsed['crl-chain'] = chain
+          end
+        end
+
+        setup_parser.parse(inputs)
+
+        return setup_parser, parsed
       end
     end
   end
