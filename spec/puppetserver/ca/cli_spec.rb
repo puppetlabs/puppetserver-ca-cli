@@ -126,7 +126,7 @@ RSpec.describe Puppetserver::Ca::Cli do
                       ['setup', '--private-key', 'foo'],
                       stdout,
                       stderr)
-        expect(stderr.string).to include('missing required argument')
+        expect(stderr.string).to include('Missing required argument')
         expect(stderr.string).to match(usage)
         expect(exit_code).to be 1
 
@@ -134,7 +134,7 @@ RSpec.describe Puppetserver::Ca::Cli do
                       ['setup', '--cert-bundle', 'foo'],
                       stdout,
                       stderr)
-        expect(stderr.string).to include('missing required argument')
+        expect(stderr.string).to include('Missing required argument')
         expect(stderr.string).to match(usage)
         expect(exit_code).to be 1
       end

@@ -11,6 +11,21 @@ OptionParser::Officious.delete('help')
 
 module Puppetserver
   module Ca
+    class CAError < StandardError
+      attr_reader :messages
+      def initialize(*args)
+        @messages = []
+        super
+      end
+
+      def add_message(msg)
+        @messages << msg
+      end
+    end
+
+    class InvalidInput < CAError; end
+    class InvalidConfiguration < CAError; end
+
     class Cli
       VALID_COMMANDS = ['setup']
 
@@ -27,18 +42,17 @@ module Puppetserver
               out.puts Puppetserver::Ca::VERSION
               return 0
             else
-              if input['cert-bundle'] && input['private-key']
+              begin
+                unless input['cert-bundle'] && input['private-key']
+                  error = InvalidInput.new('Missing required argument')
+                  error.add_message('Both --cert-bundle and --private-key are required')
+                  raise error
+                end
+
                 files = input.values_at('cert-bundle', 'private-key')
                 files << input['crl-chain'] if input['crl-chain']
 
-                errors = validate_file_paths(files)
-
-                unless errors.empty?
-                  err.puts 'Error:'
-                  errors.each {|error| err.puts "    #{error}" }
-                  err.puts ''
-                  return 1
-                end
+                validate_file_paths!(files)
 
                 unless input['crl-chain']
                   err.puts 'Warning:'
@@ -47,28 +61,20 @@ module Puppetserver
                   err.puts ''
                 end
 
-                certs, errors = parse_certs(input['cert-bundle'])
-
-                if !errors.empty?
-                  err.puts "Could not parse #{input['cert-bundle']}"
-                  err.puts File.read(input['cert-bundle'])
-                  return 1
+                certs = parse_certs(input['cert-bundle'])
+              rescue CAError => e
+                err.puts "Error:"
+                err.puts "    #{e.to_s}" unless e.to_s.empty?
+                e.messages.each do |message|
+                  err.puts "    #{message}"
                 end
-
-                if certs.empty?
-                  err.puts "Could not detect any certs within #{input['cert-bundle']}"
-                  return 1
-                end
-
-                # do stuff
-                return 0
-              else
-                err.puts 'Error: missing required argument'
-                err.puts '    Both --cert-bundle and --private-key are required'
                 err.puts ''
+                err.puts setup_parser.help if e.is_a? InvalidInput
+                return 1
               end
-              err.puts setup_parser.help
-              return 1
+
+              # do stuff
+              return 0
             end
           end
         else
@@ -87,12 +93,15 @@ module Puppetserver
         return 0
       end
 
-      def self.validate_file_paths(paths)
-        paths.map do |path|
+      def self.validate_file_paths!(paths)
+        error = CAError.new("")
+        paths.each do |path|
           if !File.exist?(path) || !File.readable?(path)
-            "Could not read file '#{path}'"
+            error.add_message "Could not read file '#{path}'"
           end
-        end.compact
+        end
+
+        raise error unless error.messages.empty?
       end
 
       def self.parse_general_inputs(inputs)
@@ -140,18 +149,25 @@ module Puppetserver
       end
 
       def self.parse_certs(bundle)
-        errors = []
+        error = CAError.new("Could not parse #{bundle}")
+
         bundle_string = File.read(bundle)
         cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
         certs = cert_strings.map do |cert_string|
           begin
             OpenSSL::X509::Certificate.new(cert_string)
           rescue OpenSSL::X509::CertificateError
-            errors << "Could not parse entry #{cert_string}"
+            error.add_message "Could not parse entry:\n#{cert_string}"
           end
         end
 
-        return certs, errors
+        if certs.empty?
+          error.add_message "Could not detect any certs within #{bundle}"
+        end
+
+        raise error unless error.messages.empty?
+
+        return certs
       end
     end
   end
