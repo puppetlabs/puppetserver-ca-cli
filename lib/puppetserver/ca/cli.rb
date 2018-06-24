@@ -57,21 +57,10 @@ module Puppetserver
               return 0
             else
               if input['cert-bundle'] && input['private-key']
-                errors = []
-                bundle = input['cert-bundle']
-                if !File.exist?(bundle) || !File.readable?(bundle)
-                  errors << "Could not read file '#{bundle}'"
-                end
+                files = input.values_at('cert-bundle', 'private-key')
+                files << input['crl-chain'] if input['crl-chain']
 
-                key = input['private-key']
-                if !File.exist?(key) || !File.readable?(bundle)
-                  errors << "Could not read file '#{key}'"
-                end
-
-                chain = input['crl-chain']
-                if chain && (!File.exist?(chain) || !File.readable?(chain))
-                  errors << "Could not read file '#{chain}'"
-                end
+                errors = validate_file_paths(files)
 
                 unless errors.empty?
                   err.puts 'Error:'
@@ -87,6 +76,7 @@ module Puppetserver
                   err.puts ''
                 end
 
+                bundle = input['cert-bundle']
                 bundle_string = File.read(bundle)
                 cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
                 begin
@@ -126,6 +116,14 @@ module Puppetserver
         end
 
         return 0
+      end
+
+      def self.validate_file_paths(paths)
+        paths.map do |path|
+          if !File.exist?(path) || !File.readable?(path)
+            "Could not read file '#{path}'"
+          end
+        end.compact
       end
     end
   end
