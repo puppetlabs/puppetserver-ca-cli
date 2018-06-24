@@ -56,7 +56,7 @@ module Puppetserver
                 end
 
                 if certs.empty?
-                  err.puts "Could not parse #{input['cert-bundle']}"
+                  err.puts "Could not detect any certs within #{input['cert-bundle']}"
                   return 1
                 end
 
