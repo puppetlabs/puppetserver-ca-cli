@@ -165,6 +165,7 @@ RSpec.describe Puppetserver::Ca::Cli do
           expect(stderr.string).to match(/Could not read .*cert_bundle.pem/)
           expect(stderr.string).to match(/Could not read .*private_key.pem/)
           expect(stderr.string).to match(/Could not read .*crl_chain.pem/)
+          expect(exit_code).to be 1
         end
       end
 
