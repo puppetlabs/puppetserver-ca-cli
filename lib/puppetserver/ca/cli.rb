@@ -63,6 +63,7 @@ module Puppetserver
 
                 certs = parse_certs(input['cert-bundle'])
                 key = parse_key(input['private-key'])
+                validate_cert_and_key(key, certs.first)
               rescue CAError => e
                 err.puts "Error:"
                 err.puts "    #{e.to_s}" unless e.to_s.empty?
@@ -176,6 +177,12 @@ module Puppetserver
           OpenSSL::PKey.read(File.read(key_path))
         rescue ArgumentError => e
           raise CAError.new("Could not parse #{key_path}")
+        end
+      end
+
+      def self.validate_cert_and_key(key, cert)
+        unless cert.check_private_key(key)
+          raise CAError.new('Private key and certificate do not match')
         end
       end
     end

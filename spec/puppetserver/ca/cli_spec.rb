@@ -67,7 +67,7 @@ RSpec.describe Puppetserver::Ca::Cli do
       extension = ef.create_extension(*ext)
       leaf_cert.add_extension(extension)
     end
-    leaf_cert.sign(leaf_key, OpenSSL::Digest::SHA256.new)
+    leaf_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
 
     File.open(bundle_file, 'w') do |f|
       f.puts leaf_cert.to_pem
@@ -261,6 +261,23 @@ RSpec.describe Puppetserver::Ca::Cli do
                           stderr)
 
             expect(stderr.string).to match(/Could not parse .*key.pem/)
+          end
+        end
+      end
+
+      it 'validates the private key and cert match' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to include('Private key and certificate do not match')
           end
         end
       end
