@@ -208,6 +208,23 @@ RSpec.describe Puppetserver::Ca::Cli do
           end
         end
       end
+
+      it 'validates the private key' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            File.open(key, 'w') {|f| f.puts '' }
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to match(/Could not parse .*key.pem/)
+          end
+        end
+      end
     end
   end
 end

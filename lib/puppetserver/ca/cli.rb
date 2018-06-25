@@ -62,6 +62,7 @@ module Puppetserver
                 end
 
                 certs = parse_certs(input['cert-bundle'])
+                key = parse_key(input['private-key'])
               rescue CAError => e
                 err.puts "Error:"
                 err.puts "    #{e.to_s}" unless e.to_s.empty?
@@ -168,6 +169,14 @@ module Puppetserver
         raise error unless error.messages.empty?
 
         return certs
+      end
+
+      def self.parse_key(key_path)
+        begin
+          OpenSSL::PKey.read(File.read(key_path))
+        rescue ArgumentError => e
+          raise CAError.new("Could not parse #{key_path}")
+        end
       end
     end
   end
