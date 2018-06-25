@@ -14,25 +14,21 @@ RSpec.describe Puppetserver::Ca::Cli do
     bundle_file = File.join(tmpdir, 'bundle.pem')
     key_file = File.join(tmpdir, 'key.pem')
     chain_file = File.join(tmpdir, 'chain.pem')
-    key = OpenSSL::PKey::RSA.new(2048)
-
-    File.open(key_file, 'w') do |f|
-      f.puts key.to_pem
-    end
 
     not_before = Time.now - 1
 
-    cert = OpenSSL::X509::Certificate.new
-    cert.public_key = key.public_key
-    cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
-    cert.issuer = cert.subject
-    cert.version = 2
-    cert.serial = rand(2**128)
-    cert.not_before = not_before
-    cert.not_after = not_before + 360
+    root_key = OpenSSL::PKey::RSA.new(1024)
+    root_cert = OpenSSL::X509::Certificate.new
+    root_cert.public_key = root_key.public_key
+    root_cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
+    root_cert.issuer = root_cert.subject
+    root_cert.version = 2
+    root_cert.serial = rand(2**128)
+    root_cert.not_before = not_before
+    root_cert.not_after = not_before + 360
     ef = OpenSSL::X509::ExtensionFactory.new
-    ef.issuer_certificate = cert
-    ef.subject_certificate = cert
+    ef.issuer_certificate = root_cert
+    ef.subject_certificate = root_cert
 
     [
       ["basicConstraints", "CA:TRUE", true],
@@ -41,26 +37,69 @@ RSpec.describe Puppetserver::Ca::Cli do
       ["authorityKeyIdentifier", "keyid:always", false]
     ].each do |ext|
       extension = ef.create_extension(*ext)
-      cert.add_extension(extension)
+      root_cert.add_extension(extension)
     end
-    cert.sign(key, OpenSSL::Digest::SHA256.new)
+    root_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+
+    leaf_key = OpenSSL::PKey::RSA.new(1024)
+    File.open(key_file, 'w') do |f|
+      f.puts leaf_key.to_pem
+    end
+
+    leaf_cert = OpenSSL::X509::Certificate.new
+    leaf_cert.public_key = leaf_key.public_key
+    leaf_cert.subject = OpenSSL::X509::Name.parse("/CN=bar")
+    leaf_cert.issuer = root_cert.subject
+    leaf_cert.version = 2
+    leaf_cert.serial = rand(2**128)
+    leaf_cert.not_before = not_before
+    leaf_cert.not_after = not_before + 360
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.issuer_certificate = root_cert
+    ef.subject_certificate = leaf_cert
+
+    [
+      ["basicConstraints", "CA:TRUE", true],
+      ["keyUsage", "keyCertSign, cRLSign", true],
+      ["subjectKeyIdentifier", "hash", false],
+      ["authorityKeyIdentifier", "keyid:always", false]
+    ].each do |ext|
+      extension = ef.create_extension(*ext)
+      leaf_cert.add_extension(extension)
+    end
+    leaf_cert.sign(leaf_key, OpenSSL::Digest::SHA256.new)
 
     File.open(bundle_file, 'w') do |f|
-      f.puts cert.to_pem
+      f.puts leaf_cert.to_pem
+      f.puts root_cert.to_pem
     end
 
-    crl = OpenSSL::X509::CRL.new
-    crl.version = 1
-    crl.issuer = cert.subject
-    crl.add_extension(
+    root_crl = OpenSSL::X509::CRL.new
+    root_crl.version = 1
+    root_crl.issuer = root_cert.subject
+    root_crl.add_extension(
       ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
-    crl.add_extension(
+    root_crl.add_extension(
       OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
-    crl.last_update = not_before
-    crl.next_update = not_before + 360
-    crl.sign(key, OpenSSL::Digest::SHA256.new)
+    root_crl.last_update = not_before
+    root_crl.next_update = not_before + 360
+    root_crl.sign(root_key, OpenSSL::Digest::SHA256.new)
 
-    File.open(chain_file, 'w') {|f| f.puts crl.to_pem }
+    leaf_crl = OpenSSL::X509::CRL.new
+    leaf_crl.version = 1
+    leaf_crl.issuer = leaf_cert.subject
+    leaf_crl.add_extension(
+      ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+    leaf_crl.add_extension(
+      OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
+    leaf_crl.last_update = not_before
+    leaf_crl.next_update = not_before + 360
+    leaf_crl.sign(leaf_key, OpenSSL::Digest::SHA256.new)
+
+    File.open(chain_file, 'w') do |f|
+      f.puts leaf_crl.to_pem
+      f.puts root_crl.to_pem
+    end
 
 
     block.call(bundle_file, key_file, chain_file)
