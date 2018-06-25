@@ -25,10 +25,10 @@ RSpec.describe Puppetserver::Ca::Cli do
     root_cert.version = 2
     root_cert.serial = rand(2**128)
     root_cert.not_before = not_before
-    root_cert.not_after = not_before + 360
-    ef = OpenSSL::X509::ExtensionFactory.new
-    ef.issuer_certificate = root_cert
-    ef.subject_certificate = root_cert
+    root_cert.not_after = not_before + 360000
+    root_ef = OpenSSL::X509::ExtensionFactory.new
+    root_ef.issuer_certificate = root_cert
+    root_ef.subject_certificate = root_cert
 
     [
       ["basicConstraints", "CA:TRUE", true],
@@ -36,7 +36,7 @@ RSpec.describe Puppetserver::Ca::Cli do
       ["subjectKeyIdentifier", "hash", false],
       ["authorityKeyIdentifier", "keyid:always", false]
     ].each do |ext|
-      extension = ef.create_extension(*ext)
+      extension = root_ef.create_extension(*ext)
       root_cert.add_extension(extension)
     end
     root_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
@@ -53,10 +53,10 @@ RSpec.describe Puppetserver::Ca::Cli do
     leaf_cert.version = 2
     leaf_cert.serial = rand(2**128)
     leaf_cert.not_before = not_before
-    leaf_cert.not_after = not_before + 360
-    ef = OpenSSL::X509::ExtensionFactory.new
-    ef.issuer_certificate = root_cert
-    ef.subject_certificate = leaf_cert
+    leaf_cert.not_after = not_before + 360000
+    leaf_ef = OpenSSL::X509::ExtensionFactory.new
+    leaf_ef.issuer_certificate = root_cert
+    leaf_ef.subject_certificate = leaf_cert
 
     [
       ["basicConstraints", "CA:TRUE", true],
@@ -64,7 +64,7 @@ RSpec.describe Puppetserver::Ca::Cli do
       ["subjectKeyIdentifier", "hash", false],
       ["authorityKeyIdentifier", "keyid:always", false]
     ].each do |ext|
-      extension = ef.create_extension(*ext)
+      extension = leaf_ef.create_extension(*ext)
       leaf_cert.add_extension(extension)
     end
     leaf_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
@@ -78,18 +78,18 @@ RSpec.describe Puppetserver::Ca::Cli do
     root_crl.version = 1
     root_crl.issuer = root_cert.subject
     root_crl.add_extension(
-      ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+      root_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
     root_crl.add_extension(
       OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
     root_crl.last_update = not_before
-    root_crl.next_update = not_before + 360
+    root_crl.next_update = not_before + 360000
     root_crl.sign(root_key, OpenSSL::Digest::SHA256.new)
 
     leaf_crl = OpenSSL::X509::CRL.new
     leaf_crl.version = 1
     leaf_crl.issuer = leaf_cert.subject
     leaf_crl.add_extension(
-      ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+      leaf_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
     leaf_crl.add_extension(
       OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
     leaf_crl.last_update = not_before
@@ -208,7 +208,7 @@ RSpec.describe Puppetserver::Ca::Cli do
         end
       end
 
-      it 'validates certs in bundle are parseable' do
+      it 'validates all certs in bundle are parseable' do
         Dir.mktmpdir do |tmpdir|
           with_files_in tmpdir do |bundle, key, chain|
             File.open(bundle, 'a') do |f|
@@ -243,7 +243,6 @@ RSpec.describe Puppetserver::Ca::Cli do
                           stderr)
 
             expect(stderr.string).to match(/Could not detect .*bundle.pem/)
-            expect(stderr.string).not_to include('garbage')
           end
         end
       end
@@ -265,7 +264,7 @@ RSpec.describe Puppetserver::Ca::Cli do
         end
       end
 
-      it 'validates the private key and cert match' do
+      it 'validates the private key and leaf cert match' do
         Dir.mktmpdir do |tmpdir|
           with_files_in tmpdir do |bundle, key, chain|
             File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
@@ -278,6 +277,104 @@ RSpec.describe Puppetserver::Ca::Cli do
                           stderr)
 
             expect(stderr.string).to include('Private key and certificate do not match')
+          end
+        end
+      end
+
+      it 'validates all crls in chain are parseable' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            File.open(chain, 'a') do |f|
+              f.puts '-----BEGIN X509 CRL-----'
+              f.puts 'garbage'
+              f.puts '-----END X509 CRL-----'
+            end
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to match(/Could not parse .*chain.pem/)
+            expect(stderr.string).to include('garbage')
+          end
+        end
+      end
+
+      it 'validates that there are crls in the chain, if given chain' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            File.open(chain, 'w') {|f| f.puts '' }
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to match(/Could not detect .*chain.pem/)
+          end
+        end
+      end
+
+      it 'validates the leaf crl and leaf cert match' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain|
+            crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
+
+            not_before = Time.now - 1
+
+            baz_key = OpenSSL::PKey::RSA.new(1024)
+            baz_cert = OpenSSL::X509::Certificate.new
+            baz_cert.public_key = baz_key.public_key
+            baz_cert.subject = OpenSSL::X509::Name.parse("/CN=baz")
+            baz_cert.issuer = baz_cert.subject
+            baz_cert.version = 2
+            baz_cert.serial = rand(2**128)
+            baz_cert.not_before = not_before
+            baz_cert.not_after = not_before + 360
+            baz_ef = OpenSSL::X509::ExtensionFactory.new
+            baz_ef.issuer_certificate = baz_cert
+            baz_ef.subject_certificate = baz_cert
+
+            [
+              ["basicConstraints", "CA:TRUE", true],
+              ["keyUsage", "keyCertSign, cRLSign", true],
+              ["subjectKeyIdentifier", "hash", false],
+              ["authorityKeyIdentifier", "keyid:always", false]
+            ].each do |ext|
+              extension = baz_ef.create_extension(*ext)
+              baz_cert.add_extension(extension)
+            end
+            baz_cert.sign(baz_key, OpenSSL::Digest::SHA256.new)
+            baz_crl = OpenSSL::X509::CRL.new
+            baz_crl.version = 1
+            baz_crl.issuer = baz_cert.subject
+            baz_crl.add_extension(
+              baz_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+            baz_crl.add_extension(
+              OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
+            baz_crl.last_update = not_before
+            baz_crl.next_update = not_before + 360
+            baz_crl.sign(baz_key, OpenSSL::Digest::SHA256.new)
+
+            File.open(chain, 'w') do |f|
+              f.puts baz_crl.to_pem
+              f.puts crls[1..-1]
+            end
+
+            exit_code = Puppetserver::Ca::Cli.run!(
+                          ['setup',
+                           '--cert-bundle', bundle,
+                           '--private-key', key,
+                           '--crl-chain', chain],
+                          stdout,
+                          stderr)
+
+            expect(stderr.string).to include('Leaf CRL was not issued by leaf certificate')
           end
         end
       end

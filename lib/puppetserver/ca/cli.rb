@@ -54,16 +54,23 @@ module Puppetserver
 
                 validate_file_paths!(files)
 
-                unless input['crl-chain']
+                certs = parse_certs(input['cert-bundle'])
+                key = parse_key(input['private-key'])
+                validate_cert_and_key(key, certs.first)
+
+                if input['crl-chain']
+                  crls = parse_crls(input['crl-chain'])
+                  validate_crl_and_cert(crls.first, certs.first)
+                else
                   err.puts 'Warning:'
                   err.puts '    No CRL chain given'
                   err.puts '    Full CRL chain checking will not be possible'
                   err.puts ''
                 end
 
-                certs = parse_certs(input['cert-bundle'])
-                key = parse_key(input['private-key'])
-                validate_cert_and_key(key, certs.first)
+                # do stuff
+                return 0
+
               rescue CAError => e
                 err.puts "Error:"
                 err.puts "    #{e.to_s}" unless e.to_s.empty?
@@ -74,9 +81,6 @@ module Puppetserver
                 err.puts setup_parser.help if e.is_a? InvalidInput
                 return 1
               end
-
-              # do stuff
-              return 0
             end
           end
         else
@@ -183,6 +187,34 @@ module Puppetserver
       def self.validate_cert_and_key(key, cert)
         unless cert.check_private_key(key)
           raise CAError.new('Private key and certificate do not match')
+        end
+      end
+
+      def self.parse_crls(chain)
+        error = CAError.new("Could not parse #{chain}")
+
+        chain_string = File.read(chain)
+        crl_strings = chain_string.scan(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m)
+        crls = crl_strings.map do |crl_string|
+          begin
+            OpenSSL::X509::CRL.new(crl_string)
+          rescue OpenSSL::X509::CRLError
+            error.add_message "Could not parse entry:\n#{crl_string}"
+          end
+        end
+
+        if crls.empty?
+          error.add_message "Could not detect any crls within #{chain}"
+        end
+
+        raise error unless error.messages.empty?
+
+        return crls
+      end
+
+      def self.validate_crl_and_cert(crl, cert)
+        unless crl.issuer == cert.subject
+          raise CAError.new('Leaf CRL was not issued by leaf certificate')
         end
       end
     end
