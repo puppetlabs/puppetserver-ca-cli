@@ -10,6 +10,69 @@ RSpec.describe Puppetserver::Ca::Cli do
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
 
+  def create_cert(subject_key, name, signer_key = nil, signer_cert = nil)
+    cert = OpenSSL::X509::Certificate.new
+
+    signer_cert ||= cert
+    signer_key ||= subject_key
+
+    cert.public_key = subject_key.public_key
+    cert.subject = OpenSSL::X509::Name.parse("/CN=#{name}")
+    cert.issuer = signer_cert.subject
+    cert.version = 2
+    cert.serial = rand(2**128)
+    cert.not_before = Time.now - 1
+    cert.not_after = Time.now + 360000
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.issuer_certificate = signer_cert
+    ef.subject_certificate = cert
+
+    [
+      ["basicConstraints", "CA:TRUE", true],
+      ["keyUsage", "keyCertSign, cRLSign", true],
+      ["subjectKeyIdentifier", "hash", false],
+      ["authorityKeyIdentifier", "keyid:always", false]
+    ].each do |ext|
+      extension = ef.create_extension(*ext)
+      cert.add_extension(extension)
+    end
+
+    cert.sign(signer_key, OpenSSL::Digest::SHA256.new)
+
+    return cert
+  end
+
+  def create_crl(cert, key, certs_to_revoke = [])
+    crl = OpenSSL::X509::CRL.new
+    crl.version = 1
+    crl.issuer = cert.subject
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.issuer_certificate = cert
+    ef.subject_certificate = cert
+    certs_to_revoke.each do |c|
+      revoked = OpenSSL::X509::Revoked.new
+      revoked.serial = c.serial
+      revoked.time = Time.now
+      revoked.add_extension(
+        OpenSSL::X509::Extension.new(
+          "CRLReason",
+          OpenSSL::ASN1::Enumerated(
+            OpenSSL::OCSP::REVOKED_STATUS_KEYCOMPROMISE)))
+
+      crl.add_revoked(revoked)
+    end
+    crl.add_extension(
+      ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
+    crl.add_extension(
+      OpenSSL::X509::Extension.new("crlNumber",
+                                   OpenSSL::ASN1::Integer(certs_to_revoke.length)))
+    crl.last_update = Time.now - 1
+    crl.next_update = Time.now + 360000
+    crl.sign(key, OpenSSL::Digest::SHA256.new)
+
+    return crl
+  end
+
   def with_files_in(tmpdir, &block)
     bundle_file = File.join(tmpdir, 'bundle.pem')
     key_file = File.join(tmpdir, 'key.pem')
@@ -18,83 +81,22 @@ RSpec.describe Puppetserver::Ca::Cli do
     not_before = Time.now - 1
 
     root_key = OpenSSL::PKey::RSA.new(1024)
-    root_cert = OpenSSL::X509::Certificate.new
-    root_cert.public_key = root_key.public_key
-    root_cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
-    root_cert.issuer = root_cert.subject
-    root_cert.version = 2
-    root_cert.serial = rand(2**128)
-    root_cert.not_before = not_before
-    root_cert.not_after = not_before + 360000
-    root_ef = OpenSSL::X509::ExtensionFactory.new
-    root_ef.issuer_certificate = root_cert
-    root_ef.subject_certificate = root_cert
-
-    [
-      ["basicConstraints", "CA:TRUE", true],
-      ["keyUsage", "keyCertSign, cRLSign", true],
-      ["subjectKeyIdentifier", "hash", false],
-      ["authorityKeyIdentifier", "keyid:always", false]
-    ].each do |ext|
-      extension = root_ef.create_extension(*ext)
-      root_cert.add_extension(extension)
-    end
-    root_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+    root_cert = create_cert(root_key, 'foo')
 
     leaf_key = OpenSSL::PKey::RSA.new(1024)
     File.open(key_file, 'w') do |f|
       f.puts leaf_key.to_pem
     end
 
-    leaf_cert = OpenSSL::X509::Certificate.new
-    leaf_cert.public_key = leaf_key.public_key
-    leaf_cert.subject = OpenSSL::X509::Name.parse("/CN=bar")
-    leaf_cert.issuer = root_cert.subject
-    leaf_cert.version = 2
-    leaf_cert.serial = rand(2**128)
-    leaf_cert.not_before = not_before
-    leaf_cert.not_after = not_before + 360000
-    leaf_ef = OpenSSL::X509::ExtensionFactory.new
-    leaf_ef.issuer_certificate = root_cert
-    leaf_ef.subject_certificate = leaf_cert
-
-    [
-      ["basicConstraints", "CA:TRUE", true],
-      ["keyUsage", "keyCertSign, cRLSign", true],
-      ["subjectKeyIdentifier", "hash", false],
-      ["authorityKeyIdentifier", "keyid:always", false]
-    ].each do |ext|
-      extension = leaf_ef.create_extension(*ext)
-      leaf_cert.add_extension(extension)
-    end
-    leaf_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+    leaf_cert = create_cert(leaf_key, 'bar', root_key, root_cert)
 
     File.open(bundle_file, 'w') do |f|
       f.puts leaf_cert.to_pem
       f.puts root_cert.to_pem
     end
 
-    root_crl = OpenSSL::X509::CRL.new
-    root_crl.version = 1
-    root_crl.issuer = root_cert.subject
-    root_crl.add_extension(
-      root_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
-    root_crl.add_extension(
-      OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
-    root_crl.last_update = not_before
-    root_crl.next_update = not_before + 360000
-    root_crl.sign(root_key, OpenSSL::Digest::SHA256.new)
-
-    leaf_crl = OpenSSL::X509::CRL.new
-    leaf_crl.version = 1
-    leaf_crl.issuer = leaf_cert.subject
-    leaf_crl.add_extension(
-      leaf_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
-    leaf_crl.add_extension(
-      OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
-    leaf_crl.last_update = not_before
-    leaf_crl.next_update = not_before + 360
-    leaf_crl.sign(leaf_key, OpenSSL::Digest::SHA256.new)
+    root_crl = create_crl(root_cert, root_key)
+    leaf_crl = create_crl(leaf_cert, leaf_key)
 
     File.open(chain_file, 'w') do |f|
       f.puts leaf_crl.to_pem
@@ -325,41 +327,9 @@ RSpec.describe Puppetserver::Ca::Cli do
           with_files_in tmpdir do |bundle, key, chain|
             crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
 
-            not_before = Time.now - 1
-
             baz_key = OpenSSL::PKey::RSA.new(1024)
-            baz_cert = OpenSSL::X509::Certificate.new
-            baz_cert.public_key = baz_key.public_key
-            baz_cert.subject = OpenSSL::X509::Name.parse("/CN=baz")
-            baz_cert.issuer = baz_cert.subject
-            baz_cert.version = 2
-            baz_cert.serial = rand(2**128)
-            baz_cert.not_before = not_before
-            baz_cert.not_after = not_before + 360
-            baz_ef = OpenSSL::X509::ExtensionFactory.new
-            baz_ef.issuer_certificate = baz_cert
-            baz_ef.subject_certificate = baz_cert
-
-            [
-              ["basicConstraints", "CA:TRUE", true],
-              ["keyUsage", "keyCertSign, cRLSign", true],
-              ["subjectKeyIdentifier", "hash", false],
-              ["authorityKeyIdentifier", "keyid:always", false]
-            ].each do |ext|
-              extension = baz_ef.create_extension(*ext)
-              baz_cert.add_extension(extension)
-            end
-            baz_cert.sign(baz_key, OpenSSL::Digest::SHA256.new)
-            baz_crl = OpenSSL::X509::CRL.new
-            baz_crl.version = 1
-            baz_crl.issuer = baz_cert.subject
-            baz_crl.add_extension(
-              baz_ef.create_extension(["authorityKeyIdentifier", "keyid:always", false]))
-            baz_crl.add_extension(
-              OpenSSL::X509::Extension.new("crlNumber", OpenSSL::ASN1::Integer(0)))
-            baz_crl.last_update = not_before
-            baz_crl.next_update = not_before + 360
-            baz_crl.sign(baz_key, OpenSSL::Digest::SHA256.new)
+            baz_cert = create_cert(baz_key, 'baz')
+            baz_crl = create_crl(baz_cert, baz_key)
 
             File.open(chain, 'w') do |f|
               f.puts baz_crl.to_pem
@@ -385,102 +355,24 @@ RSpec.describe Puppetserver::Ca::Cli do
           key_file = File.join(tmpdir, 'key.pem')
           chain_file = File.join(tmpdir, 'chain.pem')
 
-          not_before = Time.now - 1
-
           root_key = OpenSSL::PKey::RSA.new(1024)
-          root_cert = OpenSSL::X509::Certificate.new
-          root_cert.public_key = root_key.public_key
-          root_cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
-          root_cert.issuer = root_cert.subject
-          root_cert.version = 2
-          root_cert.serial = rand(2**128)
-          root_cert.not_before = not_before
-          root_cert.not_after = not_before + 360
-          root_ef = OpenSSL::X509::ExtensionFactory.new
-          root_ef.issuer_certificate = root_cert
-          root_ef.subject_certificate = root_cert
-
-          [
-            ["basicConstraints", "CA:TRUE", true],
-            ["keyUsage", "keyCertSign, cRLSign", true],
-            ["subjectKeyIdentifier", "hash", false],
-            ["authorityKeyIdentifier", "keyid:always", false]
-          ].each do |ext|
-            extension = root_ef.create_extension(*ext)
-            root_cert.add_extension(extension)
-          end
-          root_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
-
           leaf_key = OpenSSL::PKey::RSA.new(1024)
+
           File.open(key_file, 'w') do |f|
             f.puts leaf_key.to_pem
           end
 
-          leaf_cert = OpenSSL::X509::Certificate.new
-          leaf_cert.public_key = leaf_key.public_key
-          leaf_cert.subject = OpenSSL::X509::Name.parse("/CN=bar")
-          leaf_cert.issuer = root_cert.subject
-          leaf_cert.version = 2
-          leaf_cert.serial = rand(2**128)
-          leaf_cert.not_before = not_before
-          leaf_cert.not_after = not_before + 360
-          leaf_ef = OpenSSL::X509::ExtensionFactory.new
-          leaf_ef.issuer_certificate = root_cert
-          leaf_ef.subject_certificate = leaf_cert
-
-          [
-            ["basicConstraints", "CA:TRUE", true],
-            ["keyUsage", "keyCertSign, cRLSign", true],
-            ["subjectKeyIdentifier", "hash", false],
-            ["authorityKeyIdentifier", "keyid:always", false]
-          ].each do |ext|
-            extension = leaf_ef.create_extension(*ext)
-            leaf_cert.add_extension(extension)
-          end
-          leaf_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+          root_cert = create_cert(root_key, 'foo')
+          leaf_cert = create_cert(leaf_key, 'bar', root_key, root_cert)
 
           File.open(bundle_file, 'w') do |f|
             f.puts leaf_cert.to_pem
             f.puts root_cert.to_pem
           end
 
-          root_crl = OpenSSL::X509::CRL.new
-          root_crl.version = 1
-          root_crl.issuer = root_cert.subject
-          root_crl.add_extension(
-            root_ef.create_extension(["authorityKeyIdentifier",
-                                      "keyid:always",
-                                      false]))
-          root_crl.add_extension(
-            OpenSSL::X509::Extension.new("crlNumber",
-                                         OpenSSL::ASN1::Integer(1)))
-          revoked = OpenSSL::X509::Revoked.new
-          revoked.serial = leaf_cert.serial
-          revoked.time = Time.now
-          revoked.add_extension(
-            OpenSSL::X509::Extension.new(
-              "CRLReason",
-              OpenSSL::ASN1::Enumerated(
-                OpenSSL::OCSP::REVOKED_STATUS_KEYCOMPROMISE)))
-
-          root_crl.add_revoked(revoked)
-          root_crl.last_update = not_before
-          root_crl.next_update = not_before + 360
-          root_crl.sign(root_key, OpenSSL::Digest::SHA256.new)
-
-          leaf_crl = OpenSSL::X509::CRL.new
-          leaf_crl.version = 1
-          leaf_crl.issuer = leaf_cert.subject
-          leaf_crl.add_extension(
-            leaf_ef.create_extension(["authorityKeyIdentifier",
-                                      "keyid:always",
-                                      false]))
-          leaf_crl.add_extension(
-            OpenSSL::X509::Extension.new("crlNumber",
-                                         OpenSSL::ASN1::Integer(0)))
-          leaf_crl.last_update = not_before
-          leaf_crl.next_update = not_before + 360
-          leaf_crl.sign(leaf_key, OpenSSL::Digest::SHA256.new)
+          # This should ensure the leaf cert is revoked
+          root_crl = create_crl(root_cert, root_key, [leaf_cert])
+          leaf_crl = create_crl(leaf_cert, leaf_key)
 
           File.open(chain_file, 'w') do |f|
             f.puts leaf_crl.to_pem
