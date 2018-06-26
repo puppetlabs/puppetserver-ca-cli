@@ -378,6 +378,125 @@ RSpec.describe Puppetserver::Ca::Cli do
           end
         end
       end
+
+      it 'validates that leaf cert is valid wrt the provided chain/bundle' do
+        Dir.mktmpdir do |tmpdir|
+          bundle_file = File.join(tmpdir, 'bundle.pem')
+          key_file = File.join(tmpdir, 'key.pem')
+          chain_file = File.join(tmpdir, 'chain.pem')
+
+          not_before = Time.now - 1
+
+          root_key = OpenSSL::PKey::RSA.new(1024)
+          root_cert = OpenSSL::X509::Certificate.new
+          root_cert.public_key = root_key.public_key
+          root_cert.subject = OpenSSL::X509::Name.parse("/CN=foo")
+          root_cert.issuer = root_cert.subject
+          root_cert.version = 2
+          root_cert.serial = rand(2**128)
+          root_cert.not_before = not_before
+          root_cert.not_after = not_before + 360
+          root_ef = OpenSSL::X509::ExtensionFactory.new
+          root_ef.issuer_certificate = root_cert
+          root_ef.subject_certificate = root_cert
+
+          [
+            ["basicConstraints", "CA:TRUE", true],
+            ["keyUsage", "keyCertSign, cRLSign", true],
+            ["subjectKeyIdentifier", "hash", false],
+            ["authorityKeyIdentifier", "keyid:always", false]
+          ].each do |ext|
+            extension = root_ef.create_extension(*ext)
+            root_cert.add_extension(extension)
+          end
+          root_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+
+          leaf_key = OpenSSL::PKey::RSA.new(1024)
+          File.open(key_file, 'w') do |f|
+            f.puts leaf_key.to_pem
+          end
+
+          leaf_cert = OpenSSL::X509::Certificate.new
+          leaf_cert.public_key = leaf_key.public_key
+          leaf_cert.subject = OpenSSL::X509::Name.parse("/CN=bar")
+          leaf_cert.issuer = root_cert.subject
+          leaf_cert.version = 2
+          leaf_cert.serial = rand(2**128)
+          leaf_cert.not_before = not_before
+          leaf_cert.not_after = not_before + 360
+          leaf_ef = OpenSSL::X509::ExtensionFactory.new
+          leaf_ef.issuer_certificate = root_cert
+          leaf_ef.subject_certificate = leaf_cert
+
+          [
+            ["basicConstraints", "CA:TRUE", true],
+            ["keyUsage", "keyCertSign, cRLSign", true],
+            ["subjectKeyIdentifier", "hash", false],
+            ["authorityKeyIdentifier", "keyid:always", false]
+          ].each do |ext|
+            extension = leaf_ef.create_extension(*ext)
+            leaf_cert.add_extension(extension)
+          end
+          leaf_cert.sign(root_key, OpenSSL::Digest::SHA256.new)
+
+          File.open(bundle_file, 'w') do |f|
+            f.puts leaf_cert.to_pem
+            f.puts root_cert.to_pem
+          end
+
+          root_crl = OpenSSL::X509::CRL.new
+          root_crl.version = 1
+          root_crl.issuer = root_cert.subject
+          root_crl.add_extension(
+            root_ef.create_extension(["authorityKeyIdentifier",
+                                      "keyid:always",
+                                      false]))
+          root_crl.add_extension(
+            OpenSSL::X509::Extension.new("crlNumber",
+                                         OpenSSL::ASN1::Integer(1)))
+          revoked = OpenSSL::X509::Revoked.new
+          revoked.serial = leaf_cert.serial
+          revoked.time = Time.now
+          revoked.add_extension(
+            OpenSSL::X509::Extension.new(
+              "CRLReason",
+              OpenSSL::ASN1::Enumerated(
+                OpenSSL::OCSP::REVOKED_STATUS_KEYCOMPROMISE)))
+
+          root_crl.add_revoked(revoked)
+          root_crl.last_update = not_before
+          root_crl.next_update = not_before + 360
+          root_crl.sign(root_key, OpenSSL::Digest::SHA256.new)
+
+          leaf_crl = OpenSSL::X509::CRL.new
+          leaf_crl.version = 1
+          leaf_crl.issuer = leaf_cert.subject
+          leaf_crl.add_extension(
+            leaf_ef.create_extension(["authorityKeyIdentifier",
+                                      "keyid:always",
+                                      false]))
+          leaf_crl.add_extension(
+            OpenSSL::X509::Extension.new("crlNumber",
+                                         OpenSSL::ASN1::Integer(0)))
+          leaf_crl.last_update = not_before
+          leaf_crl.next_update = not_before + 360
+          leaf_crl.sign(leaf_key, OpenSSL::Digest::SHA256.new)
+
+          File.open(chain_file, 'w') do |f|
+            f.puts leaf_crl.to_pem
+            f.puts root_crl.to_pem
+          end
+
+          exit_code = Puppetserver::Ca::Cli.run!(['setup',
+                                                  '--private-key', key_file,
+                                                  '--cert-bundle', bundle_file,
+                                                  '--crl-chain', chain_file],
+                                                  stdout,
+                                                  stderr)
+
+          expect(stderr.string).to include('Leaf certificate could not be validated')
+        end
+      end
     end
   end
 end

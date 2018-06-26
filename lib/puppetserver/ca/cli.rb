@@ -58,6 +58,7 @@ module Puppetserver
                 key = parse_key(input['private-key'])
                 validate_cert_and_key(key, certs.first)
 
+                crls = nil
                 if input['crl-chain']
                   crls = parse_crls(input['crl-chain'])
                   validate_crl_and_cert(crls.first, certs.first)
@@ -67,6 +68,8 @@ module Puppetserver
                   err.puts '    Full CRL chain checking will not be possible'
                   err.puts ''
                 end
+
+                validate_full_chain(certs, crls)
 
                 # do stuff
                 return 0
@@ -215,6 +218,19 @@ module Puppetserver
       def self.validate_crl_and_cert(crl, cert)
         unless crl.issuer == cert.subject
           raise CAError.new('Leaf CRL was not issued by leaf certificate')
+        end
+      end
+
+      def self.validate_full_chain(certs, crls)
+        store = OpenSSL::X509::Store.new
+        certs.each {|cert| store.add_cert(cert) }
+        if crls
+          store.flags = OpenSSL::X509::V_FLAG_CRL_CHECK | OpenSSL::X509::V_FLAG_CRL_CHECK_ALL
+          crls.each {|crl| store.add_crl(crl) }
+        end
+
+        unless store.verify(certs.first)
+          raise CAError.new('Leaf certificate could not be validated')
         end
       end
     end
