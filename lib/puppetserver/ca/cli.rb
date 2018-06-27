@@ -41,8 +41,66 @@ module Puppetserver
       end
     end
 
-    class InvalidInput < CAError; end
-    class InvalidConfiguration < CAError; end
+    class SetupCliParser
+      def self.parse(cli_args, out, err)
+        parser, inputs = parse_inputs(cli_args)
+        exit_code = validate_inputs(inputs, parser.help, out, err)
+
+        return inputs, exit_code
+      end
+
+      def self.validate_inputs(input, usage, out, err)
+        exit_code = nil
+
+        if input['help']
+          out.puts usage
+          exit_code = 0
+        elsif input['version']
+          out.puts Puppetserver::Ca::VERSION
+          exit_code = 0
+        elsif input['cert-bundle'].nil? || input['private-key'].nil?
+          err.puts 'Error:'
+          err.puts 'Missing required argument'
+          err.puts '    Both --cert-bundle and --private-key are required'
+          err.puts ''
+          err.puts usage
+          exit_code = 1
+        end
+
+        exit_code
+      end
+
+      def self.parse_inputs(inputs)
+        parsed = {}
+
+        parser = OptionParser.new do |opts|
+          opts.banner = 'Usage: puppetserver ca setup [options]'
+          opts.on('--help', 'This setup specific help output') do |help|
+            parsed['help'] = true
+          end
+          opts.on('--version', 'Output the version') do |v|
+            parsed['version'] = true
+          end
+          opts.on('--config CONF', 'Path to puppet.conf') do |conf|
+            parsed['config'] = conf
+          end
+          opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
+            parsed['private-key'] = key
+          end
+          opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
+            parsed['cert-bundle'] = bundle
+          end
+          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
+            parsed['crl-chain'] = chain
+          end
+        end
+
+        parser.parse(inputs)
+
+        return parser, parsed
+      end
+
+    end
 
     class Cli
       VALID_COMMANDS = ['setup']
@@ -52,60 +110,47 @@ module Puppetserver
         if VALID_COMMANDS.include?(cli_args.first)
           case cli_args.shift
           when 'setup'
-            setup_parser, input = parse_setup_inputs(cli_args)
+            input, exit_code = SetupCliParser.parse(cli_args, out, err)
 
-            if input['help']
-              out.puts setup_parser.help
-            elsif input['version']
-              out.puts Puppetserver::Ca::VERSION
-              return 0
-            else
-              begin
-                unless input['cert-bundle'] && input['private-key']
-                  error = InvalidInput.new('Missing required argument')
-                  error.add_message('Both --cert-bundle and --private-key are required')
-                  raise error
-                end
+            return exit_code if exit_code
 
-                if input['config']
-                  validate_file_paths(input['config'])
-                end
-
-                files = input.values_at('cert-bundle', 'private-key')
-                files << input['crl-chain'] if input['crl-chain']
-
-                validate_file_paths(files)
-
-                certs = parse_certs(input['cert-bundle'])
-                key = parse_key(input['private-key'])
-                validate_cert_and_key(key, certs.first)
-
-                crls = nil
-                if input['crl-chain']
-                  crls = parse_crls(input['crl-chain'])
-                  validate_crl_and_cert(crls.first, certs.first)
-                else
-                  err.puts 'Warning:'
-                  err.puts '    No CRL chain given'
-                  err.puts '    Full CRL chain checking will not be possible'
-                  err.puts ''
-                end
-
-                validate_full_chain(certs, crls)
-
-                # do stuff
-                return 0
-
-              rescue CAError => e
-                err.puts "Error:"
-                err.puts "    #{e.to_s}" unless e.to_s.empty?
-                e.messages.each do |message|
-                  err.puts "    #{message}"
-                end
-                err.puts ''
-                err.puts setup_parser.help if e.is_a? InvalidInput
-                return 1
+            begin
+              if input['config']
+                validate_file_paths(input['config'])
               end
+
+              files = input.values_at('cert-bundle', 'private-key')
+              files << input['crl-chain'] if input['crl-chain']
+
+              validate_file_paths(files)
+
+              certs = parse_certs(input['cert-bundle'])
+              key = parse_key(input['private-key'])
+              validate_cert_and_key(key, certs.first)
+
+              crls = nil
+              if input['crl-chain']
+                crls = parse_crls(input['crl-chain'])
+                validate_crl_and_cert(crls.first, certs.first)
+              else
+                err.puts 'Warning:'
+                err.puts '    No CRL chain given'
+                err.puts '    Full CRL chain checking will not be possible'
+                err.puts ''
+              end
+
+              validate_full_chain(certs, crls)
+
+              # do stuff
+              return 0
+
+            rescue CAError => e
+              err.puts "Error:"
+              err.puts "    #{e.to_s}" unless e.to_s.empty?
+              e.messages.each do |message|
+                err.puts "    #{message}"
+              end
+              return 1
             end
           end
         else
@@ -150,36 +195,6 @@ module Puppetserver
         general_parser.parse(inputs)
 
         return general_parser, parsed
-      end
-
-      def self.parse_setup_inputs(inputs)
-        parsed = {}
-
-        setup_parser = OptionParser.new do |opts|
-          opts.banner = 'Usage: puppetserver ca setup [options]'
-          opts.on('--help', 'This setup specific help output') do |help|
-            parsed['help'] = true
-          end
-          opts.on('--version', 'Output the version') do |v|
-            parsed['version'] = true
-          end
-          opts.on('--config CONF', 'Path to puppet.conf') do |conf|
-            parsed['config'] = conf
-          end
-          opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
-            parsed['private-key'] = key
-          end
-          opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
-            parsed['cert-bundle'] = bundle
-          end
-          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
-            parsed['crl-chain'] = chain
-          end
-        end
-
-        setup_parser.parse(inputs)
-
-        return setup_parser, parsed
       end
 
       def self.parse_certs(bundle)
