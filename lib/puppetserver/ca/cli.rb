@@ -49,10 +49,14 @@ module Puppetserver
                   raise error
                 end
 
+                if input['config']
+                  validate_file_paths(input['config'])
+                end
+
                 files = input.values_at('cert-bundle', 'private-key')
                 files << input['crl-chain'] if input['crl-chain']
 
-                validate_file_paths!(files)
+                validate_file_paths(files)
 
                 certs = parse_certs(input['cert-bundle'])
                 key = parse_key(input['private-key'])
@@ -102,9 +106,9 @@ module Puppetserver
         return 0
       end
 
-      def self.validate_file_paths!(paths)
+      def self.validate_file_paths(one_or_more_paths)
         error = CAError.new("")
-        paths.each do |path|
+        Array(one_or_more_paths).each do |path|
           if !File.exist?(path) || !File.readable?(path)
             error.add_message "Could not read file '#{path}'"
           end

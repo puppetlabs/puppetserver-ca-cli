@@ -418,5 +418,29 @@ RSpec.describe Puppetserver::Ca::Cli do
         end
       end
     end
+
+    context 'config parsing' do
+      it 'reads from user specific default locations'
+      it 'validates config from cli is readable' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain, conf|
+            FileUtils.rm conf
+            exit_code = Puppetserver::Ca::Cli.run!(['setup',
+                                                    '--config', conf,
+                                                    '--cert-bundle', bundle,
+                                                    '--private-key', key,
+                                                    '--crl-chain', chain],
+                                                    stdout,
+                                                    stderr)
+            expect(stderr.string).to match(/Could not read file .*puppet.conf/)
+          end
+        end
+      end
+
+      it 'uses defaults for config values if no config given'
+      it 'parses basic inifile'
+      it 'discards weird file metadata info'
+      it 'resolves dependent settings properly'
+    end
   end
 end
