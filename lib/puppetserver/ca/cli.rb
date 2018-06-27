@@ -11,6 +11,24 @@ OptionParser::Officious.delete('help')
 
 module Puppetserver
   module Ca
+    class PuppetParser
+      def self.parse(string)
+        results = {}
+        current_section = :main
+        string.each_line do |line|
+          case line
+          when /^\s*\[(\w+)\].*/
+            current_section = $1.to_sym
+          when /^\s*(\w+)\s*=\s*([^\s{#]+).*$/
+            results[current_section] ||= {}
+            results[current_section][$1.to_sym] = $2
+          end
+        end
+
+        results
+      end
+    end
+
     class CAError < StandardError
       attr_reader :messages
       def initialize(*args)

@@ -437,9 +437,44 @@ RSpec.describe Puppetserver::Ca::Cli do
         end
       end
 
-      it 'uses defaults for config values if no config given'
-      it 'parses basic inifile'
-      it 'discards weird file metadata info'
+      it 'parses basic inifile' do
+        conf = Puppetserver::Ca::PuppetParser.parse(<<-INI)
+        server = certname
+
+        [master]
+          dns_alt_names=puppet,foo
+          cadir        = /var/www/super-secure
+
+        [main]
+        environment = prod_1_env
+        INI
+
+        expect(conf.keys).to include(:master, :main)
+        expect(conf[:main]).to include({
+          server: 'certname',
+          environment: 'prod_1_env'
+        })
+        expect(conf[:master]).to include({
+          dns_alt_names: 'puppet,foo',
+          cadir: '/var/www/super-secure'
+        })
+      end
+
+      it 'discards weird file metadata info' do
+        conf = Puppetserver::Ca::PuppetParser.parse(<<-INI)
+        [ca]
+          cadir = /var/www/ca {user = service}
+
+        [master]
+          coming_at = Innsmouth
+          mantra = Pu̴t t̢h͞é ̢ćlas̸s̡e̸s̢ ̴in̡ arra̴y͡s̸ ̸o͟r̨ ̸hashe͜s̀ or w̨h̕át̀ev̵èr
+
+        Now ̸to m̡et̴apr̷og҉ram a si͠mpl͞e ḑsl
+        INI
+
+        expect(conf).to include({ca: {cadir: '/var/www/ca'}})
+      end
+
       it 'resolves dependent settings properly'
     end
   end
