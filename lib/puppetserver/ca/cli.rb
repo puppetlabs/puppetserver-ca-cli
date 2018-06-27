@@ -115,12 +115,9 @@ module Puppetserver
             return exit_code if exit_code
 
             begin
-              if input['config']
-                validate_file_paths(input['config'])
-              end
-
               files = input.values_at('cert-bundle', 'private-key')
               files << input['crl-chain'] if input['crl-chain']
+              files << input['config'] if input['config']
 
               validate_file_paths(files)
 
