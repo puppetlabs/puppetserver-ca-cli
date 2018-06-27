@@ -141,6 +141,9 @@ module Puppetserver
           opts.on('--version', 'Output the version') do |v|
             parsed['version'] = true
           end
+          opts.on('--config CONF', 'Path to puppet.conf') do |conf|
+            parsed['config'] = conf
+          end
           opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
             parsed['private-key'] = key
           end

@@ -74,9 +74,23 @@ RSpec.describe Puppetserver::Ca::Cli do
   end
 
   def with_files_in(tmpdir, &block)
-    bundle_file = File.join(tmpdir, 'bundle.pem')
-    key_file = File.join(tmpdir, 'key.pem')
-    chain_file = File.join(tmpdir, 'chain.pem')
+    fixtures_dir = File.join(tmpdir, 'fixtures')
+    ca_dir = File.join(tmpdir, 'ca')
+
+    FileUtils.mkdir_p fixtures_dir
+    FileUtils.mkdir_p ca_dir
+
+    bundle_file = File.join(fixtures_dir, 'bundle.pem')
+    key_file = File.join(fixtures_dir, 'key.pem')
+    chain_file = File.join(fixtures_dir, 'chain.pem')
+    config_file = File.join(fixtures_dir, 'puppet.conf')
+
+    File.open(config_file, 'w') do |f|
+      f.puts <<-CONF
+      [master]
+        cadir = #{ca_dir}
+      CONF
+    end
 
     not_before = Time.now - 1
 
@@ -104,7 +118,7 @@ RSpec.describe Puppetserver::Ca::Cli do
     end
 
 
-    block.call(bundle_file, key_file, chain_file)
+    block.call(bundle_file, key_file, chain_file, config_file)
   end
 
   shared_examples 'basic cli args' do |subcommand, usage|
@@ -149,7 +163,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
     it 'does not print the help output if called correctly' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain|
+        with_files_in tmpdir do |bundle, key, chain, conf|
           exit_code = Puppetserver::Ca::Cli.run!(['setup',
                                                   '--cert-bundle', bundle,
                                                   '--private-key', key,
@@ -157,6 +171,20 @@ RSpec.describe Puppetserver::Ca::Cli do
                                                 stdout, stderr)
           expect(stderr.string).to be_empty
           expect(exit_code).to be 0
+        end
+      end
+    end
+
+    it 'accepts a --config flag' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          Puppetserver::Ca::Cli.run!(['setup',
+                                      '--config', conf,
+                                      '--cert-bundle', bundle,
+                                      '--private-key', key,
+                                      '--crl-chain', chain],
+                                      stdout,
+                                      stderr)
         end
       end
     end
@@ -182,7 +210,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'warns when no CRL is given' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
                            '--cert-bundle', bundle,
@@ -212,7 +240,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates all certs in bundle are parseable' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(bundle, 'a') do |f|
               f.puts '-----BEGIN CERTIFICATE-----'
               f.puts 'garbage'
@@ -234,7 +262,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates that there are certs in the bundle' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(bundle, 'w') {|f| f.puts '' }
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
@@ -251,7 +279,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates the private key' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(key, 'w') {|f| f.puts '' }
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
@@ -268,7 +296,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates the private key and leaf cert match' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
@@ -285,7 +313,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates all crls in chain are parseable' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(chain, 'a') do |f|
               f.puts '-----BEGIN X509 CRL-----'
               f.puts 'garbage'
@@ -307,7 +335,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates that there are crls in the chain, if given chain' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             File.open(chain, 'w') {|f| f.puts '' }
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
@@ -324,7 +352,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
       it 'validates the leaf crl and leaf cert match' do
         Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain|
+          with_files_in tmpdir do |bundle, key, chain, conf|
             crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
 
             baz_key = OpenSSL::PKey::RSA.new(1024)
