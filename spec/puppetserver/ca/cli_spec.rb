@@ -490,9 +490,28 @@ RSpec.describe Puppetserver::Ca::Cli do
 
           conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
           conf.load
-          puts conf.errors
+
+          expect(conf.errors).to be_empty
           expect(conf.ca_cert_path).to eq('/foo/bar/ca/ca_crt.pem')
           expect(conf.ca_crl_path).to eq('/fizz/buzz/crl.pem')
+        end
+      end
+
+      it 'errs if it cannot resolve dependent settings properly' do
+        Dir.mktmpdir do |tmpdir|
+          puppet_conf = File.join(tmpdir, 'puppet.conf')
+          File.open puppet_conf, 'w' do |f|
+            f.puts(<<-INI)
+              [master]
+                ssldir = $vardir/ssl
+            INI
+          end
+
+          conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+          conf.load
+
+          expect(conf.errors.first).to include('$vardir in $vardir/ssl')
+          expect(conf.ca_cert_path).to eq('$vardir/ssl/ca/ca_crt.pem')
         end
       end
 

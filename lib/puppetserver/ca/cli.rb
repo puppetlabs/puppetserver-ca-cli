@@ -66,8 +66,8 @@ module Puppetserver
         end
 
         values.each do |value|
-          if value =~ unresolved_setting
-            @errors << "Could not parse #{$1} in #{value}, " +
+          if match = value.match(unresolved_setting)
+            @errors << "Could not parse #{match[0]} in #{value}, " +
                        'valid settings to be interpolated are ' +
                        '$confdir, $ssldir, $cadir'
           end
@@ -331,6 +331,14 @@ module Puppetserver
 
             puppet = PuppetConfig.new(input['config'])
             puppet.load
+
+            unless puppet.errors.empty?
+              err.puts "Error:"
+              puppet.errors.each do |message|
+                err.puts "    #{message}"
+              end
+              return 1
+            end
 
             File.open(puppet.ca_cert_path, 'w') do |f|
               loader.certs.each do |cert|
