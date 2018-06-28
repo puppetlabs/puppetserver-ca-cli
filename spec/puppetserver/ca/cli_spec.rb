@@ -167,7 +167,8 @@ RSpec.describe Puppetserver::Ca::Cli do
           exit_code = Puppetserver::Ca::Cli.run!(['setup',
                                                   '--cert-bundle', bundle,
                                                   '--private-key', key,
-                                                  '--crl-chain', chain],
+                                                  '--crl-chain', chain,
+                                                  '--config', conf],
                                                 stdout, stderr)
           expect(stderr.string).to be_empty
           expect(exit_code).to be 0
@@ -420,7 +421,6 @@ RSpec.describe Puppetserver::Ca::Cli do
     end
 
     context 'config parsing' do
-      it 'reads from user specific default locations'
       it 'validates config from cli is readable' do
         Dir.mktmpdir do |tmpdir|
           with_files_in tmpdir do |bundle, key, chain, conf|
@@ -493,6 +493,31 @@ RSpec.describe Puppetserver::Ca::Cli do
           puts conf.errors
           expect(conf.ca_cert_path).to eq('/foo/bar/ca/ca_crt.pem')
           expect(conf.ca_crl_path).to eq('/fizz/buzz/crl.pem')
+        end
+      end
+
+      it 'actually, honest to god, moves files' do
+        Dir.mktmpdir do |tmpdir|
+          with_files_in tmpdir do |bundle, key, chain, conf|
+            File.open conf, 'w' do |f|
+              f.puts(<<-INI)
+                [master]
+                  cadir = #{tmpdir}/ca
+              INI
+            end
+            exit_code = Puppetserver::Ca::Cli.run!(['setup',
+                                                    '--cert-bundle', bundle,
+                                                    '--private-key', key,
+                                                    '--crl-chain', chain,
+                                                    '--config', conf],
+                                                    stdout,
+                                                    stderr)
+
+            expect(exit_code).to eq(0)
+            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
+            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
+            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
+          end
         end
       end
     end

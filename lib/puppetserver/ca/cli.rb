@@ -329,7 +329,25 @@ module Puppetserver
               return 1
             end
 
-            # do stuff
+            puppet = PuppetConfig.new(input['config'])
+            puppet.load
+
+            File.open(puppet.ca_cert_path, 'w') do |f|
+              loader.certs.each do |cert|
+                f.puts cert.to_pem
+              end
+            end
+
+            File.open(puppet.ca_key_path, 'w') do |f|
+              f.puts loader.key.to_pem
+            end
+
+            File.open(puppet.ca_crl_path, 'w') do |f|
+              loader.crls.each do |crl|
+                f.puts crl.to_pem
+              end
+            end
+
             return 0
           end
         else
