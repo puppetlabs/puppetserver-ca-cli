@@ -438,7 +438,8 @@ RSpec.describe Puppetserver::Ca::Cli do
       end
 
       it 'parses basic inifile' do
-        conf = Puppetserver::Ca::PuppetParser.parse(<<-INI)
+        conf = Puppetserver::Ca::PuppetConfig.new
+        parsed = conf.parse_text(<<-INI)
         server = certname
 
         [master]
@@ -449,19 +450,20 @@ RSpec.describe Puppetserver::Ca::Cli do
         environment = prod_1_env
         INI
 
-        expect(conf.keys).to include(:master, :main)
-        expect(conf[:main]).to include({
+        expect(parsed.keys).to include(:master, :main)
+        expect(parsed[:main]).to include({
           server: 'certname',
           environment: 'prod_1_env'
         })
-        expect(conf[:master]).to include({
+        expect(parsed[:master]).to include({
           dns_alt_names: 'puppet,foo',
           cadir: '/var/www/super-secure'
         })
       end
 
       it 'discards weird file metadata info' do
-        conf = Puppetserver::Ca::PuppetParser.parse(<<-INI)
+        conf = Puppetserver::Ca::PuppetConfig.new
+        parsed = conf.parse_text(<<-INI)
         [ca]
           cadir = /var/www/ca {user = service}
 
@@ -472,10 +474,27 @@ RSpec.describe Puppetserver::Ca::Cli do
         Now ̸to m̡et̴apr̷og҉ram a si͠mpl͞e ḑsl
         INI
 
-        expect(conf).to include({ca: {cadir: '/var/www/ca'}})
+        expect(parsed).to include({ca: {cadir: '/var/www/ca'}})
       end
 
-      it 'resolves dependent settings properly'
+      it 'resolves dependent settings properly' do
+        Dir.mktmpdir do |tmpdir|
+          puppet_conf = File.join(tmpdir, 'puppet.conf')
+          File.open puppet_conf, 'w' do |f|
+            f.puts(<<-INI)
+              [master]
+                ssldir = /foo/bar
+                cacrl = /fizz/buzz/crl.pem
+            INI
+          end
+
+          conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+          conf.load
+          puts conf.errors
+          expect(conf.ca_cert_path).to eq('/foo/bar/ca/ca_crt.pem')
+          expect(conf.ca_crl_path).to eq('/fizz/buzz/crl.pem')
+        end
+      end
     end
   end
 end
