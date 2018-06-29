@@ -13,20 +13,6 @@ OptionParser::Officious.delete('help')
 
 module Puppetserver
   module Ca
-    class CAError < StandardError
-      attr_reader :messages
-      def initialize(*args)
-        @messages = []
-        super
-      end
-
-      def add_message(msg)
-        @messages << msg
-      end
-    end
-
-
-
     class Cli
       VALID_COMMANDS = ['setup']
 
