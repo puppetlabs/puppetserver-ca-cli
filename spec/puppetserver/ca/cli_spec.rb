@@ -418,9 +418,7 @@ RSpec.describe Puppetserver::Ca::Cli do
           expect(stderr.string).to include('Leaf certificate could not be validated')
         end
       end
-    end
 
-    context 'config parsing' do
       it 'validates config from cli is readable' do
         Dir.mktmpdir do |tmpdir|
           with_files_in tmpdir do |bundle, key, chain, conf|
@@ -436,107 +434,29 @@ RSpec.describe Puppetserver::Ca::Cli do
           end
         end
       end
+    end
 
-      it 'parses basic inifile' do
-        conf = Puppetserver::Ca::PuppetConfig.new
-        parsed = conf.parse_text(<<-INI)
-        server = certname
-
-        [master]
-          dns_alt_names=puppet,foo
-          cadir        = /var/www/super-secure
-
-        [main]
-        environment = prod_1_env
-        INI
-
-        expect(parsed.keys).to include(:master, :main)
-        expect(parsed[:main]).to include({
-          server: 'certname',
-          environment: 'prod_1_env'
-        })
-        expect(parsed[:master]).to include({
-          dns_alt_names: 'puppet,foo',
-          cadir: '/var/www/super-secure'
-        })
-      end
-
-      it 'discards weird file metadata info' do
-        conf = Puppetserver::Ca::PuppetConfig.new
-        parsed = conf.parse_text(<<-INI)
-        [ca]
-          cadir = /var/www/ca {user = service}
-
-        [master]
-          coming_at = Innsmouth
-          mantra = Pu̴t t̢h͞é ̢ćlas̸s̡e̸s̢ ̴in̡ arra̴y͡s̸ ̸o͟r̨ ̸hashe͜s̀ or w̨h̕át̀ev̵èr
-
-        Now ̸to m̡et̴apr̷og҉ram a si͠mpl͞e ḑsl
-        INI
-
-        expect(parsed).to include({ca: {cadir: '/var/www/ca'}})
-      end
-
-      it 'resolves dependent settings properly' do
-        Dir.mktmpdir do |tmpdir|
-          puppet_conf = File.join(tmpdir, 'puppet.conf')
-          File.open puppet_conf, 'w' do |f|
+    it 'actually, honest to god, moves files' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          File.open conf, 'w' do |f|
             f.puts(<<-INI)
               [master]
-                ssldir = /foo/bar
-                cacrl = /fizz/buzz/crl.pem
+                cadir = #{tmpdir}/ca
             INI
           end
+          exit_code = Puppetserver::Ca::Cli.run!(['setup',
+                                                  '--cert-bundle', bundle,
+                                                  '--private-key', key,
+                                                  '--crl-chain', chain,
+                                                  '--config', conf],
+                                                  stdout,
+                                                  stderr)
 
-          conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
-          conf.load
-
-          expect(conf.errors).to be_empty
-          expect(conf.ca_cert_path).to eq('/foo/bar/ca/ca_crt.pem')
-          expect(conf.ca_crl_path).to eq('/fizz/buzz/crl.pem')
-        end
-      end
-
-      it 'errs if it cannot resolve dependent settings properly' do
-        Dir.mktmpdir do |tmpdir|
-          puppet_conf = File.join(tmpdir, 'puppet.conf')
-          File.open puppet_conf, 'w' do |f|
-            f.puts(<<-INI)
-              [master]
-                ssldir = $vardir/ssl
-            INI
-          end
-
-          conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
-          conf.load
-
-          expect(conf.errors.first).to include('$vardir in $vardir/ssl')
-          expect(conf.ca_cert_path).to eq('$vardir/ssl/ca/ca_crt.pem')
-        end
-      end
-
-      it 'actually, honest to god, moves files' do
-        Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain, conf|
-            File.open conf, 'w' do |f|
-              f.puts(<<-INI)
-                [master]
-                  cadir = #{tmpdir}/ca
-              INI
-            end
-            exit_code = Puppetserver::Ca::Cli.run!(['setup',
-                                                    '--cert-bundle', bundle,
-                                                    '--private-key', key,
-                                                    '--crl-chain', chain,
-                                                    '--config', conf],
-                                                    stdout,
-                                                    stderr)
-
-            expect(exit_code).to eq(0)
-            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
-            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
-            expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
-          end
+          expect(exit_code).to eq(0)
+          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
+          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
+          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
         end
       end
     end
