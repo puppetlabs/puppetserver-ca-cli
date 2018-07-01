@@ -35,29 +35,31 @@ module Puppetserver
           @results = parse_text(File.read(@config_path))
         end
 
-        @ca_cert_path, @ca_key_path, @ca_crl_path = resolve_settings(@results)
+        @results[:main] ||= {}
+        @results[:master] ||= {}
+
+        overrides = @results[:main].merge(@results[:master])
+
+        @ca_cert_path, @ca_key_path, @ca_crl_path = resolve_settings(overrides)
       end
 
       # Resolve the cacert, cakey, and cacrl settings.
-      def resolve_settings(overrides)
+      def resolve_settings(overrides = {})
         unresolved_setting = /\$[a-z_]+/
-        master = overrides[:master] || {}
-        main = overrides[:main] || {}
-        pick = ->(key, default) { master[key] || main[key] || default }
 
         settings = Hash.new {|h, k| k }
         confdir = user_specific_conf_dir
         settings['$confdir'] = confdir
 
-        ssldir = pick.call(:ssldir, '$confdir/ssl')
+        ssldir = overrides.fetch(:ssldir, '$confdir/ssl')
         settings['$ssldir'] = ssldir.sub('$confdir', confdir)
 
-        cadir = pick.call(:cadir, '$ssldir/ca')
+        cadir = overrides.fetch(:cadir, '$ssldir/ca')
         settings['$cadir'] = cadir.sub(unresolved_setting, settings)
 
-        cacert = pick.call(:cacert, '$cadir/ca_crt.pem')
-        cakey = pick.call(:cakey, '$cadir/ca_key.pem')
-        cacrl = pick.call(:cacrl, '$cadir/ca_crl.pem')
+        cacert = overrides.fetch(:cacert, '$cadir/ca_crt.pem')
+        cakey = overrides.fetch(:cakey, '$cadir/ca_key.pem')
+        cacrl = overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
 
         values = [cacert, cakey, cacrl].map do |setting|
           setting.sub(unresolved_setting, settings)
