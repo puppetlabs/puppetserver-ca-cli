@@ -1,6 +1,9 @@
 
 module Puppetserver
   module Ca
+    # Provides an interface for asking for Puppet[ Server] settings w/o loading
+    # either Puppet or Puppet Server. Includes a simple ini parser that will
+    # ignore Puppet's more complicated conventions.
     class PuppetConfig
 
       attr_reader :errors, :ca_cert_path, :ca_key_path, :ca_crl_path
@@ -11,8 +14,12 @@ module Puppetserver
         @errors = []
       end
 
+      # Return the correct confdir. We check for being root (user id == 0)
+      # on *nix, else the user path. We do not include a check for running
+      # as Adminstrator since non-development scenarios for Puppet Server
+      # on Windows are unsupported.
       def user_specific_conf_dir
-        if Process::UID.eid == 0
+        if Gem.win_platform? && Process::UID.eid == 0
           '/etc/puppetlabs/puppet'
         else
           "#{ENV['HOME']}/.puppetlabs/etc/puppet"
@@ -31,6 +38,7 @@ module Puppetserver
         @ca_cert_path, @ca_key_path, @ca_crl_path = resolve_settings(@results)
       end
 
+      # Resolve the cacert, cakey, and cacrl settings.
       def resolve_settings(overrides)
         unresolved_setting = /\$[a-z_]+/
         master = overrides[:master] || {}
@@ -66,6 +74,14 @@ module Puppetserver
         return *values
       end
 
+      # Parse an inifile formatted String. Only captures \word character
+      # class keys/section names but nearly any character values (excluding
+      # leading whitespace) up to one of whitespace, opening curly brace, or
+      # hash sign (Our concern being to capture filesystem path values).
+      # Put values without a section into :main.
+      #
+      # Return Hash of Symbol section names with Symbol setting keys and
+      # String values.
       def parse_text(text)
         res = {}
         current_section = :main
@@ -74,6 +90,7 @@ module Puppetserver
           when /^\s*\[(\w+)\].*/
             current_section = $1.to_sym
           when /^\s*(\w+)\s*=\s*([^\s{#]+).*$/
+            # Using a Hash with a default key breaks RSpec expectations.
             res[current_section] ||= {}
             res[current_section][$1.to_sym] = $2
           end
