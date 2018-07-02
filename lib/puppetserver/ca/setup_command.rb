@@ -84,13 +84,7 @@ module Puppetserver
       def validate_inputs(input, usage)
         exit_code = nil
 
-        if input['help']
-          @logger.inform usage
-          exit_code = 0
-        elsif input['version']
-          @logger.inform Puppetserver::Ca::VERSION
-          exit_code = 0
-        elsif input['cert-bundle'].nil? || input['private-key'].nil?
+        if input['cert-bundle'].nil? || input['private-key'].nil?
           @logger.err 'Error:'
           @logger.err 'Missing required argument'
           @logger.err '    Both --cert-bundle and --private-key are required'
@@ -105,7 +99,15 @@ module Puppetserver
       def parse_inputs(inputs)
         parsed = {}
 
-        parser = OptionParser.new do |opts|
+        parser = self.class.parser(parsed)
+
+        parser.parse(inputs)
+
+        return parser, parsed
+      end
+
+      def self.parser(parsed = {})
+        OptionParser.new do |opts|
           opts.banner = 'Usage: puppetserver ca setup [options]'
           opts.on('--help', 'This setup specific help output') do |help|
             parsed['help'] = true
@@ -126,10 +128,6 @@ module Puppetserver
             parsed['crl-chain'] = chain
           end
         end
-
-        parser.parse(inputs)
-
-        return parser, parsed
       end
 
       def validate_file_paths(one_or_more_paths)
