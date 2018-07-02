@@ -6,6 +6,13 @@ module Puppetserver
     # ignore Puppet's more complicated conventions.
     class PuppetConfig
 
+      def self.parse(config_path = nil)
+        instance = new(config_path)
+        instance.load
+
+        return instance
+      end
+
       attr_reader :errors, :settings
 
       def initialize(supplied_config_path = nil)

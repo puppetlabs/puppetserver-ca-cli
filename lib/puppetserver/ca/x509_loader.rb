@@ -7,30 +7,26 @@ module Puppetserver
       attr_reader :errors, :certs, :key, :crls
 
       def initialize(bundle_path, key_path, chain_path = nil)
-        @bundle_path = bundle_path
-        @key_path = key_path
-        @chain_path = chain_path
-
-        @certs, @key, @crls = nil, nil, nil
-
         @errors = []
+
+        @certs = load_certs(bundle_path)
+        @key = load_key(key_path)
+        @crls = chain_path ? load_crls(chain_path) : []
+
+        validate(@certs, @key, @crls)
       end
 
-      def load
-        @certs = load_certs(@bundle_path)
-        @key = load_key(@key_path)
-        @crls = @chain_path ? load_crls(@chain_path) : []
-
-        unless @crls.empty? || @certs.empty?
-          validate_crl_and_cert(@crls.first, @certs.first)
+      def validate(bundle, pkey, chain)
+        if !chain.empty? && !bundle.empty?
+          validate_crl_and_cert(chain.first, bundle.first)
         end
 
-        if @key && !@certs.empty?
-          validate_cert_and_key(@key, @certs.first)
+        if pkey && !bundle.empty?
+          validate_cert_and_key(pkey, bundle.first)
         end
 
-        unless @certs.empty?
-          validate_full_chain(@certs, @crls)
+        unless bundle.empty?
+          validate_full_chain(bundle, chain)
         end
       end
 

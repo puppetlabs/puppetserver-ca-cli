@@ -41,7 +41,6 @@ module Puppetserver
             loader = X509Loader.new(input['cert-bundle'],
                                     input['private-key'],
                                     input['crl-chain'])
-            loader.load
 
             unless loader.errors.empty?
               err.puts "Error:"
@@ -51,8 +50,7 @@ module Puppetserver
               return 1
             end
 
-            puppet = PuppetConfig.new(input['config'])
-            puppet.load
+            puppet = PuppetConfig.parse(input['config'])
 
             unless puppet.errors.empty?
               err.puts "Error:"
