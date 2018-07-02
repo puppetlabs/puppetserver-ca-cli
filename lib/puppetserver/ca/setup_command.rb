@@ -7,9 +7,8 @@ module Puppetserver
   module Ca
     class SetupCommand
 
-      def initialize(out, err)
-        @out = out
-        @err = err
+      def initialize(logger)
+        @logger = logger
       end
 
       def run!(input)
@@ -19,18 +18,18 @@ module Puppetserver
 
         errors = validate_file_paths(files)
         unless errors.empty?
-          @err.puts "Error:"
+          @logger.err "Error:"
           errors.each do |message|
-            @err.puts "    #{message}"
+            @logger.err "    #{message}"
           end
           return 1
         end
 
         unless input['crl-chain']
-          @err.puts 'Warning:'
-          @err.puts '    No CRL chain given'
-          @err.puts '    Full CRL chain checking will not be possible'
-          @err.puts ''
+          @logger.err 'Warning:'
+          @logger.err '    No CRL chain given'
+          @logger.err '    Full CRL chain checking will not be possible'
+          @logger.err ''
         end
 
         loader = X509Loader.new(input['cert-bundle'],
@@ -38,9 +37,9 @@ module Puppetserver
                                 input['crl-chain'])
 
         unless loader.errors.empty?
-          @err.puts "Error:"
+          @logger.err "Error:"
           loader.errors.each do |message|
-            @err.puts "    #{message}"
+            @logger.err "    #{message}"
           end
           return 1
         end
@@ -48,9 +47,9 @@ module Puppetserver
         puppet = PuppetConfig.parse(input['config'])
 
         unless puppet.errors.empty?
-          @err.puts "Error:"
+          @logger.err "Error:"
           puppet.errors.each do |message|
-            @err.puts "    #{message}"
+            @logger.err "    #{message}"
           end
           return 1
         end
@@ -86,17 +85,17 @@ module Puppetserver
         exit_code = nil
 
         if input['help']
-          @out.puts usage
+          @logger.inform usage
           exit_code = 0
         elsif input['version']
-          @out.puts Puppetserver::Ca::VERSION
+          @logger.inform Puppetserver::Ca::VERSION
           exit_code = 0
         elsif input['cert-bundle'].nil? || input['private-key'].nil?
-          @err.puts 'Error:'
-          @err.puts 'Missing required argument'
-          @err.puts '    Both --cert-bundle and --private-key are required'
-          @err.puts ''
-          @err.puts usage
+          @logger.err 'Error:'
+          @logger.err 'Missing required argument'
+          @logger.err '    Both --cert-bundle and --private-key are required'
+          @logger.err ''
+          @logger.err usage
           exit_code = 1
         end
 

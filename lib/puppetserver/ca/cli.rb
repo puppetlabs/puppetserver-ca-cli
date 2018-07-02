@@ -1,6 +1,7 @@
 require 'optparse'
 require 'puppetserver/ca/version'
 require 'puppetserver/ca/setup_command'
+require 'puppetserver/ca/logger'
 
 module Puppetserver
   module Ca
@@ -8,11 +9,12 @@ module Puppetserver
       VALID_COMMANDS = ['setup']
 
       def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
+        @logger = Puppetserver::Ca::Logger.new(:info, out, err)
 
         if VALID_COMMANDS.include?(cli_args.first)
           case cli_args.shift
           when 'setup'
-            command = SetupCommand.new(out, err)
+            command = SetupCommand.new(@logger)
             input, exit_code = command.parse(cli_args)
 
             if exit_code
@@ -26,11 +28,11 @@ module Puppetserver
           general_parser, input = parse_general_inputs(cli_args)
 
           if input['help']
-            out.puts general_parser.help
+            @logger.inform general_parser.help
           elsif input['version']
-            out.puts Puppetserver::Ca::VERSION
+            @logger.inform Puppetserver::Ca::VERSION
           else
-            err.puts general_parser.help
+            @logger.warn general_parser.help
             return 1
           end
         end
