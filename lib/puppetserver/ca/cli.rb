@@ -41,8 +41,7 @@ module Puppetserver
             loader = X509Loader.new(input['cert-bundle'],
                                     input['private-key'],
                                     input['crl-chain'])
-
-            loader.load_and_validate!
+            loader.load
 
             unless loader.errors.empty?
               err.puts "Error:"

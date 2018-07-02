@@ -5,21 +5,21 @@ module Puppetserver
     class X509Loader
 
       attr_reader :errors, :certs, :key, :crls
-      def initialize(bundle_file, key_file, chain_file)
-        @bundle_file = bundle_file
-        @key_file = key_file
-        @chain_file = chain_file
+
+      def initialize(bundle_path, key_path, chain_path = nil)
+        @bundle_path = bundle_path
+        @key_path = key_path
+        @chain_path = chain_path
 
         @certs, @key, @crls = nil, nil, nil
 
         @errors = []
       end
 
-      def load_and_validate!
-        @certs = parse_certs(@bundle_file)
-        @key = parse_key(@key_file)
-
-        @crls = @chain_file ? parse_crls(@chain_file) : []
+      def load
+        @certs = load_certs(@bundle_path)
+        @key = load_key(@key_path)
+        @crls = @chain_path ? load_crls(@chain_path) : []
 
         unless @crls.empty? || @certs.empty?
           validate_crl_and_cert(@crls.first, @certs.first)
@@ -34,32 +34,32 @@ module Puppetserver
         end
       end
 
-      def parse_certs(bundle)
-        errs = []
-        errs << "Could not parse #{bundle}"
+      def load_certs(bundle_path)
+        certs, errs = [], []
 
-        bundle_string = File.read(bundle)
+        bundle_string = File.read(bundle_path)
         cert_strings = bundle_string.scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m)
-        certs = cert_strings.map do |cert_string|
+        cert_strings.each do |cert_string|
           begin
-            OpenSSL::X509::Certificate.new(cert_string)
+            certs << OpenSSL::X509::Certificate.new(cert_string)
           rescue OpenSSL::X509::CertificateError
             errs << "Could not parse entry:\n#{cert_string}"
-
-            nil
           end
-        end.compact
-
-        if certs.empty?
-          errs << "Could not detect any certs within #{bundle}"
         end
 
-        @errors += errs if errs.length > 1
+        if certs.empty?
+          errs << "Could not detect any certs within #{bundle_path}"
+        end
+
+        unless errs.empty?
+          @errors << "Could not parse #{bundle_path}"
+          @errors += errs
+        end
 
         return certs
       end
 
-      def parse_key(key_path)
+      def load_key(key_path)
         begin
           OpenSSL::PKey.read(File.read(key_path))
         rescue ArgumentError => e
@@ -69,29 +69,29 @@ module Puppetserver
         end
       end
 
-      def parse_crls(chain)
-        errs = []
-        errs << "Could not parse #{chain}"
+      def load_crls(chain_path)
+        errs, crls = [], []
 
-        chain_string = File.read(chain)
+        chain_string = File.read(chain_path)
         crl_strings = chain_string.scan(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m)
-        actual_crls = crl_strings.map do |crl_string|
+        crl_strings.map do |crl_string|
           begin
-            OpenSSL::X509::CRL.new(crl_string)
+            crls << OpenSSL::X509::CRL.new(crl_string)
           rescue OpenSSL::X509::CRLError
             errs << "Could not parse entry:\n#{crl_string}"
-
-            nil
           end
-        end.compact
-
-        if actual_crls.empty?
-          errs << "Could not detect any crls within #{chain}"
         end
 
-        @errors += errs if errs.length > 1
+        if crls.empty?
+          errs << "Could not detect any crls within #{chain_path}"
+        end
 
-        return actual_crls
+        unless errs.empty?
+          @errors << "Could not parse #{chain_path}"
+          @errors += errs
+        end
+
+        return crls
       end
 
       def validate_cert_and_key(key, cert)
