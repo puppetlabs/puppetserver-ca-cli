@@ -2,6 +2,7 @@ require 'openssl'
 
 module Puppetserver
   module Ca
+    # Load, validate, and store x509 objects needed by the Puppet Server CA.
     class X509Loader
 
       attr_reader :errors, :certs, :key, :crls
@@ -16,6 +17,9 @@ module Puppetserver
         validate(@certs, @key, @crls)
       end
 
+      # Only do as much validation as is possible, assume whoever tried to
+      # load the objects wrote errors about any invalid ones, but that bundle
+      # and chain may be empty arrays and pkey may be nil.
       def validate(bundle, pkey, chain)
         if !chain.empty? && !bundle.empty?
           validate_crl_and_cert(chain.first, bundle.first)
