@@ -6,11 +6,13 @@ module Puppetserver
     # ignore Puppet's more complicated conventions.
     class PuppetConfig
 
-      attr_reader :errors, :ca_cert_path, :ca_key_path, :ca_crl_path
-      def initialize(file_path_override = nil)
-        @using_default_location = !file_path_override
-        @config_path = file_path_override || user_specific_conf_file
-        @results = {}
+      attr_reader :errors, :settings
+
+      def initialize(supplied_config_path = nil)
+        @using_default_location = !supplied_config_path
+        @config_path = supplied_config_path || user_specific_conf_file
+
+        @settings = nil
         @errors = []
       end
 
@@ -32,48 +34,55 @@ module Puppetserver
 
       def load
         unless @using_default_location && !File.exist?(@config_path)
-          @results = parse_text(File.read(@config_path))
+          results = parse_text(File.read(@config_path))
         end
 
-        @results[:main] ||= {}
-        @results[:master] ||= {}
+        results ||= {}
+        results[:main] ||= {}
+        results[:master] ||= {}
 
-        overrides = @results[:main].merge(@results[:master])
+        overrides = results[:main].merge(results[:master])
 
-        @ca_cert_path, @ca_key_path, @ca_crl_path = resolve_settings(overrides)
+        @settings = resolve_settings(overrides).freeze
       end
 
-      # Resolve the cacert, cakey, and cacrl settings.
+      # Resolve the cacert, cakey, and cacrl settings from default values,
+      # with any overrides for the specific settings or their dependent
+      # settings (ssldir, cadir) taken into account.
       def resolve_settings(overrides = {})
         unresolved_setting = /\$[a-z_]+/
 
-        settings = Hash.new {|h, k| k }
+        # Returning the key for unknown keys (rather than nil) is required to
+        # keep unknown settings in the string for later verification.
+        substitutions = Hash.new {|h, k| k }
+        settings = {}
+
         confdir = user_specific_conf_dir
-        settings['$confdir'] = confdir
+        settings[:confdir] = substitutions['$confdir'] = confdir
 
         ssldir = overrides.fetch(:ssldir, '$confdir/ssl')
-        settings['$ssldir'] = ssldir.sub('$confdir', confdir)
+        settings[:ssldir] = substitutions['$ssldir'] = ssldir.sub('$confdir', confdir)
 
         cadir = overrides.fetch(:cadir, '$ssldir/ca')
-        settings['$cadir'] = cadir.sub(unresolved_setting, settings)
+        settings[:cadir] = substitutions['$cadir'] = cadir.sub(unresolved_setting, substitutions)
 
-        cacert = overrides.fetch(:cacert, '$cadir/ca_crt.pem')
-        cakey = overrides.fetch(:cakey, '$cadir/ca_key.pem')
-        cacrl = overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
+        settings[:cacert] = overrides.fetch(:cacert, '$cadir/ca_crt.pem')
+        settings[:cakey] = overrides.fetch(:cakey, '$cadir/ca_key.pem')
+        settings[:cacrl] = overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
 
-        values = [cacert, cakey, cacrl].map do |setting|
-          setting.sub(unresolved_setting, settings)
+        settings.each_pair do |key, value|
+          settings[key] = value.sub(unresolved_setting, substitutions)
         end
 
-        values.each do |value|
+        settings.each_value do |value|
           if match = value.match(unresolved_setting)
             @errors << "Could not parse #{match[0]} in #{value}, " +
                        'valid settings to be interpolated are ' +
-                       '$confdir, $ssldir, $cadir'
+                       '$ssldir or $cadir'
           end
         end
 
-        return *values
+        return settings
       end
 
       # Parse an inifile formatted String. Only captures \word character

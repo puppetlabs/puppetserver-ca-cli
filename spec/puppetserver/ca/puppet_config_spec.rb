@@ -57,8 +57,8 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
       conf.load
 
       expect(conf.errors).to be_empty
-      expect(conf.ca_cert_path).to eq('/foo/bar/ca/ca_crt.pem')
-      expect(conf.ca_crl_path).to eq('/fizz/buzz/crl.pem')
+      expect(conf.settings[:cacert]).to eq('/foo/bar/ca/ca_crt.pem')
+      expect(conf.settings[:cacrl]).to eq('/fizz/buzz/crl.pem')
     end
   end
 
@@ -76,7 +76,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
       conf.load
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')
-      expect(conf.ca_cert_path).to eq('$vardir/ssl/ca/ca_crt.pem')
+      expect(conf.settings[:cacert]).to eq('$vardir/ssl/ca/ca_crt.pem')
     end
   end
 end
