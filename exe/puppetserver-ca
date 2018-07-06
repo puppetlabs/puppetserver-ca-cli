@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'puppetserver/ca/cli'
+
+exit Puppetserver::Ca::Cli.run!(ARGV)
