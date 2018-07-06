@@ -37,17 +37,17 @@ RSpec.describe Puppetserver::Ca::Cli do
   describe 'general options' do
     include_examples 'basic cli args',
       nil,
-      /.*usage: puppetserver ca <command> .*This general help output.*/m
+      /.*Usage: puppetserver ca <command> .*This general help output.*/m
   end
 
   describe 'the setup subcommand' do
     let(:usage) do
-      /.*usage: puppetserver ca setup.*This setup specific help output.*/m
+      /.*Usage: puppetserver ca setup.*This setup specific help output.*/m
     end
 
     include_examples 'basic cli args',
       'setup',
-      /.*usage: puppetserver ca setup.*This setup specific help output.*/m
+      /.*Usage: puppetserver ca setup.*This setup specific help output.*/m
 
     it 'does not print the help output if called correctly' do
       Dir.mktmpdir do |tmpdir|
@@ -85,13 +85,18 @@ RSpec.describe Puppetserver::Ca::Cli do
       end
 
       it 'warns when no CRL is given' do
-        exit_code = Puppetserver::Ca::Cli.run!(
-                      ['setup',
-                       '--cert-bundle', 'foo',
-                       '--private-key', 'bar'],
-                      stdout,
-                      stderr)
-        expect(stderr.string).to include('Full CRL chain checking will not be possible')
+        Dir.mktmpdir do |tmpdir|
+          bundle = File.join(tmpdir, 'bundle.pem')
+          key = File.join(tmpdir, 'key.pem')
+          [bundle, key].each {|file| FileUtils.touch(file) }
+          exit_code = Puppetserver::Ca::Cli.run!(
+                        ['setup',
+                         '--cert-bundle', bundle,
+                         '--private-key', key],
+                        stdout,
+                        stderr)
+          expect(stderr.string).to include('Full CRL chain checking will not be possible')
+        end
       end
 
       it 'requires cert-bundle, private-key, and crl-chain to be readable' do

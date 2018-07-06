@@ -16,7 +16,7 @@ module Puppetserver
       def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
         input = {}
         general_parser = OptionParser.new do |opts|
-          opts.banner = 'usage: puppetserver ca <command> [options]'
+          opts.banner = 'Usage: puppetserver ca <command> [options]'
           opts.on('--help', 'This general help output') do |help|
             input['help'] = true
           end
@@ -26,7 +26,7 @@ module Puppetserver
         end
 
         setup_parser = OptionParser.new do |opts|
-          opts.banner = 'usage: puppetserver ca setup [options]'
+          opts.banner = 'Usage: puppetserver ca setup [options]'
           opts.on('--help', 'This setup specific help output') do |help|
             input['help'] = true
           end
@@ -56,39 +56,42 @@ module Puppetserver
               return 0
             else
               if input['cert-bundle'] && input['private-key']
-                unless input['crl-chain']
-                  err.puts 'Warning:'
-                  err.puts '  No CRL chain given'
-                  err.puts '  Full CRL chain checking will not be possible'
-                end
-
-                # do stuff
                 errors = []
                 bundle = input['cert-bundle']
                 if !File.exist?(bundle) || !File.readable?(bundle)
-                  errors << "Could not read #{bundle}"
+                  errors << "Could not read file '#{bundle}'"
                 end
 
                 key = input['private-key']
                 if !File.exist?(key) || !File.readable?(bundle)
-                  errors << "Could not read #{key}"
+                  errors << "Could not read file '#{key}'"
                 end
 
                 chain = input['crl-chain']
                 if chain && (!File.exist?(chain) || !File.readable?(chain))
-                  errors << "Could not read #{chain}"
+                  errors << "Could not read file '#{chain}'"
                 end
 
                 unless errors.empty?
                   err.puts 'Error:'
                   errors.each {|error| err.puts "    #{error}" }
+                  err.puts ''
                   return 1
                 end
 
+                unless input['crl-chain']
+                  err.puts 'Warning:'
+                  err.puts '    No CRL chain given'
+                  err.puts '    Full CRL chain checking will not be possible'
+                  err.puts ''
+                end
+
+                # do stuff
                 return 0
               else
-                err.puts "Error: missing required argument"
-                err.puts "  Both --cert-bundle and --private-key are required"
+                err.puts 'Error: missing required argument'
+                err.puts '    Both --cert-bundle and --private-key are required'
+                err.puts ''
               end
               err.puts setup_parser.help
               return 1
