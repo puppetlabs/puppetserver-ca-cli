@@ -62,7 +62,7 @@ module Puppetserver
       def load_key(key_path)
         begin
           OpenSSL::PKey.read(File.read(key_path))
-        rescue ArgumentError => e
+        rescue ArgumentError, OpenSSL::PKey::PKeyError => e
           @errors << "Could not parse #{key_path}"
 
           return nil
@@ -106,16 +106,24 @@ module Puppetserver
         end
       end
 
+      # By creating an X509::Store and validating the leaf cert with it we:
+      #   - Ensure a full chain of trust (root to leaf) is within the bundle
+      #   - If provided, there are CRLs for the CAs
+      #   - If provided, no CAs within the chain of trust have been revoked
+      # However this does allow for:
+      #   - Additional, ignored, certs and CRLs in the bundle/chain
+      #   - certs and CRLs in any order (as long as the leaf cert is first)
       def validate_full_chain(certs, crls)
         store = OpenSSL::X509::Store.new
         certs.each {|cert| store.add_cert(cert) }
-        if crls
+        if !crls.empty?
           store.flags = OpenSSL::X509::V_FLAG_CRL_CHECK | OpenSSL::X509::V_FLAG_CRL_CHECK_ALL
           crls.each {|crl| store.add_crl(crl) }
         end
 
         unless store.verify(certs.first)
           @errors << 'Leaf certificate could not be validated'
+          @errors << "Validating cert store returned: #{store.error} - #{store.error_string}"
         end
       end
     end

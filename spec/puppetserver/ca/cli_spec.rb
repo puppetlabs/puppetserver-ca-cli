@@ -215,7 +215,8 @@ RSpec.describe Puppetserver::Ca::Cli do
             exit_code = Puppetserver::Ca::Cli.run!(
                           ['setup',
                            '--cert-bundle', bundle,
-                           '--private-key', key],
+                           '--private-key', key,
+                           '--config', conf],
                           stdout,
                           stderr)
             expect(stderr.string).to include('Full CRL chain checking will not be possible')
