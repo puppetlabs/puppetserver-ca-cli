@@ -1,7 +1,6 @@
 require 'optparse'
 require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/puppet_config'
-require 'puppetserver/ca/version'
 
 module Puppetserver
   module Ca
@@ -12,47 +11,30 @@ module Puppetserver
       end
 
       def run!(input)
-        files = input.values_at('cert-bundle', 'private-key')
-        files << input['crl-chain'] if input['crl-chain']
-        files << input['config'] if input['config']
+        bundle_path = input['cert-bundle']
+        key_path = input['private-key']
+        chain_path = input['crl-chain']
+        config_path = input['config']
+
+        files = [bundle_path, key_path, chain_path, config_path].compact
 
         errors = validate_file_paths(files)
-        unless errors.empty?
-          @logger.err "Error:"
-          errors.each do |message|
-            @logger.err "    #{message}"
-          end
-          return 1
-        end
+        return 1 if log_possible_errors(errors)
 
-        unless input['crl-chain']
+        unless chain_path
           @logger.err 'Warning:'
           @logger.err '    No CRL chain given'
           @logger.err '    Full CRL chain checking will not be possible'
           @logger.err ''
         end
 
-        loader = X509Loader.new(input['cert-bundle'],
-                                input['private-key'],
-                                input['crl-chain'])
 
-        unless loader.errors.empty?
-          @logger.err "Error:"
-          loader.errors.each do |message|
-            @logger.err "    #{message}"
-          end
-          return 1
-        end
+        loader = X509Loader.new(bundle_path, key_path, chain_path)
+        return 1 if log_possible_errors(loader.errors)
 
-        puppet = PuppetConfig.parse(input['config'])
+        puppet = PuppetConfig.parse(config_path)
+        return 1 if log_possible_errors(puppet.errors)
 
-        unless puppet.errors.empty?
-          @logger.err "Error:"
-          puppet.errors.each do |message|
-            @logger.err "    #{message}"
-          end
-          return 1
-        end
 
         File.open(puppet.settings[:cacert], 'w') do |f|
           loader.certs.each do |cert|
@@ -73,6 +55,16 @@ module Puppetserver
         return 0
       end
 
+      def log_possible_errors(maybe_errors)
+        errors = Array(maybe_errors).compact
+        unless errors.empty?
+          @logger.err "Error:"
+          errors.each do |message|
+            @logger.err "    #{message}"
+          end
+          return true
+        end
+      end
 
       def parse(cli_args)
         parser, inputs = parse_inputs(cli_args)
