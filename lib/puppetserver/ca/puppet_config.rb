@@ -23,12 +23,14 @@ module Puppetserver
         @errors = []
       end
 
-      # Return the correct confdir. We check for being root (user id == 0)
-      # on *nix, else the user path. We do not include a check for running
+      # Return the correct confdir. We check for being root on *nix,
+      # else the user path. We do not include a check for running
       # as Adminstrator since non-development scenarios for Puppet Server
       # on Windows are unsupported.
+      # Note that Puppet Server runs as the [pe-]puppet user but to
+      # start/stop it you must be root.
       def user_specific_conf_dir
-        if Gem.win_platform? && Process::UID.eid == 0
+        if running_as_root?
           '/etc/puppetlabs/puppet'
         else
           "#{ENV['HOME']}/.puppetlabs/etc/puppet"
@@ -40,7 +42,7 @@ module Puppetserver
       end
 
       def load
-        unless @using_default_location && !File.exist?(@config_path)
+        if explicitly_given_config_file_or_default_config_exists?
           results = parse_text(File.read(@config_path))
         end
 
@@ -79,10 +81,8 @@ module Puppetserver
 
         settings.each_pair do |key, value|
           settings[key] = value.sub(unresolved_setting, substitutions)
-        end
 
-        settings.each_value do |value|
-          if match = value.match(unresolved_setting)
+          if match = settings[key].match(unresolved_setting)
             @errors << "Could not parse #{match[0]} in #{value}, " +
                        'valid settings to be interpolated are ' +
                        '$ssldir or $cadir'
@@ -115,6 +115,17 @@ module Puppetserver
         end
 
         res
+      end
+
+
+     private
+
+      def explicitly_given_config_file_or_default_config_exists?
+        !@using_default_location || File.exists(@config_path)
+      end
+
+      def running_as_root?
+        !Gem.win_platform? && Process::UID.eid == 0
       end
     end
   end
