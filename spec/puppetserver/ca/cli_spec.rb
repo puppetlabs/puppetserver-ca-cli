@@ -161,6 +161,14 @@ RSpec.describe Puppetserver::Ca::Cli do
       'setup',
       /.*Usage: puppetserver ca setup.*This setup specific help output.*/m
 
+
+    it 'prints the help output & returns 1 if invalid flags are given' do
+      exit_code = Puppetserver::Ca::Cli.run!(['setup', '--hello'], stdout, stderr)
+      expect(stderr.string).to match(/Error.*--hello/m)
+      expect(stderr.string).to match(usage)
+      expect(exit_code).to be 1
+    end
+
     it 'does not print the help output if called correctly' do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
@@ -219,7 +227,7 @@ RSpec.describe Puppetserver::Ca::Cli do
                            '--config', conf],
                           stdout,
                           stderr)
-            expect(stderr.string).to include('Full CRL chain checking will not be possible')
+            expect(stderr.string).to include('Full CRL chain checking by agents will not be possible')
           end
         end
       end

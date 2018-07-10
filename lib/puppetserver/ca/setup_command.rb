@@ -24,7 +24,8 @@ module Puppetserver
         unless chain_path
           @logger.err 'Warning:'
           @logger.err '    No CRL chain given'
-          @logger.err '    Full CRL chain checking will not be possible'
+          @logger.err '    Full CRL chain checking by agents will not be possible'
+          @logger.err '      without CRLs for each cert in the chain of trust'
           @logger.err ''
         end
 
@@ -67,8 +68,22 @@ module Puppetserver
       end
 
       def parse(cli_args)
-        parser, inputs = parse_inputs(cli_args)
-        exit_code = validate_inputs(inputs, parser.help)
+        parser, inputs, unparsed = parse_inputs(cli_args)
+
+        if !unparsed.empty?
+          @logger.err 'Error:'
+          @logger.err 'Unknown arguments or flags:'
+          unparsed.each do |arg|
+            @logger.err "    #{arg}"
+          end
+
+          @logger.err ''
+          @logger.err parser.help
+
+          exit_code = 1
+        else
+          exit_code = validate_inputs(inputs, parser.help)
+        end
 
         return inputs, exit_code
       end
@@ -90,12 +105,21 @@ module Puppetserver
 
       def parse_inputs(inputs)
         parsed = {}
+        unparsed = []
 
         parser = self.class.parser(parsed)
 
-        parser.parse(inputs)
+        begin
+          parser.order!(inputs) do |nonopt|
+            unparsed << nonopt
+          end
+        rescue OptionParser::InvalidOption => e
+          unparsed += e.args
+          unparsed << inputs.shift unless inputs.first =~ /^-{1,2}/
+          retry
+        end
 
-        return parser, parsed
+        return parser, parsed, unparsed
       end
 
       def self.parser(parsed = {})

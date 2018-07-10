@@ -17,7 +17,7 @@ module Puppetserver
           return 0
         end
 
-        subcommand = VALID_COMMANDS[unparsed.first]
+        subcommand = VALID_COMMANDS[unparsed.shift]
 
         if general_options['help']
           if subcommand
