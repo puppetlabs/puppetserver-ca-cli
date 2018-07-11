@@ -149,17 +149,17 @@ RSpec.describe Puppetserver::Ca::Cli do
   describe 'general options' do
     include_examples 'basic cli args',
       nil,
-      /.*Usage: puppetserver ca <command> .*This general help output.*/m
+      /.*Usage: puppetserver ca <command> .*Display this general help output.*/m
   end
 
   describe 'the setup subcommand' do
     let(:usage) do
-      /.*Usage: puppetserver ca setup.*This setup specific help output.*/m
+      /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m
     end
 
     include_examples 'basic cli args',
       'setup',
-      /.*Usage: puppetserver ca setup.*This setup specific help output.*/m
+      /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m
 
 
     it 'prints the help output & returns 1 if invalid flags are given' do

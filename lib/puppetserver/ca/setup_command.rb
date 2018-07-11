@@ -6,6 +6,24 @@ module Puppetserver
   module Ca
     class SetupCommand
 
+      SUMMARY = "Set up the CA's key, certs, and crls"
+      BANNER = <<-BANNER
+Usage:
+  puppetserver ca setup [--help|--version]
+  puppetserver ca setup [--crl-chain PATH] [--config PATH]
+      --private-key PATH --cert-bundle PATH
+
+Description:
+Given a private key, cert bundle, and optionally a crl chain,
+validate and import to the Puppet Server CA.
+
+To determine the target location the default puppet.conf
+is consulted for custom values. If using a custom puppet.conf
+provide it with the --config flag
+
+Options:
+BANNER
+
       def initialize(logger)
         @logger = logger
       end
@@ -124,8 +142,8 @@ module Puppetserver
 
       def self.parser(parsed = {})
         OptionParser.new do |opts|
-          opts.banner = 'Usage: puppetserver ca setup [options]'
-          opts.on('--help', 'This setup specific help output') do |help|
+          opts.banner = BANNER
+          opts.on('--help', 'Display this setup specific help output') do |help|
             parsed['help'] = true
           end
           opts.on('--version', 'Output the version') do |v|
@@ -140,7 +158,7 @@ module Puppetserver
           opts.on('--cert-bundle BUNDLE', 'Path to PEM encoded bundle') do |bundle|
             parsed['cert-bundle'] = bundle
           end
-          opts.on('--crl-chain [CHAIN]', 'Path to PEM encoded chain') do |chain|
+          opts.on('--crl-chain CHAIN', 'Path to PEM encoded chain') do |chain|
             parsed['crl-chain'] = chain
           end
         end

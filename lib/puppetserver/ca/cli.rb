@@ -6,7 +6,28 @@ require 'puppetserver/ca/logger'
 module Puppetserver
   module Ca
     class Cli
+      BANNER= <<-BANNER
+Usage: puppetserver ca <command> [options]
+
+Manage the Private Key Infrastructure for
+Puppet Server's built-in Certificate Authority
+BANNER
+
       VALID_COMMANDS = {'setup' => SetupCommand}
+
+      COMMAND_LIST = "\nAvailable Sub-Commands:\n" +
+        VALID_COMMANDS.map do |command, cls|
+          "    #{command}\t#{cls::SUMMARY}"
+        end.join("\n")
+
+      COMMAND_OPTIONS = "\nSub-Command Options:\n" +
+        VALID_COMMANDS.map do |command, cls|
+          "  #{command}:\n" +
+          cls.parser.summarize.
+            select{|line| line =~ /^\s*--/ }.
+            reject{|line| line =~ /--help|--version/ }.join('')
+        end.join("\n")
+
 
       def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
         logger = Puppetserver::Ca::Logger.new(:info, out, err)
@@ -47,18 +68,24 @@ module Puppetserver
       def self.parse_general_inputs(inputs)
         parsed = {}
         general_parser = OptionParser.new do |opts|
-          opts.banner = 'Usage: puppetserver ca <command> [options]'
-          opts.on('--help', 'This general help output') do |help|
+          opts.banner = BANNER
+          opts.separator COMMAND_LIST
+          opts.separator "\nGeneral Options:"
+
+          opts.on('--help', 'Display this general help output') do |help|
             parsed['help'] = true
           end
-          opts.on('--version', 'Output the version') do |v|
+          opts.on('--version', 'Display the version') do |v|
             parsed['version'] = true
           end
+
+          opts.separator COMMAND_OPTIONS
+          opts.separator "\nSee `puppetserver ca <command> --help` for detailed info"
+
         end
 
-        unparsed = []
-        nonopts = []
-        
+        unparsed, nonopts = [], []
+
         begin
           general_parser.order!(inputs) do |nonopt|
             nonopts << nonopt
