@@ -1,3 +1,4 @@
+require 'fileutils'
 require 'optparse'
 require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/puppet_config'
@@ -54,6 +55,9 @@ BANNER
         puppet = PuppetConfig.parse(config_path)
         return 1 if log_possible_errors(puppet.errors)
 
+        if !File.exist?(puppet.settings[:cadir])
+          FileUtils.mkdir_p puppet.settings[:cadir]
+        end
 
         File.open(puppet.settings[:cacert], 'w') do |f|
           loader.certs.each do |cert|
