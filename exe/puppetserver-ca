@@ -7,4 +7,4 @@ Bundler.require(:default)
 
 require 'puppetserver/ca/cli'
 
-exit Puppetserver::Ca::Cli.run!(ARGV)
+exit Puppetserver::Ca::Cli.run(ARGV)

@@ -29,7 +29,7 @@ BANNER
         end.join("\n")
 
 
-      def self.run!(cli_args = ARGV, out = STDOUT, err = STDERR)
+      def self.run(cli_args = ARGV, out = STDOUT, err = STDERR)
         logger = Puppetserver::Ca::Logger.new(:info, out, err)
         parser, general_options, unparsed = parse_general_inputs(cli_args)
 
@@ -57,7 +57,7 @@ BANNER
           if exit_code
             return exit_code
           else
-            return action.run!(input)
+            return action.run(input)
           end
         else
           logger.warn parser.help

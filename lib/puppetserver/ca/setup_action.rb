@@ -28,7 +28,7 @@ BANNER
         @logger = logger
       end
 
-      def run!(input)
+      def run(input)
         bundle_path = input['cert-bundle']
         key_path = input['private-key']
         chain_path = input['crl-chain']
