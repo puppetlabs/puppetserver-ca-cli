@@ -4,7 +4,7 @@ require 'puppetserver/ca/puppet_config'
 
 module Puppetserver
   module Ca
-    class SetupCommand
+    class SetupAction
 
       SUMMARY = "Set up the CA's key, certs, and crls"
       BANNER = <<-BANNER

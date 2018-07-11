@@ -121,16 +121,16 @@ RSpec.describe Puppetserver::Ca::Cli do
     block.call(bundle_file, key_file, chain_file, config_file)
   end
 
-  shared_examples 'basic cli args' do |subcommand, usage|
+  shared_examples 'basic cli args' do |action, usage|
     it 'responds to a --help flag' do
-      args = [subcommand, '--help'].compact
+      args = [action, '--help'].compact
       exit_code = Puppetserver::Ca::Cli.run!(args, stdout, stderr)
       expect(stdout.string).to match(usage)
       expect(exit_code).to be 0
     end
 
     it 'prints the help output & returns 1 if no input is given' do
-      args = [subcommand].compact
+      args = [action].compact
       exit_code = Puppetserver::Ca::Cli.run!(args, stdout, stderr)
       expect(stderr.string).to match(usage)
       expect(exit_code).to be 1
@@ -138,7 +138,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
     it 'prints the version' do
       semverish = /\d+\.\d+\.\d+(-[a-z0-9._-]+)?/
-      args = [subcommand, '--version'].compact
+      args = [action, '--version'].compact
       first_code = Puppetserver::Ca::Cli.run!(args, stdout, stderr)
       expect(stdout.string).to match(semverish)
       expect(stderr.string).to be_empty
@@ -149,10 +149,10 @@ RSpec.describe Puppetserver::Ca::Cli do
   describe 'general options' do
     include_examples 'basic cli args',
       nil,
-      /.*Usage: puppetserver ca <command> .*Display this general help output.*/m
+      /.*Usage: puppetserver ca <action> .*Display this general help output.*/m
   end
 
-  describe 'the setup subcommand' do
+  describe 'the setup action' do
     let(:usage) do
       /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m
     end

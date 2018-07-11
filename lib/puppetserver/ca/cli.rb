@@ -1,28 +1,28 @@
 require 'optparse'
 require 'puppetserver/ca/version'
-require 'puppetserver/ca/setup_command'
+require 'puppetserver/ca/setup_action'
 require 'puppetserver/ca/logger'
 
 module Puppetserver
   module Ca
     class Cli
       BANNER= <<-BANNER
-Usage: puppetserver ca <command> [options]
+Usage: puppetserver ca <action> [options]
 
 Manage the Private Key Infrastructure for
 Puppet Server's built-in Certificate Authority
 BANNER
 
-      VALID_COMMANDS = {'setup' => SetupCommand}
+      VALID_ACTIONS = {'setup' => SetupAction}
 
-      COMMAND_LIST = "\nAvailable Sub-Commands:\n" +
-        VALID_COMMANDS.map do |command, cls|
-          "    #{command}\t#{cls::SUMMARY}"
+      ACTION_LIST = "\nAvailable Actions:\n" +
+        VALID_ACTIONS.map do |action, cls|
+          "    #{action}\t#{cls::SUMMARY}"
         end.join("\n")
 
-      COMMAND_OPTIONS = "\nSub-Command Options:\n" +
-        VALID_COMMANDS.map do |command, cls|
-          "  #{command}:\n" +
+      ACTION_OPTIONS = "\nAction Options:\n" +
+        VALID_ACTIONS.map do |action, cls|
+          "  #{action}:\n" +
           cls.parser.summarize.
             select{|line| line =~ /^\s*--/ }.
             reject{|line| line =~ /--help|--version/ }.join('')
@@ -38,11 +38,11 @@ BANNER
           return 0
         end
 
-        subcommand = VALID_COMMANDS[unparsed.shift]
+        action_class = VALID_ACTIONS[unparsed.shift]
 
         if general_options['help']
-          if subcommand
-            logger.inform subcommand.parser.help
+          if action_class
+            logger.inform action_class.parser.help
           else
             logger.inform parser.help
           end
@@ -50,14 +50,14 @@ BANNER
           return 0
         end
 
-        if subcommand
-          command = subcommand.new(logger)
-          input, exit_code = command.parse(unparsed)
+        if action_class
+          action = action_class.new(logger)
+          input, exit_code = action.parse(unparsed)
 
           if exit_code
             return exit_code
           else
-            return command.run!(input)
+            return action.run!(input)
           end
         else
           logger.warn parser.help
@@ -69,7 +69,7 @@ BANNER
         parsed = {}
         general_parser = OptionParser.new do |opts|
           opts.banner = BANNER
-          opts.separator COMMAND_LIST
+          opts.separator ACTION_LIST
           opts.separator "\nGeneral Options:"
 
           opts.on('--help', 'Display this general help output') do |help|
@@ -79,8 +79,8 @@ BANNER
             parsed['version'] = true
           end
 
-          opts.separator COMMAND_OPTIONS
-          opts.separator "\nSee `puppetserver ca <command> --help` for detailed info"
+          opts.separator ACTION_OPTIONS
+          opts.separator "\nSee `puppetserver ca <action> --help` for detailed info"
 
         end
 
