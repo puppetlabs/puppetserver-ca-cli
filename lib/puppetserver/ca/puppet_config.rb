@@ -121,7 +121,7 @@ module Puppetserver
      private
 
       def explicitly_given_config_file_or_default_config_exists?
-        !@using_default_location || File.exists(@config_path)
+        !@using_default_location || File.exist?(@config_path)
       end
 
       def running_as_root?

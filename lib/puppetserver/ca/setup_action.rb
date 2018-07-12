@@ -1,3 +1,4 @@
+require 'etc'
 require 'fileutils'
 require 'optparse'
 require 'puppetserver/ca/x509_loader'
@@ -55,27 +56,62 @@ BANNER
         puppet = PuppetConfig.parse(config_path)
         return 1 if log_possible_errors(puppet.errors)
 
+        user, group = find_user_and_group
+
         if !File.exist?(puppet.settings[:cadir])
-          FileUtils.mkdir_p puppet.settings[:cadir]
+          FileUtils.mkdir_p(puppet.settings[:cadir], mode: 0750)
+          FileUtils.chown(user, group, puppet.settings[:cadir])
         end
 
-        File.open(puppet.settings[:cacert], 'w') do |f|
-          loader.certs.each do |cert|
-            f.puts cert.to_pem
-          end
-        end
+        write_file(puppet.settings[:cacert],
+                   loader.certs,
+                   user, group, 0640)
 
-        File.open(puppet.settings[:cakey], 'w') do |f|
-          f.puts loader.key.to_pem
-        end
+        write_file(puppet.settings[:cakey],
+                   loader.key,
+                   user, group, 0640)
 
-        File.open(puppet.settings[:cacrl], 'w') do |f|
-          loader.crls.each do |crl|
-            f.puts crl.to_pem
-          end
+        if loader.crls && !loader.crls.empty?
+          write_file(puppet.settings[:cacrl],
+                     loader.crls,
+                     user, group, 0640)
         end
 
         return 0
+      end
+
+      def find_user_and_group
+        if !running_as_root?
+          return Process.euid, Process.egid
+        else
+          if pe_puppet_exists?
+            return 'pe-puppet', 'pe-puppet'
+          else
+            return 'puppet', 'puppet'
+          end
+        end
+      end
+
+      def running_as_root?
+        !Gem.win_platform? && Process.euid == 0
+      end
+
+      def pe_puppet_exists?
+        !!(Etc.getpwnam('pe-puppet') rescue nil)
+      end
+
+      def write_file(path, one_or_more_objects, user, group, mode)
+        if File.exist?(path)
+          @logger.warn("#{path} exists, overwriting")
+        end
+
+        File.open(path, 'w', mode) do |f|
+          Array(one_or_more_objects).each do |object|
+            f.puts object.to_pem
+          end
+        end
+
+        FileUtils.chown(user, group, path)
       end
 
       def log_possible_errors(maybe_errors)
