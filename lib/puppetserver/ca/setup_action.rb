@@ -171,7 +171,7 @@ BANNER
           parser.order!(inputs) do |nonopt|
             unparsed << nonopt
           end
-        rescue OptionParser::InvalidOption => e
+        rescue OptionParser::ParseError => e
           unparsed += e.args
           unparsed << inputs.shift unless inputs.first =~ /^-{1,2}/
           retry

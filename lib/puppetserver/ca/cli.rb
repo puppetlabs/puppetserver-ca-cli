@@ -38,7 +38,8 @@ BANNER
           return 0
         end
 
-        action_class = VALID_ACTIONS[unparsed.shift]
+        action_argument = unparsed.shift
+        action_class = VALID_ACTIONS[action_argument]
 
         if general_options['help']
           if action_class
@@ -60,6 +61,7 @@ BANNER
             return action.run(input)
           end
         else
+          logger.warn "Unknown action: #{action_argument}"
           logger.warn parser.help
           return 1
         end
