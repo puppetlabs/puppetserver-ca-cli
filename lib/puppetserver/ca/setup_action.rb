@@ -63,18 +63,21 @@ BANNER
           FileUtils.chown(user, group, puppet.settings[:cadir])
         end
 
-        write_file(puppet.settings[:cacert],
-                   loader.certs,
-                   user, group, 0640)
+        write_file(puppet.settings[:cacert], loader.certs, user, group, 0640)
 
-        write_file(puppet.settings[:cakey],
-                   loader.key,
-                   user, group, 0640)
+        write_file(puppet.settings[:cakey], loader.key, user, group, 0640)
 
         if loader.crls && !loader.crls.empty?
-          write_file(puppet.settings[:cacrl],
-                     loader.crls,
-                     user, group, 0640)
+          write_file(puppet.settings[:cacrl], loader.crls, user, group, 0640)
+        end
+
+        if !File.exist?(puppet.settings[:serial])
+          write_file(puppet.settings[:serial], "001", user, group, 0640)
+        end
+
+        if !File.exist?(puppet.settings[:cert_inventory])
+          write_file(puppet.settings[:cert_inventory],
+                     "", user, group, 0640)
         end
 
         return 0
@@ -107,7 +110,7 @@ BANNER
 
         File.open(path, 'w', mode) do |f|
           Array(one_or_more_objects).each do |object|
-            f.puts object.to_pem
+            f.puts object.to_s
           end
         end
 

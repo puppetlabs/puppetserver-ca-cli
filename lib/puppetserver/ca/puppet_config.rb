@@ -78,6 +78,8 @@ module Puppetserver
         settings[:cacert] = overrides.fetch(:cacert, '$cadir/ca_crt.pem')
         settings[:cakey] = overrides.fetch(:cakey, '$cadir/ca_key.pem')
         settings[:cacrl] = overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
+        settings[:serial] = overrides.fetch(:serial, '$cadir/serial')
+        settings[:cert_inventory] = overrides.fetch(:cert_inventory, '$cadir/inventory.txt')
 
         settings.each_pair do |key, value|
           settings[key] = value.sub(unresolved_setting, substitutions)
