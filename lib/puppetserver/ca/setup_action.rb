@@ -12,11 +12,11 @@ module Puppetserver
       BANNER = <<-BANNER
 Usage:
   puppetserver ca setup [--help|--version]
-  puppetserver ca setup [--crl-chain PATH] [--config PATH]
-      --private-key PATH --cert-bundle PATH
+  puppetserver ca setup [--config PATH]
+      --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
-Given a private key, cert bundle, and optionally a crl chain,
+Given a private key, cert bundle, and a crl chain,
 validate and import to the Puppet Server CA.
 
 To determine the target location the default puppet.conf
@@ -41,15 +41,6 @@ BANNER
         errors = validate_file_paths(files)
         return 1 if log_possible_errors(errors)
 
-        unless chain_path
-          @logger.err 'Warning:'
-          @logger.err '    No CRL chain given'
-          @logger.err '    Full CRL chain checking by agents will not be possible'
-          @logger.err '      without CRLs for each cert in the chain of trust'
-          @logger.err ''
-        end
-
-
         loader = X509Loader.new(bundle_path, key_path, chain_path)
         return 1 if log_possible_errors(loader.errors)
 
@@ -67,9 +58,7 @@ BANNER
 
         write_file(puppet.settings[:cakey], loader.key, user, group, 0640)
 
-        if loader.crls && !loader.crls.empty?
-          write_file(puppet.settings[:cacrl], loader.crls, user, group, 0640)
-        end
+        write_file(puppet.settings[:cacrl], loader.crls, user, group, 0640)
 
         if !File.exist?(puppet.settings[:serial])
           write_file(puppet.settings[:serial], "001", user, group, 0640)
@@ -152,10 +141,10 @@ BANNER
       def validate_inputs(input, usage)
         exit_code = nil
 
-        if input['cert-bundle'].nil? || input['private-key'].nil?
+        if input.values_at('cert-bundle', 'private-key', 'crl-chain').any?(&:nil?)
           @logger.err 'Error:'
           @logger.err 'Missing required argument'
-          @logger.err '    Both --cert-bundle and --private-key are required'
+          @logger.err '    --cert-bundle, --private-key, --crl-chain are required'
           @logger.err ''
           @logger.err usage
           exit_code = 1

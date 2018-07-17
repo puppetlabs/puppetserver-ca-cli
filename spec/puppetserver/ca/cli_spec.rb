@@ -68,37 +68,33 @@ RSpec.describe Puppetserver::Ca::Cli do
     end
 
     context 'validation' do
-      it 'requires both the --cert-bundle and --private-key options' do
+      it 'requires the --cert-bundle, --private-key, and --crl-chain options' do
+        out1, err1 = StringIO.new, StringIO.new
         exit_code = Puppetserver::Ca::Cli.run(
-                      ['setup', '--private-key', 'foo'],
-                      stdout,
-                      stderr)
-        expect(stderr.string).to include('Missing required argument')
-        expect(stderr.string).to match(usage)
+                      ['setup', '--private-key', 'foo', '--crl-chain', 'bar'],
+                      out1,
+                      err1)
+        expect(err1.string).to include('Missing required argument')
+        expect(err1.string).to match(usage)
         expect(exit_code).to be 1
 
+        out2, err2 = StringIO.new, StringIO.new
         exit_code = Puppetserver::Ca::Cli.run(
-                      ['setup', '--cert-bundle', 'foo'],
-                      stdout,
-                      stderr)
-        expect(stderr.string).to include('Missing required argument')
-        expect(stderr.string).to match(usage)
+                      ['setup', '--cert-bundle', 'foo', '--crl-chain', 'bar'],
+                      out2,
+                      err2)
+        expect(err2.string).to include('Missing required argument')
+        expect(err2.string).to match(usage)
         expect(exit_code).to be 1
-      end
 
-      it 'warns when no CRL is given' do
-        Dir.mktmpdir do |tmpdir|
-          with_files_in tmpdir do |bundle, key, chain, conf|
-            exit_code = Puppetserver::Ca::Cli.run(
-                          ['setup',
-                           '--cert-bundle', bundle,
-                           '--private-key', key,
-                           '--config', conf],
-                          stdout,
-                          stderr)
-            expect(stderr.string).to include('Full CRL chain checking by agents will not be possible')
-          end
-        end
+        out3, err3 = StringIO.new, StringIO.new
+        exit_code = Puppetserver::Ca::Cli.run(
+                      ['setup', '--private-key', 'foo', '--cert-bundle', 'bar'],
+                      out3,
+                      err3)
+        expect(err3.string).to include('Missing required argument')
+        expect(err3.string).to match(usage)
+        expect(exit_code).to be 1
       end
 
       it 'requires cert-bundle, private-key, and crl-chain to be readable' do

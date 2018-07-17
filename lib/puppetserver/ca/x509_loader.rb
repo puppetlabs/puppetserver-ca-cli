@@ -7,12 +7,12 @@ module Puppetserver
 
       attr_reader :errors, :certs, :key, :crls
 
-      def initialize(bundle_path, key_path, chain_path = nil)
+      def initialize(bundle_path, key_path, chain_path)
         @errors = []
 
         @certs = load_certs(bundle_path)
         @key = load_key(key_path)
-        @crls = chain_path ? load_crls(chain_path) : []
+        @crls = load_crls(chain_path)
 
         validate(@certs, @key, @crls)
       end
