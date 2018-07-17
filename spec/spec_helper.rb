@@ -1,4 +1,8 @@
+# This requires everything in our Gemfile, so when functionally testing
+# our debugging tools are available without having to require them
 require "bundler/setup"
+Bundler.require(:default)
+
 require "puppetserver/ca"
 
 RSpec.configure do |config|
