@@ -1,8 +1,9 @@
 require 'optparse'
 require 'puppetserver/ca/version'
+require 'puppetserver/ca/logger'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
-require 'puppetserver/ca/logger'
+require 'puppetserver/ca/revoke_action'
 
 module Puppetserver
   module Ca
@@ -14,9 +15,11 @@ Manage the Private Key Infrastructure for
 Puppet Server's built-in Certificate Authority
 BANNER
 
-      VALID_ACTIONS = { 'import' => ImportAction,
-                        'generate' => GenerateAction
-                      }
+      VALID_ACTIONS = {
+        'import'   => ImportAction,
+        'generate' => GenerateAction,
+        'revoke'   => RevokeAction
+      }
 
       ACTION_LIST = "\nAvailable Actions:\n" +
         VALID_ACTIONS.map do |action, cls|
@@ -25,10 +28,12 @@ BANNER
 
       ACTION_OPTIONS = "\nAction Options:\n" +
         VALID_ACTIONS.map do |action, cls|
-          "  #{action}:\n" +
-          cls.parser.summarize.
-            select{|line| line =~ /^\s*--/ }.
-            reject{|line| line =~ /--help|--version/ }.join('')
+          action_summary = cls.parser.summarize.
+                             select{|line| line =~ /^\s*--/ }.
+                             reject{|line| line =~ /--help|--version/ }
+          summary = action_summary.empty? ? '      N/A' : action_summary.join('')
+
+          "  #{action}:\n" + summary
         end.join("\n")
 
 
