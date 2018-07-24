@@ -7,3 +7,4 @@ gemspec
 
 gem 'pry'
 gem 'pry-byebug'
+gem 'hocon', '~> 1.2', require: false
