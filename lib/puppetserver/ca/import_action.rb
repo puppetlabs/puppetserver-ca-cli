@@ -6,13 +6,13 @@ require 'puppetserver/ca/puppet_config'
 
 module Puppetserver
   module Ca
-    class SetupAction
+    class ImportAction
 
-      SUMMARY = "Set up the CA's key, certs, and crls"
+      SUMMARY = "Import the CA's key, certs, and crls"
       BANNER = <<-BANNER
 Usage:
-  puppetserver ca setup [--help|--version]
-  puppetserver ca setup [--config PATH]
+  puppetserver ca import [--help|--version]
+  puppetserver ca import [--config PATH]
       --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
@@ -175,7 +175,7 @@ BANNER
       def self.parser(parsed = {})
         OptionParser.new do |opts|
           opts.banner = BANNER
-          opts.on('--help', 'Display this setup specific help output') do |help|
+          opts.on('--help', 'Display this import specific help output') do |help|
             parsed['help'] = true
           end
           opts.on('--version', 'Output the version') do |v|

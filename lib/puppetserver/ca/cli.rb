@@ -1,6 +1,6 @@
 require 'optparse'
 require 'puppetserver/ca/version'
-require 'puppetserver/ca/setup_action'
+require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/logger'
 
 module Puppetserver
@@ -13,7 +13,7 @@ Manage the Private Key Infrastructure for
 Puppet Server's built-in Certificate Authority
 BANNER
 
-      VALID_ACTIONS = {'setup' => SetupAction}
+      VALID_ACTIONS = {'import' => ImportAction}
 
       ACTION_LIST = "\nAvailable Actions:\n" +
         VALID_ACTIONS.map do |action, cls|
