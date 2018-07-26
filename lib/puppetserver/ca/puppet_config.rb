@@ -1,10 +1,13 @@
+require 'puppetserver/ca/config_utils'
 
 module Puppetserver
   module Ca
-    # Provides an interface for asking for Puppet[ Server] settings w/o loading
-    # either Puppet or Puppet Server. Includes a simple ini parser that will
-    # ignore Puppet's more complicated conventions.
+    # Provides an interface for asking for Puppet settings w/o loading
+    # Puppet. Includes a simple ini parser that will ignore Puppet's
+    # more complicated conventions.
     class PuppetConfig
+
+      include Puppetserver::Ca::ConfigUtils
 
       def self.parse(config_path = nil)
         instance = new(config_path)
@@ -119,15 +122,10 @@ module Puppetserver
         res
       end
 
-
      private
 
       def explicitly_given_config_file_or_default_config_exists?
         !@using_default_location || File.exist?(@config_path)
-      end
-
-      def running_as_root?
-        !Gem.win_platform? && Process::UID.eid == 0
       end
     end
   end
