@@ -1,6 +1,5 @@
-require 'etc'
-require 'fileutils'
 require 'optparse'
+require 'puppetserver/utils/file_utils'
 require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/puppet_config'
 
@@ -11,7 +10,7 @@ module Puppetserver
       SUMMARY = "Import the CA's key, certs, and crls"
       BANNER = <<-BANNER
 Usage:
-  puppetserver ca import [--help|--version]
+  puppetserver ca import [--help]
   puppetserver ca import [--config PATH]
       --private-key PATH --cert-bundle PATH --crl-chain PATH
 
@@ -38,7 +37,7 @@ BANNER
 
         files = [bundle_path, key_path, chain_path, config_path].compact
 
-        errors = validate_file_paths(files)
+        errors = Puppetserver::Utils::FileUtilities.validate_file_paths(files)
         return 1 if log_possible_errors(errors)
 
         loader = X509Loader.new(bundle_path, key_path, chain_path)
@@ -47,63 +46,20 @@ BANNER
         puppet = PuppetConfig.parse(config_path)
         return 1 if log_possible_errors(puppet.errors)
 
-        user, group = find_user_and_group
+        Puppetserver::Utils::FileUtilities.ensure_dir(puppet.settings[:cadir])
 
-        if !File.exist?(puppet.settings[:cadir])
-          FileUtils.mkdir_p(puppet.settings[:cadir], mode: 0750)
-          FileUtils.chown(user, group, puppet.settings[:cadir])
-        end
+        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cacert], loader.certs, 0640)
 
-        write_file(puppet.settings[:cacert], loader.certs, user, group, 0640)
+        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cakey], loader.key, 0640)
 
-        write_file(puppet.settings[:cakey], loader.key, user, group, 0640)
+        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cacrl], loader.crls, 0640)
 
-        write_file(puppet.settings[:cacrl], loader.crls, user, group, 0640)
+        # Puppet's internal CA expects these file to exist.
+        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
+        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
-        if !File.exist?(puppet.settings[:serial])
-          write_file(puppet.settings[:serial], "001", user, group, 0640)
-        end
-
-        if !File.exist?(puppet.settings[:cert_inventory])
-          write_file(puppet.settings[:cert_inventory],
-                     "", user, group, 0640)
-        end
-
+        @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
         return 0
-      end
-
-      def find_user_and_group
-        if !running_as_root?
-          return Process.euid, Process.egid
-        else
-          if pe_puppet_exists?
-            return 'pe-puppet', 'pe-puppet'
-          else
-            return 'puppet', 'puppet'
-          end
-        end
-      end
-
-      def running_as_root?
-        !Gem.win_platform? && Process.euid == 0
-      end
-
-      def pe_puppet_exists?
-        !!(Etc.getpwnam('pe-puppet') rescue nil)
-      end
-
-      def write_file(path, one_or_more_objects, user, group, mode)
-        if File.exist?(path)
-          @logger.warn("#{path} exists, overwriting")
-        end
-
-        File.open(path, 'w', mode) do |f|
-          Array(one_or_more_objects).each do |object|
-            f.puts object.to_s
-          end
-        end
-
-        FileUtils.chown(user, group, path)
       end
 
       def log_possible_errors(maybe_errors)
@@ -178,9 +134,6 @@ BANNER
           opts.on('--help', 'Display this import specific help output') do |help|
             parsed['help'] = true
           end
-          opts.on('--version', 'Output the version') do |v|
-            parsed['version'] = true
-          end
           opts.on('--config CONF', 'Path to puppet.conf') do |conf|
             parsed['config'] = conf
           end
@@ -194,17 +147,6 @@ BANNER
             parsed['crl-chain'] = chain
           end
         end
-      end
-
-      def validate_file_paths(one_or_more_paths)
-        errors = []
-        Array(one_or_more_paths).each do |path|
-          if !File.exist?(path) || !File.readable?(path)
-            errors << "Could not read file '#{path}'"
-          end
-        end
-
-        errors
       end
     end
   end

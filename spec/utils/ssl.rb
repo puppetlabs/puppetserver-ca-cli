@@ -67,6 +67,25 @@ module Utils
       return crl
     end
 
+    # With cadir setting saying to save all the stuff to a tempdir :)
+    def with_temp_cadir(tmpdir, &block)
+      fixtures_dir = File.join(tmpdir, 'fixtures')
+      ca_dir = File.join(tmpdir, 'ca')
+
+      FileUtils.mkdir_p fixtures_dir
+      FileUtils.mkdir_p ca_dir
+
+      config_file = File.join(fixtures_dir, 'puppet.conf')
+
+      File.open(config_file, 'w') do |f|
+        f.puts <<-CONF
+        [master]
+          cadir = #{ca_dir}
+        CONF
+      end
+      block.call(config_file)
+    end
+
     def with_files_in(tmpdir, &block)
       fixtures_dir = File.join(tmpdir, 'fixtures')
       ca_dir = File.join(tmpdir, 'ca')
