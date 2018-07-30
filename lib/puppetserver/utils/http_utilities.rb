@@ -52,6 +52,13 @@ module Puppetserver
 
           Result.new(result.code, result.body)
         end
+
+        def get(url_overide = nil)
+          url = url_overide || @url
+
+          request = Net::HTTP::Get.new(url.to_uri)
+          result = @conn.request(request)
+        end
       end
 
       # Just provide the bits of Net::HTTPResponse we care about

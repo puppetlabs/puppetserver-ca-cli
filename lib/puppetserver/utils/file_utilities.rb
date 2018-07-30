@@ -1,6 +1,5 @@
 require 'fileutils'
 require 'etc'
-require 'pry'
 
 module Puppetserver
   module Utils
