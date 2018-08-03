@@ -1,4 +1,5 @@
 require 'puppetserver/ca/config_utils'
+require 'securerandom'
 
 module Puppetserver
   module Ca
@@ -58,9 +59,8 @@ module Puppetserver
         @settings = resolve_settings(overrides).freeze
       end
 
-      # Resolve the cacert, cakey, and cacrl settings from default values,
-      # with any overrides for the specific settings or their dependent
-      # settings (ssldir, cadir) taken into account.
+      # Resolve settings from default values, with any overrides for the
+      # specific settings or their dependent settings (ssldir, cadir) taken into account.
       def resolve_settings(overrides = {})
         unresolved_setting = /\$[a-z_]+/
 
@@ -78,19 +78,35 @@ module Puppetserver
         cadir = overrides.fetch(:cadir, '$ssldir/ca')
         settings[:cadir] = substitutions['$cadir'] = cadir.sub(unresolved_setting, substitutions)
 
-        settings[:cacert] = overrides.fetch(:cacert, '$cadir/ca_crt.pem')
-        settings[:cakey] = overrides.fetch(:cakey, '$cadir/ca_key.pem')
-        settings[:cacrl] = overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
-        settings[:serial] = overrides.fetch(:serial, '$cadir/serial')
+        # Note the call to hostname below, (tbd from Justin's code)
+        settings[:certname] = substitutions['$certname'] = overrides.fetch(:certname, `hostname`.chomp)
+
+        settings[:ca_name] =  overrides.fetch(:ca_name, 'Puppet CA: $certname')
+        settings[:root_ca_name] = overrides.fetch(:root_ca_name, "Puppet Root CA: #{SecureRandom.hex(7)}")
+
+        unmunged_ca_ttl =  overrides.fetch(:ca_ttl, '15y')
+        ttl_setting = Puppetserver::Settings::TTLSetting.new(:ca_ttl, unmunged_ca_ttl)
+        if ttl_setting.errors
+          ttl_setting.errors.each { |error| @errors << error }
+        end
+
+        settings[:ca_ttl] =         ttl_setting.munged_value
+        settings[:keylength] =      overrides.fetch(:keylength, 4096)
+        settings[:cacert] =         overrides.fetch(:cacert, '$cadir/ca_crt.pem')
+        settings[:cakey] =          overrides.fetch(:cakey, '$cadir/ca_key.pem')
+        settings[:rootkey] =        overrides.fetch(:rootkey, '$cadir/root_key.pem')
+        settings[:cacrl] =          overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
+        settings[:serial] =         overrides.fetch(:serial, '$cadir/serial')
         settings[:cert_inventory] = overrides.fetch(:cert_inventory, '$cadir/inventory.txt')
 
         settings.each_pair do |key, value|
-          settings[key] = value.sub(unresolved_setting, substitutions)
+          next if value.is_a?Integer
+          settings[key] = value.gsub(unresolved_setting, substitutions)
 
           if match = settings[key].match(unresolved_setting)
             @errors << "Could not parse #{match[0]} in #{value}, " +
                        'valid settings to be interpolated are ' +
-                       '$ssldir or $cadir'
+                       '$ssldir, $cadir, or $certname'
           end
         end
 
