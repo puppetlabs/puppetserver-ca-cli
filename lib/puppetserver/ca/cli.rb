@@ -1,6 +1,7 @@
 require 'optparse'
 require 'puppetserver/ca/version'
 require 'puppetserver/ca/logger'
+require 'puppetserver/ca/clean_action'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
 require 'puppetserver/ca/revoke_action'
@@ -18,6 +19,7 @@ Puppet Server's built-in Certificate Authority
 BANNER
 
       VALID_ACTIONS = {
+        'clean'    => CleanAction,
         'import'   => ImportAction,
         'generate' => GenerateAction,
         'revoke'   => RevokeAction,
