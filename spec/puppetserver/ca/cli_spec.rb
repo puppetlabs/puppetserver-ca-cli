@@ -21,6 +21,12 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage: puppetserver ca <action> .*Display this general help output.*/m
   end
 
+  describe 'the revoke action' do
+    include_examples 'basic cli args',
+      'revoke',
+      /.*Usage:.* puppetserver ca revoke.*instructs the CA to revoke.*/m
+  end
+
   describe 'the import action' do
     let(:usage) do
       /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m

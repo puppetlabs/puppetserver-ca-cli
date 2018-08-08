@@ -1,4 +1,5 @@
 require 'puppetserver/ca/config_utils'
+require 'puppetserver/settings/ttl_setting'
 require 'securerandom'
 
 module Puppetserver
@@ -50,6 +51,8 @@ module Puppetserver
           results = parse_text(File.read(@config_path))
         end
 
+        @certname = run('hostname').chomp
+
         results ||= {}
         results[:main] ||= {}
         results[:master] ||= {}
@@ -75,11 +78,18 @@ module Puppetserver
         ssldir = overrides.fetch(:ssldir, '$confdir/ssl')
         settings[:ssldir] = substitutions['$ssldir'] = ssldir.sub('$confdir', confdir)
 
+        certdir = overrides.fetch(:certdir, '$ssldir/certs')
+        settings[:certdir] = substitutions['$certdir'] = certdir.sub(unresolved_setting, substitutions)
+
         cadir = overrides.fetch(:cadir, '$ssldir/ca')
         settings[:cadir] = substitutions['$cadir'] = cadir.sub(unresolved_setting, substitutions)
 
-        # Note the call to hostname below, (tbd from Justin's code)
-        settings[:certname] = substitutions['$certname'] = overrides.fetch(:certname, `hostname`.chomp)
+        settings[:certname] = substitutions['$certname'] = overrides.fetch(:certname, @certname)
+
+        server = overrides.fetch(:server, '$certname')
+        settings[:server] = substitutions['$server'] = server.sub(unresolved_setting, substitutions)
+
+        settings[:masterport] = substitutions['$masterport'] = overrides.fetch(:masterport, '8140')
 
         settings[:ca_name] =  overrides.fetch(:ca_name, 'Puppet CA: $certname')
         settings[:root_ca_name] = overrides.fetch(:root_ca_name, "Puppet Root CA: #{SecureRandom.hex(7)}")
@@ -98,9 +108,15 @@ module Puppetserver
         settings[:cacrl] =          overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
         settings[:serial] =         overrides.fetch(:serial, '$cadir/serial')
         settings[:cert_inventory] = overrides.fetch(:cert_inventory, '$cadir/inventory.txt')
+        settings[:ca_server] =      overrides.fetch(:ca_server, '$server')
+        settings[:ca_port] =        overrides.fetch(:ca_port, '$masterport')
+        settings[:localcacert] =    overrides.fetch(:localcacert, '$certdir/ca.pem')
+        settings[:hostcert] =       overrides.fetch(:hostcert, '$certdir/$certname.pem')
+        settings[:hostcrl] =        overrides.fetch(:hostcrl, '$ssldir/crl.pem')
 
         settings.each_pair do |key, value|
-          next if value.is_a?Integer
+          next if value.is_a? Integer
+
           settings[key] = value.gsub(unresolved_setting, substitutions)
 
           if match = settings[key].match(unresolved_setting)
@@ -142,6 +158,10 @@ module Puppetserver
 
       def explicitly_given_config_file_or_default_config_exists?
         !@using_default_location || File.exist?(@config_path)
+      end
+
+      def run(command)
+        %x( #{command} )
       end
     end
   end

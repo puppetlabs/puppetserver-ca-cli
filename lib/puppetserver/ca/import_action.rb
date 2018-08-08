@@ -1,5 +1,5 @@
 require 'optparse'
-require 'puppetserver/utils/file_utils'
+require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/puppet_config'
 

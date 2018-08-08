@@ -1,6 +1,6 @@
 require 'optparse'
 require 'openssl'
-require 'puppetserver/utils/file_utils'
+require 'puppetserver/utils/file_utilities'
 require 'puppetserver/settings/ttl_setting'
 
 module Puppetserver
