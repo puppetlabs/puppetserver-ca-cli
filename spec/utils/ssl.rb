@@ -68,12 +68,14 @@ module Utils
     end
 
     # With cadir setting saying to save all the stuff to a tempdir :)
-    def with_temp_cadir(tmpdir, &block)
+    def with_temp_dirs(tmpdir, &block)
       fixtures_dir = File.join(tmpdir, 'fixtures')
       ca_dir = File.join(tmpdir, 'ca')
+      ssl_dir = File.join(tmpdir, 'ssl')
 
       FileUtils.mkdir_p fixtures_dir
       FileUtils.mkdir_p ca_dir
+      FileUtils.mkdir_p ssl_dir
 
       config_file = File.join(fixtures_dir, 'puppet.conf')
 
@@ -81,6 +83,7 @@ module Utils
         f.puts <<-CONF
         [master]
           cadir = #{ca_dir}
+          ssldir = #{ssl_dir}
         CONF
       end
       block.call(config_file)

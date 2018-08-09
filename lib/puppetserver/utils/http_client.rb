@@ -45,6 +45,13 @@ module Puppetserver
           @url = url_struct
         end
 
+        def get(url_overide = nil)
+          url = url_overide || @url
+
+          request = Net::HTTP::Get.new(url.to_uri, HEADERS)
+          result = @conn.request(request)
+        end
+
         def put(body, url_override = nil)
           url = url_override || @url
 
@@ -53,13 +60,6 @@ module Puppetserver
           result = @conn.request(request)
 
           Result.new(result.code, result.body)
-        end
-
-        def get(url_overide = nil)
-          url = url_overide || @url
-
-          request = Net::HTTP::Get.new(url.to_uri)
-          result = @conn.request(request)
         end
 
         def delete(url_override = nil)
