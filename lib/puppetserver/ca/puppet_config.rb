@@ -113,9 +113,10 @@ module Puppetserver
         settings[:localcacert] =    overrides.fetch(:localcacert, '$certdir/ca.pem')
         settings[:hostcert] =       overrides.fetch(:hostcert, '$certdir/$certname.pem')
         settings[:hostcrl] =        overrides.fetch(:hostcrl, '$ssldir/crl.pem')
+        settings[:certificate_revocation] = parse_crl_usage(overrides.fetch(:certificate_revocation, 'true'))
 
         settings.each_pair do |key, value|
-          next if value.is_a? Integer
+          next unless value.is_a? String
 
           settings[key] = value.gsub(unresolved_setting, substitutions)
 
@@ -162,6 +163,17 @@ module Puppetserver
 
       def run(command)
         %x( #{command} )
+      end
+
+      def parse_crl_usage(setting)
+        case setting.to_s
+        when 'true', 'chain'
+          :chain
+        when 'leaf'
+          :leaf
+        when 'false'
+          :ignore
+        end
       end
     end
   end
