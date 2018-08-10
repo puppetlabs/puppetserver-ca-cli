@@ -34,8 +34,6 @@ module Puppetserver
                         &request)
       end
 
-
-
       # Helper class that wraps a Net::HTTP connection, a HttpUtilities::URL
       # and defines methods named after HTTP verbs that are called on the
       # saved connection, returning a Result.

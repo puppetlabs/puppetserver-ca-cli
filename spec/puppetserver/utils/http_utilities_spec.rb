@@ -26,7 +26,6 @@ RSpec.describe Puppetserver::Utils::HttpUtilities do
       hostcrl = File.join(tmpdir, 'hostcrl.pem')
       hostcert = File.join(tmpdir, 'hostcert.pem')
 
-
       settings = {
         ca_ttl: (5 * 365 * 24 * 60 * 60),
         keylength: 2048,

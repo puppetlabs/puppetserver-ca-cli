@@ -74,7 +74,6 @@ module Puppetserver
         fqdn.chomp('.')
       end
 
-
       # Resolve settings from default values, with any overrides for the
       # specific settings or their dependent settings (ssldir, cadir) taken into account.
       def resolve_settings(overrides = {})
