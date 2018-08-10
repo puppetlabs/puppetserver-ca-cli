@@ -4,6 +4,8 @@ require 'puppetserver/ca/logger'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
 require 'puppetserver/ca/revoke_action'
+require 'puppetserver/ca/sign_action'
+require 'puppetserver/ca/utils'
 
 module Puppetserver
   module Ca
@@ -18,7 +20,8 @@ BANNER
       VALID_ACTIONS = {
         'import'   => ImportAction,
         'generate' => GenerateAction,
-        'revoke'   => RevokeAction
+        'revoke'   => RevokeAction,
+        'sign'     => SignAction
       }
 
       ACTION_LIST = "\nAvailable Actions:\n" +
@@ -94,19 +97,9 @@ BANNER
 
         end
 
-        unparsed, nonopts = [], []
+        all,_,_,_ = Utils.parse_without_raising(general_parser, inputs)
 
-        begin
-          general_parser.order!(inputs) do |nonopt|
-            nonopts << nonopt
-          end
-        rescue OptionParser::InvalidOption => e
-          unparsed += e.args
-          unparsed << inputs.shift unless inputs.first =~ /^-{1,2}/
-          retry
-        end
-
-        return general_parser, parsed, nonopts + unparsed
+        return general_parser, parsed, all
       end
     end
   end
