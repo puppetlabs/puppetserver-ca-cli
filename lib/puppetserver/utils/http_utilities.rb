@@ -23,8 +23,8 @@ module Puppetserver
       # have HTTP verbs defined on it that take a body (and optional
       # overrides). Returns whatever the block given returned.
       def self.with_connection(url, settings, &block)
-        store = make_store(settings[:cacert],
-                           settings[:hostcert],
+        store = make_store(settings[:localcacert],
+                           settings[:certificate_revocation],
                            settings[:hostcrl])
 
         request = ->(conn) { block.call(Connection.new(conn, url)) }
@@ -33,9 +33,6 @@ module Puppetserver
                         use_ssl: true, cert_store: store,
                         &request)
       end
-
-
-    private
 
       # Helper class that wraps a Net::HTTP connection, a HttpUtilities::URL
       # and defines methods named after HTTP verbs that are called on the
@@ -74,11 +71,24 @@ module Puppetserver
               end
             end
 
-      def self.make_store(cacert, cert, crl)
+      def self.make_store(bundle, crl_usage, crls = nil)
         store = OpenSSL::X509::Store.new
-        store.add_file(cacert)
-        store.add_file(cert)
-        store.add_file(crl)
+        store.purpose = OpenSSL::X509::PURPOSE_ANY
+        store.add_file(bundle)
+
+        if crl_usage != :ignore
+
+          flags = OpenSSL::X509::V_FLAG_CRL_CHECK
+          if crl_usage == :chain
+            flags |= OpenSSL::X509::V_FLAG_CRL_CHECK_ALL
+          end
+
+          store.flags = flags
+          delimiter = /-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m
+          File.read(crls).scan(delimiter).each do |crl|
+            store.add_crl(OpenSSL::X509::CRL.new(crl))
+          end
+        end
 
         store
       end
