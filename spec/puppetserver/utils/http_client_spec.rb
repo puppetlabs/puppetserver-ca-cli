@@ -1,14 +1,12 @@
 require 'spec_helper'
-require 'puppetserver/utils/http_utilities'
+require 'puppetserver/utils/http_client'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/generate_action'
 require 'utils/ssl'
 require 'fileutils'
 
-RSpec.describe Puppetserver::Utils::HttpUtilities do
+RSpec.describe Puppetserver::Utils::HttpClient do
   include Utils::SSL
-
-  subject { Puppetserver::Utils::HttpUtilities }
 
   it 'creates a store that can validate connections to CA' do
     stdout = StringIO.new
@@ -53,7 +51,10 @@ RSpec.describe Puppetserver::Utils::HttpUtilities do
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      store = subject.make_store(settings[:localcacert], :chain, settings[:hostcrl])
+      client = Puppetserver::Utils::HttpClient.new(settings[:localcacert],
+                                                   :chain,
+                                                   settings[:hostcrl])
+      store = client.store
       hostcert = OpenSSL::X509::Certificate.new(File.read(settings[:hostcert]))
       cacert = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
 

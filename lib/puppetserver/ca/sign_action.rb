@@ -1,5 +1,5 @@
 require 'puppetserver/ca/utils'
-require 'puppetserver/utils/http_utilities'
+require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/puppet_config'
 require 'optparse'
@@ -76,19 +76,30 @@ Options:
         return success ? 0 : 1
       end
 
+      def http_client(settings)
+        @client ||= HttpClient.new(settings[:localcacert],
+                                   settings[:certificate_revocation],
+                                   settings[:hostcrl])
+      end
+
       def get_certificate_statuses(settings)
-        url = HttpUtilities.make_ca_url(settings[:ca_server], settings[:ca_port],
-                                        'certificate_statuses', 'any_key')
-        HttpUtilities.with_connection(url, settings) do |connection|
+        client = http_client(settings)
+        url = client.make_ca_url(settings[:ca_server],
+                                 settings[:ca_port],
+                                 'certificate_statuses',
+                                 'any_key')
+        client.with_connection(url) do |connection|
           connection.get(url)
         end
       end
 
       def sign_certs(certnames,settings)
-        results = { }
-        url = HttpUtilities.make_ca_url(settings[:ca_server], settings[:ca_port],
-                                        'certificate_status')
-        HttpUtilities.with_connection(url, settings) do |connection|
+        results = {}
+        client = http_client(settings)
+        url = client.make_ca_url(settings[:ca_server],
+                                 settings[:ca_port],
+                                 'certificate_status')
+        client.with_connection(url) do |connection|
           certnames.each do |certname|
             url.resource_name = certname
             results[certname] = connection.put(BODY, url)
@@ -142,7 +153,7 @@ Options:
             @logger.err 'Error:'
             @logger.err "    When download requested for #{result.inspect}"
             @logger.err "    code: #{result.code}"
-            @logger.err "    body: #{result.body_to_s}" if result.body
+            @logger.err "    body: #{result.body.to_s}" if result.body
             success = false
           end
         end

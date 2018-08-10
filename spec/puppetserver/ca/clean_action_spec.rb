@@ -2,7 +2,7 @@ require 'spec_helper'
 
 require 'puppetserver/ca/clean_action'
 require 'puppetserver/ca/logger'
-require 'puppetserver/utils/http_utilities'
+require 'puppetserver/utils/http_client'
 
 RSpec.describe Puppetserver::Ca::CleanAction do
   let(:stdout) { StringIO.new }
@@ -56,8 +56,10 @@ RSpec.describe Puppetserver::Ca::CleanAction do
     let(:connection) { double }
 
     before do
-      allow(Puppetserver::Utils::HttpUtilities).
+      allow_any_instance_of(Puppetserver::Utils::HttpClient).
         to receive(:with_connection).and_yield(connection)
+      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+        to receive(:make_store)
     end
 
     it 'logs success and returns zero if revoked and cleaned' do
