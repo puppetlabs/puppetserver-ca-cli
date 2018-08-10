@@ -1,6 +1,7 @@
 require 'puppetserver/ca/config_utils'
 require 'puppetserver/settings/ttl_setting'
 require 'securerandom'
+require 'facter'
 
 module Puppetserver
   module Ca
@@ -51,7 +52,7 @@ module Puppetserver
           results = parse_text(File.read(@config_path))
         end
 
-        @certname = run('hostname').chomp
+        @certname = default_certname
 
         results ||= {}
         results[:main] ||= {}
@@ -61,6 +62,18 @@ module Puppetserver
 
         @settings = resolve_settings(overrides).freeze
       end
+
+      def default_certname
+        hostname = Facter.value(:hostname)
+        domain = Facter.value(:domain)
+        if domain and domain != ''
+          fqdn = [hostname, domain].join('.')
+        else
+          fqdn = hostname
+        end
+        fqdn.chomp('.')
+      end
+
 
       # Resolve settings from default values, with any overrides for the
       # specific settings or their dependent settings (ssldir, cadir) taken into account.
