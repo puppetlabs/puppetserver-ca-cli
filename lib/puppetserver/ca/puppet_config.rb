@@ -129,6 +129,8 @@ module Puppetserver
         settings[:publickeydir] =   overrides.fetch(:publickeydir, '$ssldir/public_keys')
         settings[:certificate_revocation] = parse_crl_usage(overrides.fetch(:certificate_revocation, 'true'))
 
+        settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, '')
+
         settings.each_pair do |key, value|
           next unless value.is_a? String
 

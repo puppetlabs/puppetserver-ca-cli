@@ -37,6 +37,14 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage.* puppetserver ca sign.*Display this command specific help output.*/m
   end
 
+  describe 'the generate action' do
+    let(:usage) { /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m }
+
+    include_examples 'basic cli args',
+      'generate',
+      /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m
+  end
+
   describe 'the import action' do
     let(:usage) do
       /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
@@ -53,7 +61,6 @@ RSpec.describe Puppetserver::Ca::Cli do
       expect(stderr.string).to match(usage)
       expect(exit_code).to be 1
     end
-
 
     it 'prints the help output & returns 1 if no input is given' do
       exit_code = Puppetserver::Ca::Cli.run(['import'], stdout, stderr)
@@ -371,45 +378,6 @@ RSpec.describe Puppetserver::Ca::Cli do
       expect(stderr.string).to match(/Error.*--hello/m)
       expect(stderr.string).to match(usage)
       expect(exit_code).to eq(1)
-    end
-  end
-
-  describe 'the generate action' do
-    let(:usage) { /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m }
-
-    include_examples 'basic cli args',
-      'generate',
-      /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m
-
-    it 'prints the help output & returns 1 if invalid flags are given' do
-      exit_code = Puppetserver::Ca::Cli.run(['generate', '--hello'], stdout, stderr)
-      expect(stderr.string).to match(/Error.*--hello/m)
-      expect(stderr.string).to match(usage)
-      expect(exit_code).to eq(1)
-    end
-
-    it 'does not print the help output if called correctly' do
-      Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = Puppetserver::Ca::Cli.run(['generate', '--config', conf], stdout, stderr)
-          expect(stderr.string).to be_empty
-          expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
-          expect(exit_code).to eq(0)
-        end
-      end
-    end
-
-    it 'generates a bundle ca_crt file, ca_key, int_key, and ca_crl file' do
-      Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = Puppetserver::Ca::Cli.run(['generate', '--config', conf], stdout, stderr)
-          expect(exit_code).to eq(0)
-          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
-          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
-          expect(File.exist?(File.join(tmpdir, 'ca', 'root_key.pem'))).to be true
-          expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
-        end
-      end
     end
   end
 end

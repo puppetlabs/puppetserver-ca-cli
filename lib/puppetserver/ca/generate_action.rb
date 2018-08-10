@@ -3,6 +3,8 @@ require 'openssl'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/host'
 require 'puppetserver/utils/signing_digest'
+require 'puppetserver/settings/ttl_setting'
+require 'facter'
 
 module Puppetserver
   module Ca
@@ -28,10 +30,17 @@ module Puppetserver
 Usage:
   puppetserver ca generate [--help]
   puppetserver ca generate [--config PATH]
+  puppetserver ca generate [--subject-alt-names ALTNAME[,ADDLALTNAME]]
 
 Description:
 Generate a root and intermediate signing CA for Puppet Server
 and store generated CA keys, certs, and crls on disk.
+
+The `--subject-alt-names` flag can be used to add SANs to the CA
+signing cert. Multiple names can be listed as a comma separated
+string. These can be either DNS names or IP addresses, differentiated
+by prefixes: `DNS:foo.bar.com,IP:123.456.789`. Names with no prefix
+will be treated as DNS names.
 
 To determine the target location, the default puppet.conf
 is consulted for custom values. If using a custom puppet.conf
@@ -60,9 +69,11 @@ BANNER
         signer = SigningDigest.new
         return 1 if Utils.handle_errors(@logger, signer.errors)
 
+        subject_alt_names = choose_alt_names(input['subject_alt_names'], puppet.settings[:subject_alt_names])
+
         # Generate root and intermediate ca and put all the certificates, crls,
         # and keys where they should go.
-        generate_root_and_intermediate_ca(puppet.settings, signer.digest)
+        generate_root_and_intermediate_ca(puppet.settings, signer.digest, subject_alt_names)
 
         # Puppet's internal CA expects these file to exist.
         FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
@@ -72,7 +83,7 @@ BANNER
         return 0
       end
 
-      def generate_root_and_intermediate_ca(settings, signing_digest)
+      def generate_root_and_intermediate_ca(settings, signing_digest, subject_alt_names = '')
         valid_until = Time.now + settings[:ca_ttl]
         host = Puppetserver::Ca::Host.new(signing_digest)
 
@@ -82,7 +93,7 @@ BANNER
 
         int_key = host.create_private_key(settings[:keylength])
         int_csr = host.create_csr(settings[:ca_name], int_key)
-        int_cert = sign_intermediate(root_key, root_cert, int_csr, valid_until, signing_digest)
+        int_cert = sign_intermediate(root_key, root_cert, int_csr, valid_until, signing_digest, subject_alt_names)
         int_crl = create_crl_for(int_cert, int_key, valid_until, signing_digest)
 
         FileUtilities.ensure_dir(settings[:cadir])
@@ -149,7 +160,7 @@ BANNER
         crl
       end
 
-      def sign_intermediate(ca_key, ca_cert, csr, valid_until, signing_digest)
+      def sign_intermediate(ca_key, ca_cert, csr, valid_until, signing_digest, subject_alt_names)
         cert = OpenSSL::X509::Certificate.new
 
         cert.public_key = csr.public_key
@@ -166,9 +177,38 @@ BANNER
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
         end
+
+        if !subject_alt_names.empty?
+          alt_names_ext = ef.create_extension("subjectAltName", subject_alt_names, false)
+          cert.add_extension(alt_names_ext)
+        end
+
         cert.sign(ca_key, signing_digest)
 
         cert
+      end
+
+      def choose_alt_names(cli_alt_names, settings_alt_names)
+        if !cli_alt_names.empty?
+          sans = cli_alt_names
+        elsif !settings_alt_names.empty?
+          sans = settings_alt_names
+        else
+          sans = "puppet, #{Facter.value(:fqdn)}, puppet.#{Facter.value(:domain)}"
+        end
+        munge_alt_names(sans)
+      end
+
+      def munge_alt_names(names)
+        raw_names = names.split(/\s*,\s*/).map(&:strip)
+        munged_names = raw_names.map do |name|
+          # Prepend the DNS tag if no tag was specified
+          if !name.start_with?("IP:") && !name.start_with?("DNS:")
+            "DNS:#{name}"
+          else
+            name
+          end
+        end.sort.uniq.join(", ")
       end
 
       def parse(cli_args)
@@ -212,6 +252,7 @@ BANNER
       end
 
       def self.parser(parsed = {})
+        parsed['subject_alt_names'] = ''
         OptionParser.new do |opts|
           opts.banner = BANNER
           opts.on('--help', 'Display this generate specific help output') do |help|
@@ -219,6 +260,10 @@ BANNER
           end
           opts.on('--config CONF', 'Path to puppet.conf') do |conf|
             parsed['config'] = conf
+          end
+          opts.on('--subject-alt-names NAMES',
+                  'Subject alternative names for the CA signing cert') do |sans|
+            parsed['subject_alt_names'] = sans || ''
           end
         end
       end
