@@ -50,6 +50,8 @@ module Puppetserver
 
           request = Net::HTTP::Get.new(url.to_uri, HEADERS)
           result = @conn.request(request)
+
+          Result.new(result.code, result.body)
         end
 
         def put(body, url_override = nil)

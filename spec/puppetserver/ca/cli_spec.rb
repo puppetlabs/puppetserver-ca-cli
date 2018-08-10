@@ -37,6 +37,16 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage.* puppetserver ca sign.*Display this command specific help output.*/m
   end
 
+  describe 'the list action' do
+    let (:usage) do
+      /.*Usage:.* puppetserver ca list.* Display this command specific help output/m
+    end
+
+    include_examples 'basic cli args',
+      'list',
+       /.*Usage:.* puppetserver ca list.* Display this command specific help output/m
+  end
+
   describe 'the import action' do
     let(:usage) do
       /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
