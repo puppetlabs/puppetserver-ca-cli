@@ -1,11 +1,14 @@
 require 'optparse'
 require 'openssl'
 require 'puppetserver/utils/file_utilities'
-require 'puppetserver/settings/ttl_setting'
+require 'puppetserver/ca/host'
+require 'puppetserver/utils/signing_digest'
 
 module Puppetserver
   module Ca
     class GenerateAction
+      include Puppetserver::Utils
+
       CA_EXTENSIONS = [
         ["basicConstraints", "CA:TRUE", true],
         ["keyUsage", "keyCertSign, cRLSign", true],
@@ -33,6 +36,7 @@ and store generated CA keys, certs, and crls on disk.
 To determine the target location, the default puppet.conf
 is consulted for custom values. If using a custom puppet.conf
 provide it with the --config flag
+
 Options:
 BANNER
 
@@ -44,54 +48,44 @@ BANNER
         # Validate config_path provided
         config_path = input['config']
         if config_path
-          errors = Puppetserver::Utils::FileUtilities.validate_file_paths(config_path)
-          return 1 if log_possible_errors(errors)
+          errors = FileUtilities.validate_file_paths(config_path)
+          return 1 if Utils.handle_errors(@logger, errors)
         end
 
         # Load, resolve, and validate puppet config settings
         puppet = PuppetConfig.parse(config_path)
-        return 1 if log_possible_errors(puppet.errors)
+        return 1 if Utils.handle_errors(@logger, puppet.errors)
 
         # Load most secure signing digest we can for cers/crl/csr signing.
-        signing_digest = default_signing_digest
-        return 1 unless signing_digest
+        signer = SigningDigest.new
+        return 1 if Utils.handle_errors(@logger, signer.errors)
 
         # Generate root and intermediate ca and put all the certificates, crls,
         # and keys where they should go.
-        generate_root_and_intermediate_ca(puppet.settings, signing_digest)
+        generate_root_and_intermediate_ca(puppet.settings, signer.digest)
 
         # Puppet's internal CA expects these file to exist.
-        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
-        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:cert_inventory], "", 0640)
+        FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
+        FileUtilities.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
         @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
         return 0
       end
 
-      def log_possible_errors(maybe_errors)
-        errors = Array(maybe_errors).compact
-        unless errors.empty?
-          @logger.err "Error:"
-          errors.each do |message|
-            @logger.err "    #{message}"
-          end
-          return true
-        end
-      end
-
       def generate_root_and_intermediate_ca(settings, signing_digest)
         valid_until = Time.now + settings[:ca_ttl]
+        host = Puppetserver::Ca::Host.new(signing_digest)
 
-        root_key = create_private_key(settings[:keylength])
+        root_key = host.create_private_key(settings[:keylength])
         root_cert = self_signed_ca(root_key, settings[:root_ca_name], valid_until, signing_digest)
         root_crl = create_crl_for(root_cert, root_key, valid_until, signing_digest)
 
-        int_key = create_private_key(settings[:keylength])
-        int_csr = create_csr(int_key, settings[:ca_name], signing_digest)
+        int_key = host.create_private_key(settings[:keylength])
+        int_csr = host.create_csr(settings[:ca_name], int_key)
         int_cert = sign_intermediate(root_key, root_cert, int_csr, valid_until, signing_digest)
         int_crl = create_crl_for(int_cert, int_key, valid_until, signing_digest)
 
-        Puppetserver::Utils::FileUtilities.ensure_dir(settings[:cadir])
+        FileUtilities.ensure_dir(settings[:cadir])
 
         file_properties = [
           [settings[:cacert], [int_cert, root_cert]],
@@ -102,30 +96,7 @@ BANNER
 
         file_properties.each do |location, content|
           @logger.warn "#{location} exists, overwriting" if File.exist?(location)
-          Puppetserver::Utils::FileUtilities.write_file(location, content, 0640)
-        end
-      end
-
-      def create_private_key(length)
-        OpenSSL::PKey::RSA.new(length)
-      end
-
-      # Attempts several different digests, using the most secure one it can load.
-      # Returns nil if no signing digest could be found.
-      def default_signing_digest
-        if OpenSSL::Digest.const_defined?('SHA256')
-          OpenSSL::Digest::SHA256.new
-        elsif OpenSSL::Digest.const_defined?('SHA1')
-          OpenSSL::Digest::SHA1.new
-        elsif OpenSSL::Digest.const_defined?('SHA512')
-          OpenSSL::Digest::SHA512.new
-        elsif OpenSSL::Digest.const_defined?('SHA384')
-          OpenSSL::Digest::SHA384.new
-        elsif OpenSSL::Digest.const_defined?('SHA224')
-          OpenSSL::Digest::SHA224.new
-        else
-          @logger.err "Error: No FIPS 140-2 compliant digest algorithm in OpenSSL::Digest"
-          nil
+          FileUtilities.write_file(location, content, 0640)
         end
       end
 
@@ -176,17 +147,6 @@ BANNER
         crl.sign(ca_key, signing_digest)
 
         crl
-      end
-
-      def create_csr(key, name, signing_digest)
-        csr = OpenSSL::X509::Request.new
-
-        csr.public_key = key.public_key
-        csr.subject = OpenSSL::X509::Name.new([["CN", name]])
-        csr.version = 2
-        csr.sign(key, signing_digest)
-
-        csr
       end
 
       def sign_intermediate(ca_key, ca_cert, csr, valid_until, signing_digest)

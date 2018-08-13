@@ -125,6 +125,8 @@ module Puppetserver
         settings[:localcacert] =    overrides.fetch(:localcacert, '$certdir/ca.pem')
         settings[:hostcert] =       overrides.fetch(:hostcert, '$certdir/$certname.pem')
         settings[:hostcrl] =        overrides.fetch(:hostcrl, '$ssldir/crl.pem')
+        settings[:privatekeydir] =  overrides.fetch(:privatekeydir, '$ssldir/private_keys')
+        settings[:publickeydir] =   overrides.fetch(:publickeydir, '$ssldir/public_keys')
         settings[:certificate_revocation] = parse_crl_usage(overrides.fetch(:certificate_revocation, 'true'))
 
         settings.each_pair do |key, value|

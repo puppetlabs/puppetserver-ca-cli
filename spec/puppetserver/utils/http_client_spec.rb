@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'puppetserver/utils/http_client'
+require 'puppetserver/utils/signing_digest'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/generate_action'
 require 'utils/ssl'
@@ -39,8 +40,8 @@ RSpec.describe Puppetserver::Utils::HttpClient do
         hostcert: hostcert
       }
 
-      digest = generate_action.default_signing_digest
-      generate_action.generate_root_and_intermediate_ca(settings, digest)
+      signer = Puppetserver::Utils::SigningDigest.new
+      generate_action.generate_root_and_intermediate_ca(settings, signer.digest)
 
       hostkey = OpenSSL::PKey::RSA.new(2048)
       cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))

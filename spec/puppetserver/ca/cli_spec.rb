@@ -359,6 +359,21 @@ RSpec.describe Puppetserver::Ca::Cli do
     end
   end
 
+  describe 'the create action' do
+    let(:usage) { /.*Usage:.* puppetserver ca create.*Display this create specific help output.*/m }
+
+    include_examples 'basic cli args',
+      'create',
+      /.*Usage:.* puppetserver ca create.*Display this create specific help output.*/m
+
+    it 'prints the help output & returns 1 if invalid flags are given' do
+      exit_code = Puppetserver::Ca::Cli.run(['create', '--hello', '--certname', "amy.net"], stdout, stderr)
+      expect(stderr.string).to match(/Error.*--hello/m)
+      expect(stderr.string).to match(usage)
+      expect(exit_code).to eq(1)
+    end
+  end
+
   describe 'the generate action' do
     let(:usage) { /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m }
 
@@ -373,18 +388,9 @@ RSpec.describe Puppetserver::Ca::Cli do
       expect(exit_code).to eq(1)
     end
 
-    it 'does not require the config option' do
-      Dir.mktmpdir do |tmpdir|
-        with_temp_cadir tmpdir do
-          exit_code = Puppetserver::Ca::Cli.run(['generate'], stdout, stderr)
-          expect(exit_code).to eq(0)
-        end
-      end
-    end
-
     it 'does not print the help output if called correctly' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_cadir tmpdir do |conf|
+        with_temp_dirs tmpdir do |conf|
           exit_code = Puppetserver::Ca::Cli.run(['generate', '--config', conf], stdout, stderr)
           expect(stderr.string).to be_empty
           expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
@@ -395,7 +401,7 @@ RSpec.describe Puppetserver::Ca::Cli do
 
     it 'generates a bundle ca_crt file, ca_key, int_key, and ca_crl file' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_cadir tmpdir do |conf|
+        with_temp_dirs tmpdir do |conf|
           exit_code = Puppetserver::Ca::Cli.run(['generate', '--config', conf], stdout, stderr)
           expect(exit_code).to eq(0)
           expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
