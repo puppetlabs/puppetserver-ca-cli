@@ -4,7 +4,7 @@ require 'net/https'
 module Puppetserver
   module Utils
     # Utilities for doing HTTPS against the CA that wraps Net::HTTP constructs
-    module HttpUtilities
+    class HttpClient
 
       HEADERS = {
         'User-Agent'   => 'PuppetserverCaCli',
@@ -12,29 +12,31 @@ module Puppetserver
         'Accept'       => 'application/json'
       }
 
+      attr_reader :store
+
+      def initialize(localcacert, crl_usage, hostcrl)
+        @store = make_store(localcacert, crl_usage, hostcrl)
+      end
+
       # Returns a URI-like wrapper around CA specific urls
-      def self.make_ca_url(host, port, resource_type = nil, certname = nil)
+      def make_ca_url(host, port, resource_type = nil, certname = nil)
         URL.new('https', host, port, 'puppet-ca', 'v1', resource_type, certname)
       end
 
-      # Takes an instance URL (defined lower in the file), a
-      # PuppetConfig#settings hash and creates a connection, the given block
-      # is passed our own Connection object. The Connection object should
-      # have HTTP verbs defined on it that take a body (and optional
-      # overrides). Returns whatever the block given returned.
-      def self.with_connection(url, settings, &block)
-        store = make_store(settings[:localcacert],
-                           settings[:certificate_revocation],
-                           settings[:hostcrl])
-
+      # Takes an instance URL (defined lower in the file), and creates a
+      # connection. The given block is passed our own Connection object.
+      # The Connection object should have HTTP verbs defined on it that take
+      # a body (and optional overrides). Returns whatever the block given returned.
+      def with_connection(url, &block)
         request = ->(conn) { block.call(Connection.new(conn, url)) }
 
         Net::HTTP.start(url.host, url.port,
-                        use_ssl: true, cert_store: store,
+                        use_ssl: true, cert_store: @store,
                         &request)
       end
 
-      # Helper class that wraps a Net::HTTP connection, a HttpUtilities::URL
+      private
+      # Helper class that wraps a Net::HTTP connection, a HttpClient::URL
       # and defines methods named after HTTP verbs that are called on the
       # saved connection, returning a Result.
       class Connection
@@ -86,7 +88,7 @@ module Puppetserver
               end
             end
 
-      def self.make_store(bundle, crl_usage, crls = nil)
+      def make_store(bundle, crl_usage, crls = nil)
         store = OpenSSL::X509::Store.new
         store.purpose = OpenSSL::X509::PURPOSE_ANY
         store.add_file(bundle)
@@ -110,4 +112,3 @@ module Puppetserver
     end
   end
 end
-

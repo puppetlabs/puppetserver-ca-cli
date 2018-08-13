@@ -1,5 +1,5 @@
 require 'puppetserver/ca/utils'
-require 'puppetserver/utils/http_utilities'
+require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/puppet_config'
 require 'puppetserver/ca/revoke_action'
@@ -93,11 +93,15 @@ BANNER
       end
 
       def clean_certs(certnames, settings)
-        url = HttpUtilities.make_ca_url(settings[:ca_server],
-                       settings[:ca_port],
-                       'certificate_status')
+        client = HttpClient.new(settings[:localcacert],
+                                settings[:certificate_revocation],
+                                settings[:hostcrl])
 
-        results = HttpUtilities.with_connection(url, settings) do |connection|
+        url = client.make_ca_url(settings[:ca_server],
+                                 settings[:ca_port],
+                                 'certificate_status')
+
+        results = client.with_connection(url) do |connection|
           certnames.map do |certname|
             url.resource_name = certname
             revoke_result = connection.put(RevokeAction::REQUEST_BODY, url)
