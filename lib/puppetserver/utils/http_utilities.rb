@@ -59,6 +59,14 @@ module Puppetserver
           request = Net::HTTP::Get.new(url.to_uri)
           result = @conn.request(request)
         end
+
+        def delete(url_override = nil)
+          url = url_override || @url
+
+          result = @conn.request(Net::HTTP::Delete.new(url.to_uri, HEADERS))
+
+          Result.new(result.code, result.body)
+        end
       end
 
       # Just provide the bits of Net::HTTPResponse we care about
