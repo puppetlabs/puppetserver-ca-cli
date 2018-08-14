@@ -5,6 +5,7 @@ require 'puppetserver/ca/clean_action'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
 require 'puppetserver/ca/revoke_action'
+require 'puppetserver/ca/list_action'
 require 'puppetserver/ca/sign_action'
 require 'puppetserver/ca/utils'
 require 'puppetserver/ca/create_action'
@@ -24,8 +25,9 @@ BANNER
         'create'   => CreateAction,
         'generate' => GenerateAction,
         'import'   => ImportAction,
+        'list'     => ListAction,
         'revoke'   => RevokeAction,
-        'sign'     => SignAction,
+        'sign'     => SignAction
       }
 
       ACTION_LIST = "\nAvailable Actions:\n" +
