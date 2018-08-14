@@ -188,6 +188,12 @@ BANNER
         cert
       end
 
+      # Given any alt names specified on the command line and any loaded from
+      # settings, choose the names with the highest precedence and process them.
+      # Precedence:
+      # 1) Specified on the CLI
+      # 2) Specified in settings
+      # 3) Defaults
       def choose_alt_names(cli_alt_names, settings_alt_names)
         if !cli_alt_names.empty?
           sans = cli_alt_names
