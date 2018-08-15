@@ -14,8 +14,20 @@ module Puppetserver
 
       attr_reader :store
 
-      def initialize(localcacert, crl_usage, hostcrl)
-        @store = make_store(localcacert, crl_usage, hostcrl)
+      def initialize(settings)
+        @store = make_store(settings[:localcacert],
+                            settings[:certificate_revocation],
+                            settings[:hostcrl])
+        @cert = load_cert(settings[:hostcert])
+        @key = load_key(settings[:hostprivkey])
+      end
+
+      def load_cert(cert_path)
+        OpenSSL::X509::Certificate.new(File.read(cert_path))
+      end
+
+      def load_key(key_path)
+        OpenSSL::PKey.read(File.read(key_path))
       end
 
       # Returns a URI-like wrapper around CA specific urls
@@ -32,6 +44,7 @@ module Puppetserver
 
         Net::HTTP.start(url.host, url.port,
                         use_ssl: true, cert_store: @store,
+                        cert: @cert, key: @key,
                         &request)
       end
 
