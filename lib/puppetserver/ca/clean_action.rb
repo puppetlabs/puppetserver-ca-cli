@@ -18,7 +18,7 @@ module Puppetserver
       SUMMARY = 'Clean files from the CA for certificate(s)'
       BANNER = <<-BANNER
 Usage:
-  puppetserver ca clean [--help|--version]
+  puppetserver ca clean [--help]
   puppetserver ca clean [--config] --certname CERTNAME[,ADDLCERTNAME]
 
 Description:
@@ -41,8 +41,8 @@ BANNER
           o.on('--config PUPPET.CONF', 'Custom path to puppet.conf') do |conf|
             parsed['config'] = conf
           end
-          o.on('--help', 'Displays this clean specific help output') do |help|
-            parsed['help'] = help
+          o.on('--help', 'Display this clean specific help output') do |help|
+            parsed['help'] = true
           end
         end
       end

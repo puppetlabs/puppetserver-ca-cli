@@ -18,7 +18,7 @@ module Puppetserver
       SUMMARY = 'Revoke a given certificate'
       BANNER = <<-BANNER
 Usage:
-  puppetserver ca revoke [--help|--version]
+  puppetserver ca revoke [--help]
   puppetserver ca revoke [--config] --certname CERTNAME[,ADDLCERTNAME]
 
 Description:
@@ -40,7 +40,7 @@ BANNER
             parsed['config'] = conf
           end
           o.on('--help', 'Displays this revoke specific help output') do |help|
-            parsed['help'] = help
+            parsed['help'] = true
           end
         end
       end

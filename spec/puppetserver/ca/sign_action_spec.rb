@@ -4,7 +4,7 @@ require 'puppetserver/ca/logger'
 
 RSpec.describe 'Puppetserver::Ca::SignAction' do
   let(:err)    { StringIO.new }
-  let(:out) { StringIO.new }
+  let(:out)    { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, out, err) }
   let(:action) { Puppetserver::Ca::SignAction.new(logger) }
 
