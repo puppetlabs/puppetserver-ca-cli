@@ -58,6 +58,10 @@ RSpec.describe Puppetserver::Ca::RevokeAction do
         to receive(:with_connection).and_yield(connection)
       allow_any_instance_of(Puppetserver::Utils::HttpClient).
         to receive(:make_store)
+      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+        to receive(:load_cert)
+      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+        to receive(:load_key)
     end
 
     it 'logs success and returns zero if revoked' do

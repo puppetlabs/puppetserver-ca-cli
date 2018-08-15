@@ -24,6 +24,7 @@ RSpec.describe Puppetserver::Utils::HttpClient do
       localcacert = File.join(tmpdir, 'localcacert.pem')
       hostcrl = File.join(tmpdir, 'hostcrl.pem')
       hostcert = File.join(tmpdir, 'hostcert.pem')
+      hostprivkey = File.join(tmpdir, 'hostkey.pem')
 
       settings = {
         ca_ttl: (5 * 365 * 24 * 60 * 60),
@@ -37,7 +38,8 @@ RSpec.describe Puppetserver::Utils::HttpClient do
         cacrl: cacrl,
         localcacert: localcacert,
         hostcrl: hostcrl,
-        hostcert: hostcert
+        hostcert: hostcert,
+        hostprivkey: hostprivkey,
       }
 
       signer = Puppetserver::Utils::SigningDigest.new
@@ -48,13 +50,12 @@ RSpec.describe Puppetserver::Utils::HttpClient do
       cacert_content = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
       hostcert_content = create_cert(hostkey, 'foobar', cakey_content, cacert_content)
       File.write(hostcert, hostcert_content)
+      File.write(hostprivkey, hostkey)
 
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      client = Puppetserver::Utils::HttpClient.new(settings[:localcacert],
-                                                   :chain,
-                                                   settings[:hostcrl])
+      client = Puppetserver::Utils::HttpClient.new(settings)
       store = client.store
       hostcert = OpenSSL::X509::Certificate.new(File.read(settings[:hostcert]))
       cacert = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))

@@ -101,9 +101,7 @@ Options:
       end
 
       def http_client(settings)
-        @client ||= HttpClient.new(settings[:localcacert],
-                                   settings[:certificate_revocation],
-                                   settings[:hostcrl])
+        @client ||= HttpClient.new(settings)
       end
 
       def get_certificate_statuses(settings)

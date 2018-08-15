@@ -93,9 +93,7 @@ BANNER
       end
 
       def revoke_certs(certnames, settings)
-        client = HttpClient.new(settings[:localcacert],
-                                settings[:certificate_revocation],
-                                settings[:hostcrl])
+        client = HttpClient.new(settings)
 
         url = client.make_ca_url(settings[:ca_server],
                                  settings[:ca_port],
