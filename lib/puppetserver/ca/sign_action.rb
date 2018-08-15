@@ -16,7 +16,7 @@ module Puppetserver
       SUMMARY = 'Sign a given certificate'
       BANNER = <<-BANNER
 Usage:
-  puppetserver ca sign [--help|--version]
+  puppetserver ca sign [--help]
   puppetserver ca sign [--config] --certname CERTNAME[,CERTNAME]
   puppetserver ca sign  --all
 
@@ -38,9 +38,6 @@ Options:
           end
           opts.on('--help', 'Display this command specific help output') do |help|
             parsed['help'] = true
-          end
-          opts.on('--version', 'Output the version') do |v|
-            parsed['version'] = true
           end
           opts.on('--all', 'Operate on all certnames') do |a|
             parsed['all'] = true
