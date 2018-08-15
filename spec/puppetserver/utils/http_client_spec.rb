@@ -1,10 +1,12 @@
 require 'spec_helper'
+require 'utils/ssl'
+
+require 'fileutils'
+
 require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/signing_digest'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/generate_action'
-require 'utils/ssl'
-require 'fileutils'
 
 RSpec.describe Puppetserver::Utils::HttpClient do
   include Utils::SSL

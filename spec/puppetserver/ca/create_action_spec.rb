@@ -1,6 +1,8 @@
 require 'spec_helper'
-require 'tmpdir'
 require 'utils/ssl'
+
+require 'tmpdir'
+
 require 'puppetserver/ca/create_action'
 require 'puppetserver/ca/logger'
 require 'puppetserver/utils/http_client'
@@ -36,8 +38,14 @@ RSpec.describe Puppetserver::Ca::CreateAction do
   end
 
   describe 'validation' do
+    it 'prints the help output & returns 1 if invalid flags are given' do
+      _, code = subject.parse(['--hello', '--certname', "amy.net"])
+      expect(code).to eq(1)
+      expect(stderr.string).to match(/Error.*--hello/m)
+    end
+
     it 'requires at least one certname' do
-      result, code = subject.parse([])
+      _, code = subject.parse([])
       expect(code).to eq(1)
       expect(stderr.string).to include('one certname is required')
     end
@@ -50,7 +58,7 @@ RSpec.describe Puppetserver::Ca::CreateAction do
     end
 
     it 'requires certnames to be in all lowercase characters' do
-      result, code = subject.parse(['--certname', 'uPperCase.net'])
+      _, code = subject.parse(['--certname', 'uPperCase.net'])
       expect(code).to eq(1)
       expect(stderr.string).to include('Certificate names must be lower case')
     end

@@ -1,4 +1,7 @@
 RSpec.shared_examples 'basic cli args' do |action, usage|
+  let(:stdout) { StringIO.new }
+  let(:stderr) { StringIO.new }
+
   it 'responds to a --help flag' do
     args = [action, '--help'].compact
     exit_code = Puppetserver::Ca::Cli.run(args, stdout, stderr)
