@@ -1,5 +1,4 @@
 require 'puppetserver/ca/config_utils'
-require 'puppetserver/settings/ttl_setting'
 require 'securerandom'
 require 'facter'
 
@@ -9,6 +8,18 @@ module Puppetserver
     # Puppet. Includes a simple ini parser that will ignore Puppet's
     # more complicated conventions.
     class PuppetConfig
+      # How we convert from various units to seconds.
+      TTL_UNITMAP = {
+        # 365 days isn't technically a year, but is sufficient for most purposes
+        "y" => 365 * 24 * 60 * 60,
+        "d" => 24 * 60 * 60,
+        "h" => 60 * 60,
+        "m" => 60,
+        "s" => 1
+      }
+
+      # A regex describing valid formats with groups for capturing the value and units
+      TTL_FORMAT = /^(\d+)(y|d|h|m|s)?$/
 
       include Puppetserver::Ca::ConfigUtils
 
@@ -36,11 +47,12 @@ module Puppetserver
       # Note that Puppet Server runs as the [pe-]puppet user but to
       # start/stop it you must be root.
       def user_specific_conf_dir
-        if running_as_root?
-          '/etc/puppetlabs/puppet'
-        else
-          "#{ENV['HOME']}/.puppetlabs/etc/puppet"
-        end
+        @user_specific_conf_dir ||=
+          if running_as_root?
+            '/etc/puppetlabs/puppet'
+          else
+            "#{ENV['HOME']}/.puppetlabs/etc/puppet"
+          end
       end
 
       def user_specific_conf_file
@@ -52,8 +64,6 @@ module Puppetserver
           results = parse_text(File.read(@config_path))
         end
 
-        @certname = default_certname
-
         results ||= {}
         results[:main] ||= {}
         results[:master] ||= {}
@@ -64,14 +74,15 @@ module Puppetserver
       end
 
       def default_certname
-        hostname = Facter.value(:hostname)
-        domain = Facter.value(:domain)
-        if domain and domain != ''
-          fqdn = [hostname, domain].join('.')
-        else
-          fqdn = hostname
-        end
-        fqdn.chomp('.')
+        @certname ||=
+          hostname = Facter.value(:hostname)
+          domain = Facter.value(:domain)
+          if domain and domain != ''
+            fqdn = [hostname, domain].join('.')
+          else
+            fqdn = hostname
+          end
+          fqdn.chomp('.')
       end
 
       # Resolve settings from default values, with any overrides for the
@@ -84,63 +95,67 @@ module Puppetserver
         substitutions = Hash.new {|h, k| k }
         settings = {}
 
-        confdir = user_specific_conf_dir
-        settings[:confdir] = substitutions['$confdir'] = confdir
+        # Order for base settings here matters!
+        # These need to be evaluated before we can construct their dependent
+        # defaults below
+        base_defaults = [
+          [:confdir, user_specific_conf_dir],
+          [:ssldir,'$confdir/ssl'],
+          [:cadir, '$ssldir/ca'],
+          [:certdir, '$ssldir/certs'],
+          [:certname, default_certname],
+          [:server, '$certname'],
+          [:masterport, '8140'],
+        ]
 
-        ssldir = overrides.fetch(:ssldir, '$confdir/ssl')
-        settings[:ssldir] = substitutions['$ssldir'] = ssldir.sub('$confdir', confdir)
+        dependent_defaults = {
+          :ca_name => 'Puppet CA: $certname',
+          :root_ca_name => "Puppet Root CA: #{SecureRandom.hex(7)}",
+          :keylength => 4096,
+          :cacert => '$cadir/ca_crt.pem',
+          :cakey => '$cadir/ca_key.pem',
+          :rootkey => '$cadir/root_key.pem',
+          :cacrl => '$cadir/ca_crl.pem',
+          :serial => '$cadir/serial',
+          :cert_inventory => '$cadir/inventory.txt',
+          :ca_server => '$server',
+          :ca_port => '$masterport',
+          :localcacert => '$certdir/ca.pem',
+          :hostcert => '$certdir/$certname.pem',
+          :hostcrl => '$ssldir/crl.pem',
+          :privatekeydir => '$ssldir/private_keys',
+          :publickeydir => '$ssldir/public_keys',
+          :ca_ttl => '15y',
+          :certificate_revocation => 'true',
+        }
 
-        certdir = overrides.fetch(:certdir, '$ssldir/certs')
-        settings[:certdir] = substitutions['$certdir'] = certdir.sub(unresolved_setting, substitutions)
-
-        cadir = overrides.fetch(:cadir, '$ssldir/ca')
-        settings[:cadir] = substitutions['$cadir'] = cadir.sub(unresolved_setting, substitutions)
-
-        settings[:certname] = substitutions['$certname'] = overrides.fetch(:certname, @certname)
-
-        server = overrides.fetch(:server, '$certname')
-        settings[:server] = substitutions['$server'] = server.sub(unresolved_setting, substitutions)
-
-        privatekeydir = overrides.fetch(:privatekeydir, '$ssldir/private_keys')
-        settings[:privatekeydir] = substitutions['$privatekeydir'] = privatekeydir.sub(unresolved_setting, substitutions)
-
-        settings[:masterport] = substitutions['$masterport'] = overrides.fetch(:masterport, '8140')
-
-        settings[:ca_name] =  overrides.fetch(:ca_name, 'Puppet CA: $certname')
-        settings[:root_ca_name] = overrides.fetch(:root_ca_name, "Puppet Root CA: #{SecureRandom.hex(7)}")
-
-        unmunged_ca_ttl =  overrides.fetch(:ca_ttl, '15y')
-        ttl_setting = Puppetserver::Settings::TTLSetting.new(:ca_ttl, unmunged_ca_ttl)
-        if ttl_setting.errors
-          ttl_setting.errors.each { |error| @errors << error }
+        # This loops through the base defaults and gives each setting a
+        # default if the value isn't specified in the config file. Default
+        # values given may depend upon the value of a previous base setting,
+        # thus the creation of the substitution hash.
+        base_defaults.each do |setting_name, default_value|
+          substitution_name = '$' + setting_name.to_s
+          setting_value = overrides.fetch(setting_name, default_value)
+          subbed_value = setting_value.sub(unresolved_setting, substitutions)
+          settings[setting_name] = substitutions[substitution_name] = subbed_value
         end
 
-        settings[:ca_ttl] =         ttl_setting.munged_value
-        settings[:keylength] =      overrides.fetch(:keylength, 4096)
-        settings[:cacert] =         overrides.fetch(:cacert, '$cadir/ca_crt.pem')
-        settings[:cakey] =          overrides.fetch(:cakey, '$cadir/ca_key.pem')
-        settings[:rootkey] =        overrides.fetch(:rootkey, '$cadir/root_key.pem')
-        settings[:cacrl] =          overrides.fetch(:cacrl, '$cadir/ca_crl.pem')
-        settings[:serial] =         overrides.fetch(:serial, '$cadir/serial')
-        settings[:cert_inventory] = overrides.fetch(:cert_inventory, '$cadir/inventory.txt')
-        settings[:ca_server] =      overrides.fetch(:ca_server, '$server')
-        settings[:ca_port] =        overrides.fetch(:ca_port, '$masterport')
-        settings[:localcacert] =    overrides.fetch(:localcacert, '$certdir/ca.pem')
-        settings[:hostcert] =       overrides.fetch(:hostcert, '$certdir/$certname.pem')
-        settings[:hostcrl] =        overrides.fetch(:hostcrl, '$ssldir/crl.pem')
-        settings[:hostprivkey] =    overrides.fetch(:hostprivkey, '$privatekeydir/$certname.pem')
-        settings[:publickeydir] =   overrides.fetch(:publickeydir, '$ssldir/public_keys')
-        settings[:certificate_revocation] = parse_crl_usage(overrides.fetch(:certificate_revocation, 'true'))
+        dependent_defaults.each do |setting_name, default_value|
+          setting_value = overrides.fetch(setting_name, default_value)
+          settings[setting_name] = setting_value
+        end
 
-        settings.each_pair do |key, value|
+        # Some special cases where we need to manipulate config settings:
+        settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
+        settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
+
+        settings.each do |key, value|
           next unless value.is_a? String
-
           settings[key] = value.gsub(unresolved_setting, substitutions)
-
           if match = settings[key].match(unresolved_setting)
             @errors << "Could not parse #{match[0]} in #{value}, " +
                        'valid settings to be interpolated are ' +
-                       '$ssldir, $cadir, or $certname'
+                       '$ssldir, $certdir, $cadir, $certname, $server, or $masterport'
           end
         end
 
@@ -181,6 +196,26 @@ module Puppetserver
       def run(command)
         %x( #{command} )
       end
+
+      # Convert the value to Numeric, parsing numeric string with units if necessary.
+      def munge_ttl_setting(ca_ttl_setting)
+        case
+        when ca_ttl_setting.is_a?(Numeric)
+          if ca_ttl_setting < 0
+            @errors << "Invalid negative 'time to live' #{ca_ttl_setting.inspect} - did you mean 'unlimited'?"
+          end
+          ca_ttl_setting
+
+        when ca_ttl_setting == 'unlimited'
+          Float::INFINITY
+
+        when (ca_ttl_setting.is_a?(String) and ca_ttl_setting =~ TTL_FORMAT)
+          $1.to_i * TTL_UNITMAP[$2 || 's']
+        else
+          @errors <<  "Invalid 'time to live' format '#{ca_ttl_setting.inspect}' for parameter: :ca_ttl"
+        end
+      end
+
 
       def parse_crl_usage(setting)
         case setting.to_s
