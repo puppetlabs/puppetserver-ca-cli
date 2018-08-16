@@ -5,6 +5,7 @@ require 'tmpdir'
 require 'fileutils'
 
 require 'puppetserver/ca/import_action'
+require 'puppetserver/ca/logger'
 require 'puppetserver/ca/cli'
 
 RSpec.describe Puppetserver::Ca::ImportAction do
@@ -12,12 +13,15 @@ RSpec.describe Puppetserver::Ca::ImportAction do
 
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
+  let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
   let(:usage) do
     /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
   end
 
+  subject { Puppetserver::Ca::ImportAction.new(logger) }
+
   it 'prints the help output & returns 1 if invalid flags are given' do
-    exit_code = Puppetserver::Ca::Cli.run(['import', '--hello'], stdout, stderr)
+    _, exit_code = subject.parse(['--hello'])
     expect(stderr.string).to match(/Error.*--hello/m)
     expect(stderr.string).to match(usage)
     expect(exit_code).to be 1
@@ -25,7 +29,7 @@ RSpec.describe Puppetserver::Ca::ImportAction do
 
 
   it 'prints the help output & returns 1 if no input is given' do
-    exit_code = Puppetserver::Ca::Cli.run(['import'], stdout, stderr)
+    _, exit_code = subject.parse([])
     expect(stderr.string).to match(usage)
     expect(exit_code).to be 1
   end
@@ -33,28 +37,12 @@ RSpec.describe Puppetserver::Ca::ImportAction do
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        exit_code = Puppetserver::Ca::Cli.run(['import',
-                                                '--cert-bundle', bundle,
-                                                '--private-key', key,
-                                                '--crl-chain', chain,
-                                                '--config', conf],
-                                              stdout, stderr)
+        _, maybe_code = subject.parse(['--cert-bundle', bundle,
+                                       '--private-key', key,
+                                       '--crl-chain', chain,
+                                       '--config', conf])
         expect(stderr.string).to be_empty
-        expect(exit_code).to be 0
-      end
-    end
-  end
-
-  it 'accepts a --config flag' do
-    Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
-        Puppetserver::Ca::Cli.run(['import',
-                                    '--config', conf,
-                                    '--cert-bundle', bundle,
-                                    '--private-key', key,
-                                    '--crl-chain', chain],
-                                    stdout,
-                                    stderr)
+        expect(maybe_code).to be nil
       end
     end
   end
@@ -323,6 +311,40 @@ RSpec.describe Puppetserver::Ca::ImportAction do
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
+      end
+    end
+  end
+
+  it 'does not overwrite existing CA files' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        File.open conf, 'w' do |f|
+          f.puts(<<-INI)
+            [master]
+              cadir = #{tmpdir}/ca
+          INI
+        end
+        exit_code = Puppetserver::Ca::Cli.run(['import',
+                                                '--cert-bundle', bundle,
+                                                '--private-key', key,
+                                                '--crl-chain', chain,
+                                                '--config', conf],
+                                                stdout,
+                                                stderr)
+
+        expect(exit_code).to eq(0)
+
+        exit_code2 = Puppetserver::Ca::Cli.run(['import',
+                                                 '--cert-bundle', bundle,
+                                                 '--private-key', key,
+                                                 '--crl-chain', chain,
+                                                 '--config', conf],
+                                                 stdout,
+                                                 stderr)
+
+        expect(exit_code2).to eq(1)
+        expect(stderr.string).to match(/Existing file.*/)
+        expect(stderr.string).to match(/.*please delete the existing files.*/)
       end
     end
   end

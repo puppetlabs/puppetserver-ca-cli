@@ -38,13 +38,27 @@ BANNER
         files = [bundle_path, key_path, chain_path, config_path].compact
 
         errors = Puppetserver::Utils::FileUtilities.validate_file_paths(files)
-        return 1 if log_possible_errors(errors)
+        return 1 if Utils.handle_errors(@logger, errors)
 
         loader = X509Loader.new(bundle_path, key_path, chain_path)
-        return 1 if log_possible_errors(loader.errors)
+        return 1 if Utils.handle_errors(@logger, loader.errors)
 
         puppet = PuppetConfig.parse(config_path)
-        return 1 if log_possible_errors(puppet.errors)
+        return 1 if Utils.handle_errors(@logger, puppet.errors)
+
+        target_locations = [ puppet.settings[:cacert],
+                             puppet.settings[:cakey],
+                             puppet.settings[:cacrl],
+                             puppet.settings[:serial],
+                             puppet.settings[:cert_inventory] ]
+        errors = Puppetserver::Utils::FileUtilities.check_for_existing_files(target_locations)
+        if errors.any?
+          errors << "If you would really like to replace your CA, please delete the existing files first.
+Note that any certificates that were issued by this CA will become invalid if you
+replace it!"
+          Utils.handle_errors(@logger, errors)
+          return 1
+        end
 
         Puppetserver::Utils::FileUtilities.ensure_dir(puppet.settings[:cadir])
 
@@ -60,17 +74,6 @@ BANNER
 
         @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
         return 0
-      end
-
-      def log_possible_errors(maybe_errors)
-        errors = Array(maybe_errors).compact
-        unless errors.empty?
-          @logger.err "Error:"
-          errors.each do |message|
-            @logger.err "    #{message}"
-          end
-          return true
-        end
       end
 
       def parse(cli_args)
