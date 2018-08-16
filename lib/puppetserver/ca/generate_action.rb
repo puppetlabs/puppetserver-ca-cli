@@ -95,29 +95,20 @@ BANNER
           [settings[:cacrl], [int_crl, root_crl]]
         ]
 
-        errors = check_for_existing_files(file_properties)
-        return errors if errors.any?
+        errors = FileUtilities::check_for_existing_files(file_properties.map { |prop| prop.first })
+        if errors.any?
+          errors << "If you would really like to replace your CA, please delete the existing files first.
+Note that any certificates that were issued by this CA will become invalid if you
+replace it!"
+          Utils.handle_errors(@logger, errors)
+          return errors
+        end
 
         file_properties.each do |location, content|
           FileUtilities.write_file(location, content, 0640)
         end
 
         return []
-      end
-
-      def check_for_existing_files(files)
-        errors = []
-
-        files.each do |location, content|
-          errors << "A CA file already exists at #{location}." if File.exist?(location)
-        end
-
-        if errors.any?
-          errors << "If you would really like to regenerate your CA, please delete the existing files first.
-Note that any certificates that were issued by this CA will become invalid if you
-regenerate it!"
-        end
-        return errors
       end
 
       def self_signed_ca(key, name, valid_until, signing_digest)

@@ -34,6 +34,17 @@ module Puppetserver
         errors
       end
 
+      def self.check_for_existing_files(one_or_more_paths)
+        errors = []
+        Array(one_or_more_paths).each do |path|
+          if File.exist?(path)
+            errors << "Existing file at '#{path}'"
+          end
+        end
+
+        errors
+      end
+
       def initialize
         @user, @group = find_user_and_group
       end

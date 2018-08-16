@@ -57,7 +57,7 @@ RSpec.describe Puppetserver::Ca::GenerateAction do
 
         exit_code2 = subject.run({ 'config' => conf })
         expect(exit_code2).to eq(1)
-        expect(stderr.string).to match(/A CA file already exists.*/)
+        expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)
       end
     end
