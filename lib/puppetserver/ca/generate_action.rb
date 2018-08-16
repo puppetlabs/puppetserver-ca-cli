@@ -62,7 +62,8 @@ BANNER
 
         # Generate root and intermediate ca and put all the certificates, crls,
         # and keys where they should go.
-        generate_root_and_intermediate_ca(puppet.settings, signer.digest)
+        errors = generate_root_and_intermediate_ca(puppet.settings, signer.digest)
+        return 1 if Utils.handle_errors(@logger, errors)
 
         # Puppet's internal CA expects these file to exist.
         FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
@@ -94,10 +95,20 @@ BANNER
           [settings[:cacrl], [int_crl, root_crl]]
         ]
 
+        errors = FileUtilities::check_for_existing_files(file_properties.map { |prop| prop.first })
+        if errors.any?
+          errors << "If you would really like to replace your CA, please delete the existing files first.
+Note that any certificates that were issued by this CA will become invalid if you
+replace it!"
+          Utils.handle_errors(@logger, errors)
+          return errors
+        end
+
         file_properties.each do |location, content|
-          @logger.warn "#{location} exists, overwriting" if File.exist?(location)
           FileUtilities.write_file(location, content, 0640)
         end
+
+        return []
       end
 
       def self_signed_ca(key, name, valid_until, signing_digest)
