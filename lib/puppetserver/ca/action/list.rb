@@ -51,11 +51,11 @@ Options:
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if Utils::CliParsing.handle_errors(@logger, errors)
+            return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
           puppet = Config::Puppet.parse(config)
-          return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           all_certs = get_all_certs(puppet.settings)
           return 1 if all_certs.nil?
@@ -141,9 +141,9 @@ Options:
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils::CliParsing.parse_with_errors(parser, args)
+          errors = CliParsing.parse_with_errors(parser, args)
 
-          errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 

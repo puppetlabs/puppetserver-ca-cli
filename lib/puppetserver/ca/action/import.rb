@@ -87,13 +87,13 @@ BANNER
         results = {}
         parser = self.class.parser(results)
 
-        errors = Utils::CliParsing.parse_with_errors(parser, args)
+        errors = CliParsing.parse_with_errors(parser, args)
 
         if check_flag_usage(results)
           errors << check_flag_usage(results)
         end
 
-        errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
+        errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
 
         exit_code = errors_were_handled ? 1 : nil
 

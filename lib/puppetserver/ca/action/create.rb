@@ -58,7 +58,7 @@ BANNER
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils::CliParsing.parse_with_errors(parser, args)
+          errors = CliParsing.parse_with_errors(parser, args)
 
           if results['certnames'].empty?
             errors << '    At least one certname is required to create'
@@ -79,7 +79,7 @@ BANNER
             end
           end
 
-          errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
@@ -92,22 +92,22 @@ BANNER
 
           # Validate config_path provided
           if config_path
-            errors = Utils::FileSystem.validate_file_paths(config_path)
-            return 1 if Utils::CliParsing.handle_errors(@logger, errors)
+            errors = FileSystem.validate_file_paths(config_path)
+            return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
           puppet = Config::Puppet.parse(config_path)
-          return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for csr signing.
-          signer = Utils::SigningDigest.new
-          return 1 if Utils::CliParsing.handle_errors(@logger, signer.errors)
+          signer = SigningDigest.new
+          return 1 if CliParsing.handle_errors(@logger, signer.errors)
 
           # Make sure we have all the directories where we will be writing files
-          Utils::FileSystem.ensure_dir(puppet.settings[:certdir])
-          Utils::FileSystem.ensure_dir(puppet.settings[:privatekeydir])
-          Utils::FileSystem.ensure_dir(puppet.settings[:publickeydir])
+          FileSystem.ensure_dir(puppet.settings[:certdir])
+          FileSystem.ensure_dir(puppet.settings[:privatekeydir])
+          FileSystem.ensure_dir(puppet.settings[:publickeydir])
 
           # Generate and save certs and associated keys
           all_passed = generate_certs(certnames, puppet.settings, signer.digest)
@@ -142,7 +142,7 @@ BANNER
         end
 
         def http_client(settings)
-          @client ||= Utils::HttpClient.new(settings)
+          @client ||= HttpClient.new(settings)
         end
 
         # Make an HTTP request to submit certificate requests to CA
@@ -259,7 +259,7 @@ BANNER
         def save_file(content, certname, dir, type)
           location = File.join(dir, "#{certname}.pem")
           @logger.warn "#{type} #{certname}.pem already exists, overwriting" if File.exist?(location)
-          Utils::FileSystem.write_file(location, content, 0640)
+          FileSystem.write_file(location, content, 0640)
         end
       end
     end

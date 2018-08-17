@@ -50,25 +50,25 @@ BANNER
           # Validate config_path provided
           config_path = input['config']
           if config_path
-            errors = Utils::FileSystem.validate_file_paths(config_path)
-            return 1 if Utils::CliParsing.handle_errors(@logger, errors)
+            errors = FileSystem.validate_file_paths(config_path)
+            return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
           puppet = Config::Puppet.parse(config_path)
-          return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
-          signer = Utils::SigningDigest.new
-          return 1 if Utils::CliParsing.handle_errors(@logger, signer.errors)
+          signer = SigningDigest.new
+          return 1 if CliParsing.handle_errors(@logger, signer.errors)
 
           # Generate root and intermediate ca and put all the certificates, crls,
           # and keys where they should go.
           generate_root_and_intermediate_ca(puppet.settings, signer.digest)
 
           # Puppet's internal CA expects these file to exist.
-          Utils::FileSystem.ensure_file(puppet.settings[:serial], "001", 0640)
-          Utils::FileSystem.ensure_file(puppet.settings[:cert_inventory], "", 0640)
+          FileSystem.ensure_file(puppet.settings[:serial], "001", 0640)
+          FileSystem.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
           @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
           return 0
@@ -87,7 +87,7 @@ BANNER
           int_cert = sign_intermediate(root_key, root_cert, int_csr, valid_until, signing_digest)
           int_crl = create_crl_for(int_cert, int_key, valid_until, signing_digest)
 
-          Utils::FileSystem.ensure_dir(settings[:cadir])
+          FileSystem.ensure_dir(settings[:cadir])
 
           file_properties = [
             [settings[:cacert], [int_cert, root_cert]],
@@ -98,7 +98,7 @@ BANNER
 
           file_properties.each do |location, content|
             @logger.warn "#{location} exists, overwriting" if File.exist?(location)
-            Utils::FileSystem.write_file(location, content, 0640)
+            FileSystem.write_file(location, content, 0640)
           end
         end
 
@@ -177,9 +177,9 @@ BANNER
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils::CliParsing.parse_with_errors(parser, args)
+          errors = CliParsing.parse_with_errors(parser, args)
 
-          errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
