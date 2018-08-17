@@ -55,11 +55,11 @@ Options:
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if Utils.handle_errors(@logger, errors)
+            return 1 if Utils::CliParsing.handle_errors(@logger, errors)
           end
 
           puppet = PuppetConfig.parse(config)
-          return 1 if Utils.handle_errors(@logger, puppet.errors)
+          return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           if input['all']
             requested_certnames = get_all_pending_certs(puppet.settings)
@@ -171,13 +171,13 @@ Options:
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils.parse_with_errors(parser, args)
+          errors = Utils::CliParsing.parse_with_errors(parser, args)
 
           if check_flag_usage(results)
             errors << check_flag_usage(results)
           end
 
-          errors_were_handled = Utils.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 

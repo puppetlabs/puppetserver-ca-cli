@@ -54,7 +54,7 @@ BANNER
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils.parse_with_errors(parser, args)
+          errors = CliParsing.parse_with_errors(parser, args)
 
           results['certnames'].each do |certname|
             if CERTNAME_BLACKLIST.include?(certname)
@@ -67,7 +67,7 @@ BANNER
             errors << '  At least one certname is required to revoke'
           end
 
-          errors_were_handled = Utils.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
 
           # if there is an exit_code then Cli will return it early, so we only
           # return an exit_code if there's an error
@@ -82,11 +82,11 @@ BANNER
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if Utils.handle_errors(@logger, errors)
+            return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
           puppet = PuppetConfig.parse(config)
-          return 1 if Utils.handle_errors(@logger, puppet.errors)
+          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           passed = revoke_certs(certnames, puppet.settings)
 

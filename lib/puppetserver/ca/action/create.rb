@@ -58,7 +58,7 @@ BANNER
           results = {}
           parser = self.class.parser(results)
 
-          errors = Utils.parse_with_errors(parser, args)
+          errors = Utils::CliParsing.parse_with_errors(parser, args)
 
           if results['certnames'].empty?
             errors << '    At least one certname is required to create'
@@ -79,7 +79,7 @@ BANNER
             end
           end
 
-          errors_were_handled = Utils.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Utils::CliParsing.handle_errors(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
@@ -93,16 +93,16 @@ BANNER
           # Validate config_path provided
           if config_path
             errors = Utils::FileSystem.validate_file_paths(config_path)
-            return 1 if Utils.handle_errors(@logger, errors)
+            return 1 if Utils::CliParsing.handle_errors(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
           puppet = PuppetConfig.parse(config_path)
-          return 1 if Utils.handle_errors(@logger, puppet.errors)
+          return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for csr signing.
           signer = SigningDigest.new
-          return 1 if Utils.handle_errors(@logger, signer.errors)
+          return 1 if Utils::CliParsing.handle_errors(@logger, signer.errors)
 
           # Make sure we have all the directories where we will be writing files
           Utils::FileSystem.ensure_dir(puppet.settings[:certdir])

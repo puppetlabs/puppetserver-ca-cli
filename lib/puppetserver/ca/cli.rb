@@ -104,7 +104,7 @@ BANNER
 
         end
 
-        all,_,_,_ = Utils.parse_without_raising(general_parser, inputs)
+        all,_,_,_ = Utils::CliParsing.parse_without_raising(general_parser, inputs)
 
         return general_parser, parsed, all
       end
