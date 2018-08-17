@@ -21,7 +21,7 @@ Puppet Server's built-in Certificate Authority
 BANNER
 
       VALID_ACTIONS = {
-        'clean'    => CleanAction,
+        'clean'    => Action::Clean,
         'create'   => CreateAction,
         'generate' => GenerateAction,
         'import'   => ImportAction,

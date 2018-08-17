@@ -4,12 +4,12 @@ require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/logger'
 require 'puppetserver/utils/http_client'
 
-RSpec.describe Puppetserver::Ca::CleanAction do
+RSpec.describe Puppetserver::Ca::Action::Clean do
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
 
-  subject { Puppetserver::Ca::CleanAction.new(logger) }
+  subject { Puppetserver::Ca::Action::Clean.new(logger) }
 
   describe 'flags' do
     it 'takes a single certname' do
