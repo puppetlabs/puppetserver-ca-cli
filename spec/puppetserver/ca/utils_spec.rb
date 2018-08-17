@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'puppetserver/ca/utils'
+require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/logger'
 
 RSpec.describe Puppetserver::Ca::Utils do

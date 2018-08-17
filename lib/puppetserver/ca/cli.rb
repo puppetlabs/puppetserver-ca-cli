@@ -8,7 +8,7 @@ require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/sign'
-require 'puppetserver/ca/utils'
+require 'puppetserver/ca/utils/cli_parsing'
 
 
 module Puppetserver

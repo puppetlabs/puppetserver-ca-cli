@@ -1,4 +1,4 @@
-require 'puppetserver/ca/utils'
+require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/puppet_config'
 require 'puppetserver/ca/utils/file_system'
