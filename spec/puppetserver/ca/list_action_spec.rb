@@ -2,11 +2,11 @@ require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/cli'
 require 'puppetserver/ca/logger'
 
-RSpec.describe 'Puppetserver::Ca::ListAction' do
+RSpec.describe 'Puppetserver::Ca::Action::List' do
   let(:err)    { StringIO.new }
   let(:out)    { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, out, err) }
-  let(:action) { Puppetserver::Ca::ListAction.new(logger) }
+  let(:action) { Puppetserver::Ca::Action::List.new(logger) }
   let(:result) {[{"name"=>"foo", "state"=>"signed", "dns_alt_names"=>["DNS:foo", "DNS:bar"],
                   "fingerprint"=>"three", "fingerprints"=>{"SHA1"=>"two", "SHA256"=>"three", "SHA512"=>"four", "default"=>"five"}},
                  {"name"=>"baz", "state"=>"requested", "dns_alt_names"=>["DNS:baz", "DNS:bar"],

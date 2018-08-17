@@ -26,7 +26,7 @@ BANNER
         'create'   => Action::Create,
         'generate' => Action::Generate,
         'import'   => Action::Import,
-        'list'     => ListAction,
+        'list'     => Action::List,
         'revoke'   => RevokeAction,
         'sign'     => SignAction
       }
