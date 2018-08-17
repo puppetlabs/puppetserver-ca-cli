@@ -97,7 +97,7 @@ BANNER
           end
 
           # Load, resolve, and validate puppet config settings
-          puppet = PuppetConfig.parse(config_path)
+          puppet = Config::Puppet.parse(config_path)
           return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for csr signing.

@@ -85,7 +85,7 @@ BANNER
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          puppet = PuppetConfig.parse(config)
+          puppet = Config::Puppet.parse(config)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           passed = clean_certs(certnames, puppet.settings)

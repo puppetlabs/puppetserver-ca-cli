@@ -58,7 +58,7 @@ Options:
             return 1 if Utils::CliParsing.handle_errors(@logger, errors)
           end
 
-          puppet = PuppetConfig.parse(config)
+          puppet = Config::Puppet.parse(config)
           return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           if input['all']

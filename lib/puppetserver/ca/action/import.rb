@@ -46,7 +46,7 @@ BANNER
           loader = X509Loader.new(bundle_path, key_path, chain_path)
           return 1 if log_possible_errors(loader.errors)
 
-          puppet = PuppetConfig.parse(config_path)
+          puppet = Config::Puppet.parse(config_path)
           return 1 if log_possible_errors(puppet.errors)
 
           FileSystem.ensure_dir(puppet.settings[:cadir])
