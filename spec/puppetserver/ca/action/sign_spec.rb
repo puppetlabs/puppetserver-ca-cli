@@ -1,4 +1,4 @@
-require 'puppetserver/ca/sign_action'
+require 'puppetserver/ca/action/sign'
 require 'puppetserver/ca/cli'
 require 'puppetserver/ca/logger'
 
@@ -6,7 +6,7 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
   let(:err)    { StringIO.new }
   let(:out)    { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, out, err) }
-  let(:action) { Puppetserver::Ca::SignAction.new(logger) }
+  let(:action) { Puppetserver::Ca::Action::Sign.new(logger) }
 
   describe 'validation' do
     it 'does not expect an argument' do

@@ -1,14 +1,15 @@
 require 'optparse'
 require 'puppetserver/ca/version'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/clean_action'
-require 'puppetserver/ca/import_action'
-require 'puppetserver/ca/generate_action'
-require 'puppetserver/ca/revoke_action'
-require 'puppetserver/ca/list_action'
-require 'puppetserver/ca/sign_action'
-require 'puppetserver/ca/utils'
-require 'puppetserver/ca/create_action'
+require 'puppetserver/ca/action/clean'
+require 'puppetserver/ca/action/create'
+require 'puppetserver/ca/action/import'
+require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/action/revoke'
+require 'puppetserver/ca/action/list'
+require 'puppetserver/ca/action/sign'
+require 'puppetserver/ca/utils/cli_parsing'
+
 
 module Puppetserver
   module Ca
@@ -21,13 +22,13 @@ Puppet Server's built-in Certificate Authority
 BANNER
 
       VALID_ACTIONS = {
-        'clean'    => CleanAction,
-        'create'   => CreateAction,
-        'generate' => GenerateAction,
-        'import'   => ImportAction,
-        'list'     => ListAction,
-        'revoke'   => RevokeAction,
-        'sign'     => SignAction
+        'clean'    => Action::Clean,
+        'create'   => Action::Create,
+        'generate' => Action::Generate,
+        'import'   => Action::Import,
+        'list'     => Action::List,
+        'revoke'   => Action::Revoke,
+        'sign'     => Action::Sign
       }
 
       ACTION_LIST = "\nAvailable Actions:\n" +
@@ -103,7 +104,7 @@ BANNER
 
         end
 
-        all,_,_,_ = Utils.parse_without_raising(general_parser, inputs)
+        all,_,_,_ = Utils::CliParsing.parse_without_raising(general_parser, inputs)
 
         return general_parser, parsed, all
       end

@@ -4,10 +4,10 @@ require 'utils/ssl'
 require 'tmpdir'
 require 'fileutils'
 
-require 'puppetserver/ca/import_action'
+require 'puppetserver/ca/action/import'
 require 'puppetserver/ca/cli'
 
-RSpec.describe Puppetserver::Ca::ImportAction do
+RSpec.describe Puppetserver::Ca::Action::Import do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }

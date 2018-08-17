@@ -1,7 +1,7 @@
 require 'spec_helper'
-require 'puppetserver/ca/puppetserver_config'
+require 'puppetserver/ca/config/puppetserver'
 
-RSpec.describe 'Puppetserver::Ca::PuppetserverConfig' do
+RSpec.describe 'Puppetserver::Ca::Config::PuppetServer' do
   it 'overrides defaults with settings from the config file' do
     Dir.mktmpdir do |tmpdir|
       puppetserver_conf = File.join(tmpdir, 'ca.conf')
@@ -14,7 +14,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetserverConfig' do
       CONF
       end
 
-      conf = Puppetserver::Ca::PuppetserverConfig.new(puppetserver_conf)
+      conf = Puppetserver::Ca::Config::PuppetServer.new(puppetserver_conf)
       conf.load
       expect(conf.settings[:cadir]).to eq('/etc/fake/path/ca')
       expect(conf.settings[:cacert]).to eq('/etc/fake/path/ca/ca_crt.pem')
@@ -34,7 +34,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetserverConfig' do
       CONF
       end
 
-      conf = Puppetserver::Ca::PuppetserverConfig.new(puppetserver_conf)
+      conf = Puppetserver::Ca::Config::PuppetServer.new(puppetserver_conf)
       conf.load
       expect(conf.errors.size).to eq(1)
       expect(conf.errors[0]).to match(/Expecting close brace/)

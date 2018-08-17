@@ -3,18 +3,18 @@ require 'utils/ssl'
 
 require 'tmpdir'
 
-require 'puppetserver/ca/create_action'
+require 'puppetserver/ca/action/create'
 require 'puppetserver/ca/logger'
-require 'puppetserver/utils/http_client'
+require 'puppetserver/ca/utils/http_client'
 
-RSpec.describe Puppetserver::Ca::CreateAction do
+RSpec.describe Puppetserver::Ca::Action::Create do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
 
-  subject { Puppetserver::Ca::CreateAction.new(logger) }
+  subject { Puppetserver::Ca::Action::Create.new(logger) }
 
   describe 'flags' do
     it 'takes a single certname' do
@@ -72,13 +72,13 @@ RSpec.describe Puppetserver::Ca::CreateAction do
     let(:connection) { double }
 
     before do
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:with_connection).and_yield(connection)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:make_store)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_cert)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_key)
     end
 

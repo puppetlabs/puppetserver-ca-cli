@@ -1,9 +1,9 @@
 require 'spec_helper'
-require 'puppetserver/ca/puppet_config'
+require 'puppetserver/ca/config/puppet'
 
-RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
+RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
   it 'parses basic inifile' do
-    conf = Puppetserver::Ca::PuppetConfig.new
+    conf = Puppetserver::Ca::Config::Puppet.new
     parsed = conf.parse_text(<<-INI)
     server = certname
 
@@ -27,7 +27,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
   end
 
   it 'discards weird file metadata info' do
-    conf = Puppetserver::Ca::PuppetConfig.new
+    conf = Puppetserver::Ca::Config::Puppet.new
     parsed = conf.parse_text(<<-INI)
     [ca]
       cadir = /var/www/ca {user = service}
@@ -53,7 +53,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
         INI
       end
 
-      conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
       conf.load
 
       expect(conf.errors).to be_empty
@@ -72,7 +72,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
         INI
       end
 
-      conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
       conf.load
 
       expect(conf.errors).to be_empty
@@ -90,7 +90,7 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
         INI
       end
 
-      conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
       conf.load
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')

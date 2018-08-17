@@ -1,9 +1,9 @@
 require 'spec_helper'
-require 'puppetserver/ca/utils'
+require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/logger'
 
-RSpec.describe Puppetserver::Ca::Utils do
-  subject { Puppetserver::Ca::Utils }
+RSpec.describe Puppetserver::Ca::Utils::CliParsing do
+  subject { Puppetserver::Ca::Utils::CliParsing }
 
   let(:parser) do
     OptionParser.new do |o|

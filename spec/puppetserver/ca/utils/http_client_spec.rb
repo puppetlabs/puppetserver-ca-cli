@@ -3,19 +3,19 @@ require 'utils/ssl'
 
 require 'fileutils'
 
-require 'puppetserver/utils/http_client'
-require 'puppetserver/utils/signing_digest'
+require 'puppetserver/ca/utils/http_client'
+require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/generate_action'
+require 'puppetserver/ca/action/generate'
 
-RSpec.describe Puppetserver::Utils::HttpClient do
+RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
 
   it 'creates a store that can validate connections to CA' do
     stdout = StringIO.new
     stderr = StringIO.new
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
-    generate_action = Puppetserver::Ca::GenerateAction.new(logger)
+    generate_action = Puppetserver::Ca::Action::Generate.new(logger)
 
     Dir.mktmpdir do |tmpdir|
       cadir = tmpdir
@@ -44,7 +44,7 @@ RSpec.describe Puppetserver::Utils::HttpClient do
         hostprivkey: hostprivkey,
       }
 
-      signer = Puppetserver::Utils::SigningDigest.new
+      signer = Puppetserver::Ca::Utils::SigningDigest.new
       generate_action.generate_root_and_intermediate_ca(settings, signer.digest)
 
       hostkey = OpenSSL::PKey::RSA.new(2048)
@@ -57,7 +57,7 @@ RSpec.describe Puppetserver::Utils::HttpClient do
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      client = Puppetserver::Utils::HttpClient.new(settings)
+      client = Puppetserver::Ca::Utils::HttpClient.new(settings)
       store = client.store
       hostcert = OpenSSL::X509::Certificate.new(File.read(settings[:hostcert]))
       cacert = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))

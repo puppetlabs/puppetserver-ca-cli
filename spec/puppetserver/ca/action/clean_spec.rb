@@ -1,15 +1,15 @@
 require 'spec_helper'
 
-require 'puppetserver/ca/clean_action'
+require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/logger'
-require 'puppetserver/utils/http_client'
+require 'puppetserver/ca/utils/http_client'
 
-RSpec.describe Puppetserver::Ca::CleanAction do
+RSpec.describe Puppetserver::Ca::Action::Clean do
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
 
-  subject { Puppetserver::Ca::CleanAction.new(logger) }
+  subject { Puppetserver::Ca::Action::Clean.new(logger) }
 
   describe 'flags' do
     it 'takes a single certname' do
@@ -56,13 +56,13 @@ RSpec.describe Puppetserver::Ca::CleanAction do
     let(:connection) { double }
 
     before do
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:with_connection).and_yield(connection)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:make_store)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_cert)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_key)
     end
 
