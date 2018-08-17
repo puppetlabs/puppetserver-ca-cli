@@ -1,5 +1,5 @@
 require 'hocon'
-require 'puppetserver/ca/config_utils'
+require 'puppetserver/ca/utils/config'
 
 module Puppetserver
   module Ca
