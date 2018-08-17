@@ -2,6 +2,7 @@ require 'optparse'
 require 'openssl'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/host'
+require 'puppetserver/ca/utils'
 require 'puppetserver/utils/signing_digest'
 
 module Puppetserver
@@ -171,44 +172,17 @@ BANNER
         cert
       end
 
-      def parse(cli_args)
-        parser, inputs, unparsed = parse_inputs(cli_args)
+      def parse(args)
+        results = {}
+        parser = self.class.parser(results)
 
-        if !unparsed.empty?
-          @logger.err 'Error:'
-          @logger.err 'Unknown arguments or flags:'
-          unparsed.each do |arg|
-            @logger.err "    #{arg}"
-          end
+        errors = Utils.parse_with_errors(parser, args)
 
-          @logger.err ''
-          @logger.err parser.help
+        errors_were_handled = Utils.handle_errors(@logger, errors, parser.help)
 
-          exit_code = 1
-        else
-          exit_code = nil
-        end
+        exit_code = errors_were_handled ? 1 : nil
 
-        return inputs, exit_code
-      end
-
-      def parse_inputs(inputs)
-        parsed = {}
-        unparsed = []
-
-        parser = self.class.parser(parsed)
-
-        begin
-          parser.order!(inputs) do |nonopt|
-            unparsed << nonopt
-          end
-        rescue OptionParser::ParseError => e
-          unparsed += e.args
-          unparsed << inputs.shift unless inputs.first =~ /^-{1,2}/
-          retry
-        end
-
-        return parser, parsed, unparsed
+        return results, exit_code
       end
 
       def self.parser(parsed = {})

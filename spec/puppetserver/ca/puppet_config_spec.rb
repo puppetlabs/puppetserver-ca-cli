@@ -62,6 +62,24 @@ RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
     end
   end
 
+  it 'converts ca_ttl setting correctly into seconds' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [master]
+            ca_ttl = 5y
+        INI
+      end
+
+      conf = Puppetserver::Ca::PuppetConfig.new(puppet_conf)
+      conf.load
+
+      expect(conf.errors).to be_empty
+      expect(conf.settings[:ca_ttl]).to eq(157680000)
+    end
+  end
+
   it 'errs if it cannot resolve dependent settings properly' do
     Dir.mktmpdir do |tmpdir|
       puppet_conf = File.join(tmpdir, 'puppet.conf')

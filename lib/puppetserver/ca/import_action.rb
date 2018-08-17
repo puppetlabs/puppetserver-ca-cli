@@ -2,10 +2,12 @@ require 'optparse'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/puppet_config'
+require 'puppetserver/ca/utils'
 
 module Puppetserver
   module Ca
     class ImportAction
+      include Puppetserver::Utils
 
       SUMMARY = "Import the CA's key, certs, and crls"
       BANNER = <<-BANNER
@@ -37,7 +39,7 @@ BANNER
 
         files = [bundle_path, key_path, chain_path, config_path].compact
 
-        errors = Puppetserver::Utils::FileUtilities.validate_file_paths(files)
+        errors = FileUtilities.validate_file_paths(files)
         return 1 if log_possible_errors(errors)
 
         loader = X509Loader.new(bundle_path, key_path, chain_path)
@@ -46,17 +48,17 @@ BANNER
         puppet = PuppetConfig.parse(config_path)
         return 1 if log_possible_errors(puppet.errors)
 
-        Puppetserver::Utils::FileUtilities.ensure_dir(puppet.settings[:cadir])
+        FileUtilities.ensure_dir(puppet.settings[:cadir])
 
-        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cacert], loader.certs, 0640)
+        FileUtilities.write_file(puppet.settings[:cacert], loader.certs, 0640)
 
-        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cakey], loader.key, 0640)
+        FileUtilities.write_file(puppet.settings[:cakey], loader.key, 0640)
 
-        Puppetserver::Utils::FileUtilities.write_file(puppet.settings[:cacrl], loader.crls, 0640)
+        FileUtilities.write_file(puppet.settings[:cacrl], loader.crls, 0640)
 
         # Puppet's internal CA expects these file to exist.
-        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
-        Puppetserver::Utils::FileUtilities.ensure_file(puppet.settings[:cert_inventory], "", 0640)
+        FileUtilities.ensure_file(puppet.settings[:serial], "001", 0640)
+        FileUtilities.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
         @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
         return 0
@@ -73,59 +75,28 @@ BANNER
         end
       end
 
-      def parse(cli_args)
-        parser, inputs, unparsed = parse_inputs(cli_args)
-
-        if !unparsed.empty?
-          @logger.err 'Error:'
-          @logger.err 'Unknown arguments or flags:'
-          unparsed.each do |arg|
-            @logger.err "    #{arg}"
-          end
-
-          @logger.err ''
-          @logger.err parser.help
-
-          exit_code = 1
-        else
-          exit_code = validate_inputs(inputs, parser.help)
+      def check_flag_usage(results)
+        if results['cert-bundle'].nil? || results['private-key'].nil? || results['crl-chain'].nil?
+          '    Missing required argument' + "\n" +
+          '    --cert-bundle, --private-key, --crl-chain are required'
         end
-
-        return inputs, exit_code
       end
 
-      def validate_inputs(input, usage)
-        exit_code = nil
+      def parse(args)
+        results = {}
+        parser = self.class.parser(results)
 
-        if input.values_at('cert-bundle', 'private-key', 'crl-chain').any?(&:nil?)
-          @logger.err 'Error:'
-          @logger.err 'Missing required argument'
-          @logger.err '    --cert-bundle, --private-key, --crl-chain are required'
-          @logger.err ''
-          @logger.err usage
-          exit_code = 1
+        errors = Utils.parse_with_errors(parser, args)
+
+        if check_flag_usage(results)
+          errors << check_flag_usage(results)
         end
 
-        exit_code
-      end
+        errors_were_handled = Utils.handle_errors(@logger, errors, parser.help)
 
-      def parse_inputs(inputs)
-        parsed = {}
-        unparsed = []
+        exit_code = errors_were_handled ? 1 : nil
 
-        parser = self.class.parser(parsed)
-
-        begin
-          parser.order!(inputs) do |nonopt|
-            unparsed << nonopt
-          end
-        rescue OptionParser::ParseError => e
-          unparsed += e.args
-          unparsed << inputs.shift unless inputs.first =~ /^-{1,2}/
-          retry
-        end
-
-        return parser, parsed, unparsed
+        return results, exit_code
       end
 
       def self.parser(parsed = {})
