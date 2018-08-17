@@ -12,7 +12,7 @@ module Puppetserver
     module Action
       class Clean
 
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         CERTNAME_BLACKLIST = %w{--all --config}
 

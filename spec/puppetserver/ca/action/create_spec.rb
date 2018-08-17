@@ -72,13 +72,13 @@ RSpec.describe Puppetserver::Ca::Action::Create do
     let(:connection) { double }
 
     before do
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:with_connection).and_yield(connection)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:make_store)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_cert)
-      allow_any_instance_of(Puppetserver::Utils::HttpClient).
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:load_key)
     end
 

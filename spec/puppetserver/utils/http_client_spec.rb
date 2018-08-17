@@ -8,7 +8,7 @@ require 'puppetserver/utils/signing_digest'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/generate'
 
-RSpec.describe Puppetserver::Utils::HttpClient do
+RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
 
   it 'creates a store that can validate connections to CA' do
@@ -57,7 +57,7 @@ RSpec.describe Puppetserver::Utils::HttpClient do
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      client = Puppetserver::Utils::HttpClient.new(settings)
+      client = Puppetserver::Ca::Utils::HttpClient.new(settings)
       store = client.store
       hostcert = OpenSSL::X509::Certificate.new(File.read(settings[:hostcert]))
       cacert = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))

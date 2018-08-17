@@ -142,7 +142,7 @@ BANNER
         end
 
         def http_client(settings)
-          @client ||= HttpClient.new(settings)
+          @client ||= Utils::HttpClient.new(settings)
         end
 
         # Make an HTTP request to submit certificate requests to CA

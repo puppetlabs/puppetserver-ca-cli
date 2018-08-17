@@ -11,7 +11,7 @@ module Puppetserver
     module Action
       class Revoke
 
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         REQUEST_BODY = JSON.dump({ desired_state: 'revoked' })
         CERTNAME_BLACKLIST = %w{--all --config}

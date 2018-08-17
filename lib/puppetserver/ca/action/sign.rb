@@ -75,7 +75,7 @@ Options:
         end
 
         def http_client(settings)
-          @client ||= HttpClient.new(settings)
+          @client ||= Utils::HttpClient.new(settings)
         end
 
         def get_certificate_statuses(settings)
