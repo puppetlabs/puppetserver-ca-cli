@@ -53,10 +53,11 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
   end
 
   describe 'error handling' do
-    let(:response)  { Struct.new(:code, :body) }
-    let(:success)   { response.new('204', nil) }
-    let(:not_found) { response.new('404', 'Not Found') }
-    let(:empty)     { response.new('404', '[]') }
+    let(:response)      { Struct.new(:code, :body) }
+    let(:success)       { response.new('204', nil) }
+    let(:get_success)   { response.new('200', 'Stuff') }
+    let(:not_found)     { response.new('404', 'Not Found') }
+    let(:empty)         { response.new('404', '[]') }
 
     it 'logs and exits with zero with successful PUT' do
       allow(action).to receive(:sign_certs).and_return({'foo' => success})
@@ -65,7 +66,16 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
       expect(out.string).to include('Signed certificate for foo')
     end
 
-    it 'fails when PUT request errors' do
+    it 'logs and exits with zero with successful GET and PUT' do
+      allow(action).to receive(:get_certificate_statuses).and_return(get_success)
+      allow(action).to receive(:select_pending_certs).and_return(['ulla'])
+      allow(action).to receive(:sign_certs).and_return({'ulla' => success})
+      exit_code = action.run({'all' => true})
+      expect(exit_code).to eq(0)
+      expect(out.string).to include('Signed certificate for ulla')
+    end
+
+    it 'fails when GET request errors' do
       allow(action).to receive(:get_certificate_statuses).and_return(not_found)
       exit_code = action.run({'all' => true})
       expect(exit_code).to eq(1)
