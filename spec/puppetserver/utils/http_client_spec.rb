@@ -6,7 +6,7 @@ require 'fileutils'
 require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/signing_digest'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/generate_action'
+require 'puppetserver/ca/action/generate'
 
 RSpec.describe Puppetserver::Utils::HttpClient do
   include Utils::SSL
@@ -15,7 +15,7 @@ RSpec.describe Puppetserver::Utils::HttpClient do
     stdout = StringIO.new
     stderr = StringIO.new
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
-    generate_action = Puppetserver::Ca::GenerateAction.new(logger)
+    generate_action = Puppetserver::Ca::Action::Generate.new(logger)
 
     Dir.mktmpdir do |tmpdir|
       cadir = tmpdir

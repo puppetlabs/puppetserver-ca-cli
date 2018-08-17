@@ -4,7 +4,7 @@ require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/create'
 require 'puppetserver/ca/import_action'
-require 'puppetserver/ca/generate_action'
+require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/revoke_action'
 require 'puppetserver/ca/list_action'
 require 'puppetserver/ca/sign_action'
@@ -24,7 +24,7 @@ BANNER
       VALID_ACTIONS = {
         'clean'    => Action::Clean,
         'create'   => Action::Create,
-        'generate' => GenerateAction,
+        'generate' => Action::Generate,
         'import'   => ImportAction,
         'list'     => ListAction,
         'revoke'   => RevokeAction,

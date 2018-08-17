@@ -7,7 +7,7 @@ require 'fileutils'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/cli'
 
-RSpec.describe Puppetserver::Ca::GenerateAction do
+RSpec.describe Puppetserver::Ca::Action::Generate do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }
