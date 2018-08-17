@@ -54,7 +54,7 @@ Options:
           config = input['config']
 
           if config
-            errors = FileUtilities.validate_file_paths(config)
+            errors = FileSystem.validate_file_paths(config)
             return 1 if Utils.handle_errors(@logger, errors)
           end
 

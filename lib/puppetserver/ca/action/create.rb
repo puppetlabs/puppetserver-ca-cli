@@ -92,7 +92,7 @@ BANNER
 
           # Validate config_path provided
           if config_path
-            errors = FileUtilities.validate_file_paths(config_path)
+            errors = Utils::FileSystem.validate_file_paths(config_path)
             return 1 if Utils.handle_errors(@logger, errors)
           end
 
@@ -105,9 +105,9 @@ BANNER
           return 1 if Utils.handle_errors(@logger, signer.errors)
 
           # Make sure we have all the directories where we will be writing files
-          FileUtilities.ensure_dir(puppet.settings[:certdir])
-          FileUtilities.ensure_dir(puppet.settings[:privatekeydir])
-          FileUtilities.ensure_dir(puppet.settings[:publickeydir])
+          Utils::FileSystem.ensure_dir(puppet.settings[:certdir])
+          Utils::FileSystem.ensure_dir(puppet.settings[:privatekeydir])
+          Utils::FileSystem.ensure_dir(puppet.settings[:publickeydir])
 
           # Generate and save certs and associated keys
           all_passed = generate_certs(certnames, puppet.settings, signer.digest)
@@ -259,7 +259,7 @@ BANNER
         def save_file(content, certname, dir, type)
           location = File.join(dir, "#{certname}.pem")
           @logger.warn "#{type} #{certname}.pem already exists, overwriting" if File.exist?(location)
-          FileUtilities.write_file(location, content, 0640)
+          Utils::FileSystem.write_file(location, content, 0640)
         end
       end
     end
