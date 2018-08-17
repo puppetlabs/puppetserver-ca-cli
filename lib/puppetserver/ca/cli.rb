@@ -25,7 +25,7 @@ BANNER
         'clean'    => Action::Clean,
         'create'   => Action::Create,
         'generate' => Action::Generate,
-        'import'   => ImportAction,
+        'import'   => Action::Import,
         'list'     => ListAction,
         'revoke'   => RevokeAction,
         'sign'     => SignAction
