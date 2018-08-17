@@ -1,5 +1,4 @@
 require 'puppetserver/ca/utils/config'
-require 'puppetserver/settings/ttl_setting'
 require 'securerandom'
 require 'facter'
 

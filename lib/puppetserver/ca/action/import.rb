@@ -8,7 +8,7 @@ module Puppetserver
   module Ca
     module Action
       class Import
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         SUMMARY = "Import the CA's key, certs, and crls"
         BANNER = <<-BANNER
@@ -55,7 +55,7 @@ BANNER
 
           FileSystem.write_file(puppet.settings[:cakey], loader.key, 0640)
 
-          FileSystems.write_file(puppet.settings[:cacrl], loader.crls, 0640)
+          FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0640)
 
           # Puppet's internal CA expects these file to exist.
           FileSystem.ensure_file(puppet.settings[:serial], "001", 0640)
