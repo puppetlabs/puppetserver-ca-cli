@@ -22,7 +22,7 @@ module Puppetserver
       # A regex describing valid formats with groups for capturing the value and units
       TTL_FORMAT = /^(\d+)(y|d|h|m|s)?$/
 
-      include Puppetserver::Ca::ConfigUtils
+      include Puppetserver::Ca::Utils::Config
 
       def self.parse(config_path = nil)
         instance = new(config_path)

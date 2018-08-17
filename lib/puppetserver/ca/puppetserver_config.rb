@@ -7,7 +7,7 @@ module Puppetserver
     # Puppetserver or any TK config service. Uses the ruby-hocon gem for parsing.
     class PuppetserverConfig
 
-      include Puppetserver::Ca::ConfigUtils
+      include Puppetserver::Ca::Utils::Config
 
       def self.parse(config_path = nil)
         instance = new(config_path)
