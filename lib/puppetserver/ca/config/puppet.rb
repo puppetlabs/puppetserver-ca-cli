@@ -107,6 +107,7 @@ module Puppetserver
             [:certname, default_certname],
             [:server, '$certname'],
             [:masterport, '8140'],
+            [:privatekeydir, '$ssldir/private_keys']
           ]
 
           dependent_defaults = {
@@ -124,7 +125,7 @@ module Puppetserver
             :localcacert => '$certdir/ca.pem',
             :hostcert => '$certdir/$certname.pem',
             :hostcrl => '$ssldir/crl.pem',
-            :privatekeydir => '$ssldir/private_keys',
+            :hostprivkey => '$privatekeydir/$certname.pem',
             :publickeydir => '$ssldir/public_keys',
             :ca_ttl => '15y',
             :certificate_revocation => 'true',
