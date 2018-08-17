@@ -2,7 +2,7 @@ require 'puppetserver/ca/utils'
 require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/file_utilities'
 require 'puppetserver/ca/puppet_config'
-require 'puppetserver/ca/revoke_action'
+require 'puppetserver/ca/action/revoke'
 
 require 'optparse'
 require 'json'

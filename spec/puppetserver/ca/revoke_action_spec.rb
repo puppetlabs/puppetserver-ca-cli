@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-require 'puppetserver/ca/revoke_action'
+require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/logger'
 require 'puppetserver/utils/http_client'
 
