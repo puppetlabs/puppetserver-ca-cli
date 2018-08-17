@@ -6,7 +6,7 @@ require 'puppetserver/ca/action/create'
 require 'puppetserver/ca/action/import'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/revoke_action'
-require 'puppetserver/ca/list_action'
+require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/sign_action'
 require 'puppetserver/ca/utils'
 

@@ -1,4 +1,4 @@
-require 'puppetserver/ca/list_action'
+require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/cli'
 require 'puppetserver/ca/logger'
 
