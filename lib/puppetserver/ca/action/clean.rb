@@ -103,7 +103,7 @@ BANNER
           results = client.with_connection(url) do |connection|
             certnames.map do |certname|
               url.resource_name = certname
-              revoke_result = connection.put(RevokeAction::REQUEST_BODY, url)
+              revoke_result = connection.put(Action::Revoke::REQUEST_BODY, url)
               revoked = check_revocation(revoke_result, certname)
 
               cleaned = nil
