@@ -1,6 +1,6 @@
 require 'optparse'
 require 'openssl'
-require 'puppetserver/utils/file_utilities'
+require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/utils'
 require 'puppetserver/utils/signing_digest'

@@ -1,6 +1,6 @@
 require 'puppetserver/ca/utils'
 require 'puppetserver/utils/http_client'
-require 'puppetserver/utils/file_utilities'
+require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/puppet_config'
 require 'optparse'
 require 'openssl'

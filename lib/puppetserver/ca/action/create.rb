@@ -1,7 +1,7 @@
 require 'puppetserver/ca/utils'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/puppet_config'
-require 'puppetserver/utils/file_utilities'
+require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/utils/http_client'
 require 'puppetserver/utils/signing_digest'
 require 'json'
