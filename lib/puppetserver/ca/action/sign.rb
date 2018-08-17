@@ -12,7 +12,7 @@ module Puppetserver
     module Action
       class Sign
 
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         SUMMARY = 'Sign a given certificate'
         BANNER = <<-BANNER

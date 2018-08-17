@@ -9,7 +9,7 @@ module Puppetserver
   module Ca
     module Action
       class Generate
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         CA_EXTENSIONS = [
           ["basicConstraints", "CA:TRUE", true],
@@ -59,7 +59,7 @@ BANNER
           return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
-          signer = SigningDigest.new
+          signer = Utils::SigningDigest.new
           return 1 if Utils::CliParsing.handle_errors(@logger, signer.errors)
 
           # Generate root and intermediate ca and put all the certificates, crls,

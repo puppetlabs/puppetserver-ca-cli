@@ -10,7 +10,7 @@ module Puppetserver
     module Action
       class List
 
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         SUMMARY = 'List all certificate requests'
         BANNER = <<-BANNER

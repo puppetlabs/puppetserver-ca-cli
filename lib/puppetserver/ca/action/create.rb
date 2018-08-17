@@ -11,7 +11,7 @@ module Puppetserver
     module Action
       class Create
 
-        include Puppetserver::Utils
+        include Puppetserver::Ca::Utils
 
         # Only allow printing ascii characters, excluding /
         VALID_CERTNAME = /\A[ -.0-~]+\Z/
@@ -101,7 +101,7 @@ BANNER
           return 1 if Utils::CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for csr signing.
-          signer = SigningDigest.new
+          signer = Utils::SigningDigest.new
           return 1 if Utils::CliParsing.handle_errors(@logger, signer.errors)
 
           # Make sure we have all the directories where we will be writing files

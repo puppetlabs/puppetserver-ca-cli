@@ -44,7 +44,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         hostprivkey: hostprivkey,
       }
 
-      signer = Puppetserver::Utils::SigningDigest.new
+      signer = Puppetserver::Ca::Utils::SigningDigest.new
       generate_action.generate_root_and_intermediate_ca(settings, signer.digest)
 
       hostkey = OpenSSL::PKey::RSA.new(2048)
