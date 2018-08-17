@@ -2,13 +2,14 @@ require 'optparse'
 require 'puppetserver/ca/version'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/clean'
+require 'puppetserver/ca/action/create'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
 require 'puppetserver/ca/revoke_action'
 require 'puppetserver/ca/list_action'
 require 'puppetserver/ca/sign_action'
 require 'puppetserver/ca/utils'
-require 'puppetserver/ca/create_action'
+
 
 module Puppetserver
   module Ca
@@ -22,7 +23,7 @@ BANNER
 
       VALID_ACTIONS = {
         'clean'    => Action::Clean,
-        'create'   => CreateAction,
+        'create'   => Action::Create,
         'generate' => GenerateAction,
         'import'   => ImportAction,
         'list'     => ListAction,
