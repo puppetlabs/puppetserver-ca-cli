@@ -4,7 +4,7 @@ require 'utils/ssl'
 require 'fileutils'
 
 require 'puppetserver/ca/utils/http_client'
-require 'puppetserver/utils/signing_digest'
+require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/generate'
 

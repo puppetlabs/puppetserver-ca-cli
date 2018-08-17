@@ -3,7 +3,7 @@ require 'openssl'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/utils/signing_digest'
+require 'puppetserver/ca/utils/signing_digest'
 
 module Puppetserver
   module Ca
