@@ -1,7 +1,7 @@
 require 'optparse'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/x509_loader'
-require 'puppetserver/ca/puppet_config'
+require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/utils/cli_parsing'
 
 module Puppetserver

@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'puppetserver/ca/puppet_config'
+require 'puppetserver/ca/config/puppet'
 
 RSpec.describe 'Puppetserver::Ca::PuppetConfig' do
   it 'parses basic inifile' do
