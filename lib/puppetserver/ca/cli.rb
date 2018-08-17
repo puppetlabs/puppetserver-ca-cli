@@ -28,7 +28,7 @@ BANNER
         'import'   => Action::Import,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
-        'sign'     => SignAction
+        'sign'     => Action::Sign
       }
 
       ACTION_LIST = "\nAvailable Actions:\n" +
