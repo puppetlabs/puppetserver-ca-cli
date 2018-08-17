@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-require 'puppetserver/ca/clean_action'
+require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/logger'
 require 'puppetserver/utils/http_client'
 

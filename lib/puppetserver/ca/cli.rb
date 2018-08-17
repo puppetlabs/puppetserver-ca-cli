@@ -1,7 +1,7 @@
 require 'optparse'
 require 'puppetserver/ca/version'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/clean_action'
+require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/import_action'
 require 'puppetserver/ca/generate_action'
 require 'puppetserver/ca/revoke_action'
