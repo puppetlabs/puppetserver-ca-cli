@@ -5,7 +5,7 @@ require 'tmpdir'
 
 require 'puppetserver/ca/action/create'
 require 'puppetserver/ca/logger'
-require 'puppetserver/utils/http_client'
+require 'puppetserver/ca/utils/http_client'
 
 RSpec.describe Puppetserver::Ca::Action::Create do
   include Utils::SSL

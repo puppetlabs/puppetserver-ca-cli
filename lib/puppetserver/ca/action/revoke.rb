@@ -1,5 +1,5 @@
 require 'puppetserver/ca/utils'
-require 'puppetserver/utils/http_client'
+require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/puppet_config'
 

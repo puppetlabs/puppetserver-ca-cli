@@ -2,7 +2,7 @@ require 'spec_helper'
 
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/logger'
-require 'puppetserver/utils/http_client'
+require 'puppetserver/ca/utils/http_client'
 
 RSpec.describe Puppetserver::Ca::Action::Revoke do
   let(:stdout) { StringIO.new }
