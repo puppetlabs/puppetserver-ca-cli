@@ -106,7 +106,7 @@ Options:
       def get_all_certs(settings)
         result = get_certificate_statuses(settings)
 
-        unless result.code == 200
+        unless result.code == '200'
             @logger.err 'Error:'
             @logger.err "    #{result.inspect}"
             return nil
