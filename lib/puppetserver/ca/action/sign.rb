@@ -147,7 +147,7 @@ Options:
               success = false
             else
               @logger.err 'Error:'
-              @logger.err "    When download requested for #{result.inspect}"
+              @logger.err "    When attempting to sign certificate request '#{certname}' received:"
               @logger.err "    code: #{result.code}"
               @logger.err "    body: #{result.body.to_s}" if result.body
               success = false

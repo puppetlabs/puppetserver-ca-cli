@@ -170,7 +170,7 @@ BANNER
             return true
           else
             @logger.err 'Error:'
-            @logger.err "    When certificate request submitted for #{certname}:"
+            @logger.err "    When certificate request submitted for '#{certname}' received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
@@ -203,7 +203,7 @@ BANNER
             return true
           else
             @logger.err 'Error:'
-            @logger.err "    When signing request submitted for #{certname}:"
+            @logger.err "    When attempting to sign certificate request '#{certname}' received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
@@ -240,7 +240,7 @@ BANNER
             return false
           else
             @logger.err 'Error:'
-            @logger.err "    When download requested for certificate #{certname}:"
+            @logger.err "    When download requested for certificate '#{certname}' received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
