@@ -107,7 +107,8 @@ module Puppetserver
             [:certname, default_certname],
             [:server, '$certname'],
             [:masterport, '8140'],
-            [:privatekeydir, '$ssldir/private_keys']
+            [:privatekeydir, '$ssldir/private_keys'],
+            [:publickeydir, '$ssldir/public_keys'],
           ]
 
           dependent_defaults = {
@@ -116,6 +117,7 @@ module Puppetserver
             :keylength => 4096,
             :cacert => '$cadir/ca_crt.pem',
             :cakey => '$cadir/ca_key.pem',
+            :capub => '$cadir/ca_pub.pem',
             :rootkey => '$cadir/root_key.pem',
             :cacrl => '$cadir/ca_crl.pem',
             :serial => '$cadir/serial',
@@ -123,9 +125,11 @@ module Puppetserver
             :ca_server => '$server',
             :ca_port => '$masterport',
             :localcacert => '$certdir/ca.pem',
+            :localcacrl => '$ssldir/crl.pem',
             :hostcert => '$certdir/$certname.pem',
             :hostcrl => '$ssldir/crl.pem',
             :hostprivkey => '$privatekeydir/$certname.pem',
+            :hostpubkey => '$publickeydir/$certname.pem',
             :publickeydir => '$ssldir/public_keys',
             :ca_ttl => '15y',
             :certificate_revocation => 'true',
@@ -150,6 +154,9 @@ module Puppetserver
           # Some special cases where we need to manipulate config settings:
           settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
+
+          # rename dns_alt_names to subject_alt_names now that we support IP alt names
+          settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "puppet,$certname")
 
           settings.each do |key, value|
             next unless value.is_a? String

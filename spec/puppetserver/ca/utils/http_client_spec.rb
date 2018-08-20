@@ -21,12 +21,16 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       cadir = tmpdir
       cacert = File.join(tmpdir, 'ca_crt.pem')
       cakey = File.join(tmpdir, 'ca_key.pem')
+      capub = File.join(tmpdir, 'ca_pub.pem')
       rootkey = File.join(tmpdir, 'root_key.pem')
       cacrl = File.join(tmpdir, 'ca_crl.pem')
       localcacert = File.join(tmpdir, 'localcacert.pem')
+      localcacrl = File.join(tmpdir, 'localcacrl.pem')
       hostcrl = File.join(tmpdir, 'hostcrl.pem')
       hostcert = File.join(tmpdir, 'hostcert.pem')
       hostprivkey = File.join(tmpdir, 'hostkey.pem')
+      hostpubkey = File.join(tmpdir, 'hostpubkey.pem')
+      inventory = File.join(tmpdir, 'inventory.txt')
 
       settings = {
         ca_ttl: (5 * 365 * 24 * 60 * 60),
@@ -36,16 +40,24 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         cadir: cadir,
         cacert: cacert,
         cakey: cakey,
+        capub: capub,
         rootkey: rootkey,
         cacrl: cacrl,
         localcacert: localcacert,
+        localcacrl: localcacrl,
         hostcrl: hostcrl,
         hostcert: hostcert,
         hostprivkey: hostprivkey,
+        certname: 'foo',
+        certdir: cadir,
+        privatekeydir: cadir,
+        publickeydir: cadir,
+        hostpubkey: hostpubkey,
+        cert_inventory: inventory,
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
-      generate_action.generate_root_and_intermediate_ca(settings, signer.digest)
+      generate_action.generate_pki(settings, signer.digest)
 
       hostkey = OpenSSL::PKey::RSA.new(2048)
       cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))
