@@ -89,7 +89,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
         with_temp_dirs tmpdir do |config|
           code = subject.run({'certnames' => ['foo'], 'config' => config})
           expect(code).to eq(0)
-          expect(stdout.string.chomp).to include('Successfully downloaded and saved certificate foo')
+          expect(stdout.string.chomp).to include('Successfully saved certificate for foo')
           expect(stderr.string).to be_empty
         end
       end
@@ -103,7 +103,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
         with_temp_dirs tmpdir do |config|
           code = subject.run({'certnames' => ['foo', 'bar'], 'config' => config})
           expect(code).to eq(1)
-          expect(stdout.string.chomp).to include('Successfully downloaded and saved certificate bar')
+          expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
           expect(stderr.string).to match(/Error.*foo.*not be found/m)
         end
       end
@@ -117,7 +117,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
         with_temp_dirs tmpdir do |config|
           code = subject.run({'certnames' => ['foo', 'bar'], 'config' => config})
           expect(code).to eq(1)
-          expect(stdout.string.chomp).to include('Successfully downloaded and saved certificate bar')
+          expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
           expect(stderr.string).
             to match(/Error.*download requested.*code: 500.*body: Internal Server Error/m)
         end

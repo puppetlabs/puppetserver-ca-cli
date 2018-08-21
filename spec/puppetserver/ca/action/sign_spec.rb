@@ -59,41 +59,55 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
     let(:not_found)     { response.new('404', 'Not Found') }
     let(:empty)         { response.new('404', '[]') }
 
+    let(:connection) { double }
+
+    before do
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:with_connection).and_yield(connection)
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:make_store)
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:load_cert)
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:load_key)
+    end
+
     it 'logs and exits with zero with successful PUT' do
-      allow(action).to receive(:sign_certs).and_return({'foo' => success})
+      allow(connection).to receive(:put).and_return(success)
       exit_code = action.run({'certname' => ['foo']})
       expect(exit_code).to eq(0)
-      expect(out.string).to include('Signed certificate for foo')
+      expect(out.string).to include('signed certificate request for foo')
     end
 
     it 'logs and exits with zero with successful GET and PUT' do
-      allow(action).to receive(:get_certificate_statuses).and_return(get_success)
+      allow(connection).to receive(:put).and_return(success)
+      allow(connection).to receive(:get).and_return(get_success)
       allow(action).to receive(:select_pending_certs).and_return(['ulla'])
-      allow(action).to receive(:sign_certs).and_return({'ulla' => success})
       exit_code = action.run({'all' => true})
       expect(exit_code).to eq(0)
-      expect(out.string).to include('Signed certificate for ulla')
+      expect(out.string).to include('signed certificate request for ulla')
     end
 
     it 'fails when GET request errors' do
-      allow(action).to receive(:get_certificate_statuses).and_return(not_found)
+      allow(connection).to receive(:get).and_return(not_found)
       exit_code = action.run({'all' => true})
       expect(exit_code).to eq(1)
     end
 
     it 'fails when no pending certs' do
-      allow(action).to receive(:get_all_certs).and_return(empty)
+      allow_any_instance_of(Puppetserver::Ca::CertificateAuthority).
+        to receive(:get_certificate_statuses).and_return(empty)
       exit_code = action.run({'all' => true})
       expect(exit_code).to eq(1)
       expect(err.string).to include('No waiting certificate requests to sign')
     end
 
     it 'continues signing certs after failed request' do
-      allow(action).to receive(:sign_certs).and_return({'foo' => success, 'bar' => not_found, 'baz' => success})
+      allow(connection).to receive(:put).and_return(success, not_found, success)
       exit_code = action.run({'certname' => ['foo','bar','baz']})
       expect(exit_code).to eq(1)
-      expect(out.string).to match(/Signed certificate for foo.*Signed certificate for baz/m)
-      expect(err.string).to include('Could not find certificate for bar')
+      expect(out.string).to match(/signed certificate request for foo.*signed certificate request for baz/m)
+      expect(err.string).to include('Could not find certificate request for bar')
     end
   end
 end

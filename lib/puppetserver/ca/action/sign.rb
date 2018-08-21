@@ -1,11 +1,11 @@
 require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/certificate_authority'
+
 require 'optparse'
 require 'openssl'
 require 'net/https'
-require 'json'
 
 module Puppetserver
   module Ca
@@ -26,7 +26,6 @@ Given a comma-separated list of valid certnames, instructs the CA to sign each c
 
 Options:
       BANNER
-        BODY = JSON.dump({desired_state: 'signed'})
 
         def self.parser(parsed = {})
           OptionParser.new do |opts|
@@ -61,8 +60,10 @@ Options:
           puppet = Config::Puppet.parse(config)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
+          ca = Puppetserver::Ca::CertificateAuthority.new(@logger, puppet.settings)
+
           if input['all']
-            requested_certnames = get_all_pending_certs(puppet.settings)
+            requested_certnames = get_all_pending_certs(ca)
             if requested_certnames.nil?
               return 1
             end
@@ -70,49 +71,14 @@ Options:
             requested_certnames = input['certname']
           end
 
-          success = sign_requested_certs(requested_certnames, puppet.settings)
+          success = ca.sign_certs(requested_certnames)
           return success ? 0 : 1
         end
 
-        def http_client(settings)
-          @client ||= HttpClient.new(settings)
-        end
-
-        def get_certificate_statuses(settings)
-          client = http_client(settings)
-          url = client.make_ca_url(settings[:ca_server],
-                                   settings[:ca_port],
-                                   'certificate_statuses',
-                                   'any_key')
-          client.with_connection(url) do |connection|
-            connection.get(url)
+        def get_all_pending_certs(ca)
+          if result = ca.get_certificate_statuses
+            select_pending_certs(result.body)
           end
-        end
-
-        def sign_certs(certnames,settings)
-          results = {}
-          client = http_client(settings)
-          url = client.make_ca_url(settings[:ca_server],
-                                   settings[:ca_port],
-                                   'certificate_status')
-          client.with_connection(url) do |connection|
-            certnames.each do |certname|
-              url.resource_name = certname
-              results[certname] = connection.put(BODY, url)
-            end
-          end
-          return results
-        end
-
-        def get_all_certs(settings)
-          result = get_certificate_statuses(settings)
-
-          unless result.code == '200'
-              @logger.err 'Error:'
-              @logger.err "    #{result.inspect}"
-              return nil
-          end
-          return result
         end
 
         def select_pending_certs(get_result)
@@ -125,35 +91,6 @@ Options:
           end
 
           return requested_certnames
-        end
-
-        def get_all_pending_certs(settings)
-          result = get_all_certs(settings)
-          if result
-            select_pending_certs(result.body)
-          end
-        end
-
-        def sign_requested_certs(certnames,settings)
-          success = true
-          results = sign_certs(certnames, settings)
-          results.each do |certname, result|
-            case result.code
-            when '204'
-              @logger.inform "Signed certificate for #{certname}"
-            when '404'
-              @logger.err 'Error:'
-              @logger.err "    Could not find certificate for #{certname}"
-              success = false
-            else
-              @logger.err 'Error:'
-              @logger.err "    When download requested for #{result.inspect}"
-              @logger.err "    code: #{result.code}"
-              @logger.err "    body: #{result.body.to_s}" if result.body
-              success = false
-            end
-          end
-          return success
         end
 
         def check_flag_usage(results)
