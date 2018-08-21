@@ -55,10 +55,13 @@ BANNER
                               puppet.settings[:serial],
                               puppet.settings[:cert_inventory]]
           errors = FileSystem.check_for_existing_files(target_locations)
-          if errors.any?
-            errors << "If you would really like to replace your CA, please delete the existing files first.
-  Note that any certificates that were issued by this CA will become invalid if you
-  replace it!"
+          if !errors.empty?
+            instructions = <<-ERR
+If you would really like to replace your CA, please delete the existing files first.
+Note that any certificates that were issued by this CA will become invalid if you
+replace it!
+ERR
+            errors << instructions
             CliParsing.handle_errors(@logger, errors)
             return 1
           end
@@ -72,7 +75,7 @@ BANNER
           FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0640)
 
           # Puppet's internal CA expects these file to exist.
-          FileSystem.ensure_file(puppet.settings[:serial], "001", 0640)
+          FileSystem.ensure_file(puppet.settings[:serial], "0x0001", 0640)
           FileSystem.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
           @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
@@ -92,8 +95,8 @@ BANNER
 
           errors = CliParsing.parse_with_errors(parser, args)
 
-          if check_flag_usage(results)
-            errors << check_flag_usage(results)
+          if err = check_flag_usage(results)
+            errors << err
           end
 
           errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)

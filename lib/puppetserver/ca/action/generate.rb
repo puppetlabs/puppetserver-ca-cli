@@ -131,7 +131,7 @@ BANNER
             [settings[:hostpubkey], master_key.public_key],
             [settings[:capub], int_key.public_key],
             [settings[:cert_inventory], inventory_entry(master_cert)],
-            [settings[:serial], "002"],
+            [settings[:serial], "0x0002"],
           ]
 
           private_files = [
@@ -140,13 +140,16 @@ BANNER
             [settings[:cakey], int_key],
           ]
 
-          errors = FileSystem.check_for_existing_files(public_files.map { |f| f.first })
-          errors += FileSystem.check_for_existing_files(private_files.map { |f| f.first })
+          errors = FileSystem.check_for_existing_files(public_files.map(&:first))
+          errors += FileSystem.check_for_existing_files(private_files.map(&:first))
 
-          if errors.any?
-            errors << "If you would really like to replace your CA, please delete the existing files first.
-  Note that any certificates that were issued by this CA will become invalid if you
-  replace it!"
+          if !errors.empty?
+            instructions = <<-ERR
+If you would really like to replace your CA, please delete the existing files first.
+Note that any certificates that were issued by this CA will become invalid if you
+replace it!
+ERR
+            errors << instructions
             return errors
           end
 

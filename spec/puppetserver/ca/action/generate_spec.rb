@@ -19,7 +19,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   subject { Puppetserver::Ca::Action::Generate.new(logger) }
 
   it 'prints the help output & returns 1 if invalid flags are given' do
-    _, exit_code = subject.parse({ '--hello' => ''})
+    _, exit_code = subject.parse(['--hello'])
     expect(stderr.string).to match(/Error.*--hello/m)
     expect(stderr.string).to match(usage)
     expect(exit_code).to eq(1)

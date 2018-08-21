@@ -216,8 +216,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         end
 
         exit_code = subject.run({ 'cert-bundle' => bundle_file,
-                                    'private-key'=> key_file,
-                                    'crl-chain' => chain_file })
+                                  'private-key'=> key_file,
+                                  'crl-chain' => chain_file })
         expect(stderr.string).to include('Leaf certificate could not be validated')
       end
     end
