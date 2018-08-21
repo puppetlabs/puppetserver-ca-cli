@@ -31,6 +31,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       hostprivkey = File.join(tmpdir, 'hostkey.pem')
       hostpubkey = File.join(tmpdir, 'hostpubkey.pem')
       inventory = File.join(tmpdir, 'inventory.txt')
+      serial = File.join(tmpdir, 'serial')
 
       settings = {
         ca_ttl: (5 * 365 * 24 * 60 * 60),
@@ -54,6 +55,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         publickeydir: cadir,
         hostpubkey: hostpubkey,
         cert_inventory: inventory,
+        serial: '002',
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new

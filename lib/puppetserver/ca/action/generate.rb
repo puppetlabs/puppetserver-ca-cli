@@ -4,6 +4,7 @@ require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/signing_digest'
+require 'puppetserver/ca/config/puppet'
 require 'facter'
 
 module Puppetserver
@@ -91,10 +92,8 @@ BANNER
 
           # Generate root and intermediate ca and put all the certificates, crls,
           # and keys where they should go.
-          generate_pki(puppet.settings, signer.digest, subject_alt_names)
-
-          # Puppet's internal CA expects these file to exist.
-          FileSystem.ensure_file(puppet.settings[:serial], "002", 0640)
+          errors = generate_pki(puppet.settings, signer.digest, subject_alt_names)
+          return 1 if CliParsing.handle_errors(@logger, errors)
 
           @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
           return 0
@@ -123,18 +122,16 @@ BANNER
           FileSystem.ensure_dir(settings[:privatekeydir])
           FileSystem.ensure_dir(settings[:publickeydir])
 
-          FileSystem.write_file(settings[:cert_inventory],
-                                inventory_entry(master_cert),
-                                0644)
-
           public_files = [
             [settings[:cacert], [int_cert, root_cert]],
             [settings[:cacrl], [int_crl, root_crl]],
             [settings[:hostcert], master_cert],
             [settings[:localcacert], [int_cert, root_cert]],
             [settings[:localcacrl], [int_crl, root_crl]],
-            [settings[:hostpubkey], [master_key.public_key]],
-            [settings[:capub], [int_key.public_key]],
+            [settings[:hostpubkey], master_key.public_key],
+            [settings[:capub], int_key.public_key],
+            [settings[:cert_inventory], inventory_entry(master_cert)],
+            [settings[:serial], "002"],
           ]
 
           private_files = [
@@ -143,15 +140,25 @@ BANNER
             [settings[:cakey], int_key],
           ]
 
+          errors = FileSystem.check_for_existing_files(public_files.map { |f| f.first })
+          errors += FileSystem.check_for_existing_files(private_files.map { |f| f.first })
+
+          if errors.any?
+            errors << "If you would really like to replace your CA, please delete the existing files first.
+  Note that any certificates that were issued by this CA will become invalid if you
+  replace it!"
+            return errors
+          end
+
           public_files.each do |location, content|
-            @logger.warn "#{location} exists, overwriting" if File.exist?(location)
             FileSystem.write_file(location, content, 0644)
           end
 
           private_files.each do |location, content|
-            @logger.warn "#{location} exists, overwriting" if File.exist?(location)
             FileSystem.write_file(location, content, 0640)
           end
+
+          return []
         end
 
         def self_signed_ca(key, name, valid_until, signing_digest)
