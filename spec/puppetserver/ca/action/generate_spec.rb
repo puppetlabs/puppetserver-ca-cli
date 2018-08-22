@@ -28,7 +28,10 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf, 'subject_alt_names' => '' })
+        exit_code = subject.run({ 'config' => conf,
+                                  'subject_alt_names' => '',
+                                  'ca_name' => '',
+                                  'certname' => '' })
         expect(stderr.string).to be_empty
         expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
         expect(exit_code).to eq(0)
@@ -36,15 +39,53 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     end
   end
 
-  it 'generates a bundle ca_crt file, ca_key, int_key, and ca_crl file' do
+  it 'generates a bundle ca_crt file, ca_key, int_key, ca_crl, and master cert file' do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf, 'subject_alt_names' => '' })
+        exit_code = subject.run({ 'config' => conf,
+                                  'subject_alt_names' => '',
+                                  'ca_name' => '',
+                                  'certname' => 'foocert' })
         expect(exit_code).to eq(0)
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'root_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'certs', 'foocert.pem'))).to be true
+      end
+    end
+  end
+
+  describe 'command line name overrides' do
+    it 'uses the ca_name as specified on the command line' do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'subject_alt_names' => '',
+                                    'ca_name' => 'Foo CA',
+                                    'certname' => '' })
+          expect(exit_code).to eq(0)
+          ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
+          expect(File.exist?(ca_cert_file)).to be true
+          ca_cert = OpenSSL::X509::Certificate.new(File.read(ca_cert_file))
+          expect(ca_cert.subject.to_s).to include('Foo CA')
+        end
+      end
+    end
+
+    it 'uses the default ca_name if none specified' do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'subject_alt_names' => '',
+                                    'ca_name' => '',
+                                    'certname' => '' })
+          expect(exit_code).to eq(0)
+          ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
+          expect(File.exist?(ca_cert_file)).to be true
+          ca_cert = OpenSSL::X509::Certificate.new(File.read(ca_cert_file))
+          expect(ca_cert.subject.to_s).to include('Puppet CA')
+        end
       end
     end
   end
@@ -85,9 +126,15 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   it 'will not overwrite existing CA files' do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf, 'subject_alt_names' => '' })
+        exit_code = subject.run({ 'config' => conf,
+                                  'subject_alt_names' => '',
+                                  'ca_name' => '',
+                                  'certname' => '' })
         expect(exit_code).to eq(0)
-        exit_code2 = subject.run({ 'config' => conf, 'subject_alt_names' => ''})
+        exit_code2 = subject.run({ 'config' => conf,
+                                  'subject_alt_names' => '',
+                                  'ca_name' => '',
+                                  'certname' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)

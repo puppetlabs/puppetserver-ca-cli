@@ -24,9 +24,9 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils::Config
 
-        def self.parse(config_path = nil)
+        def self.parse(config_path: nil, cli_overrides: {})
           instance = new(config_path)
-          instance.load
+          instance.load(cli_overrides)
 
           return instance
         end
@@ -60,7 +60,7 @@ module Puppetserver
           user_specific_conf_dir + '/puppet.conf'
         end
 
-        def load
+        def load(cli_overrides = {})
           if explicitly_given_config_file_or_default_config_exists?
             results = parse_text(File.read(@config_path))
           end
@@ -70,6 +70,7 @@ module Puppetserver
           results[:master] ||= {}
 
           overrides = results[:main].merge(results[:master])
+          overrides.merge!(cli_overrides)
 
           @settings = resolve_settings(overrides).freeze
         end
