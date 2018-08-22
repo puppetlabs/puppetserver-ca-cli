@@ -91,7 +91,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
       expect(code).to eq(1)
       expect(stdout.string.chomp).to eq('Revoked certificate for bar')
       expect(stderr.string).
-        to match(/Error.*revoking foo.*code: 500.*body: Internal Server Error/m)
+        to match(/Error.*attempting to revoke.*code: 500.*body: Internal Server Error/m)
     end
   end
 end

@@ -7,7 +7,7 @@ module Puppetserver
       # Utilities for doing HTTPS against the CA that wraps Net::HTTP constructs
       class HttpClient
 
-        HEADERS = {
+        DEFAULT_HEADERS = {
           'User-Agent'   => 'PuppetserverCaCli',
           'Content-Type' => 'application/json',
           'Accept'       => 'application/json'
@@ -29,11 +29,6 @@ module Puppetserver
 
         def load_key(key_path)
           OpenSSL::PKey.read(File.read(key_path))
-        end
-
-        # Returns a URI-like wrapper around CA specific urls
-        def make_ca_url(host, port, resource_type = nil, certname = nil)
-          URL.new('https', host, port, 'puppet-ca', 'v1', resource_type, certname)
         end
 
         # Takes an instance URL (defined lower in the file), and creates a
@@ -59,29 +54,32 @@ module Puppetserver
             @url = url_struct
           end
 
-          def get(url_overide = nil)
+          def get(url_overide = nil, headers = {})
             url = url_overide || @url
+            headers = DEFAULT_HEADERS.merge(headers)
 
-            request = Net::HTTP::Get.new(url.to_uri, HEADERS)
+            request = Net::HTTP::Get.new(url.to_uri, headers)
             result = @conn.request(request)
 
             Result.new(result.code, result.body)
           end
 
-          def put(body, url_override = nil)
+          def put(body, url_override = nil, headers = {})
             url = url_override || @url
+            headers = DEFAULT_HEADERS.merge(headers)
 
-            request = Net::HTTP::Put.new(url.to_uri, HEADERS)
+            request = Net::HTTP::Put.new(url.to_uri, headers)
             request.body = body
             result = @conn.request(request)
 
             Result.new(result.code, result.body)
           end
 
-          def delete(url_override = nil)
+          def delete(url_override = nil, headers = {})
             url = url_override || @url
+            headers = DEFAULT_HEADERS.merge(headers)
 
-            result = @conn.request(Net::HTTP::Delete.new(url.to_uri, HEADERS))
+            result = @conn.request(Net::HTTP::Delete.new(url.to_uri, headers))
 
             Result.new(result.code, result.body)
           end

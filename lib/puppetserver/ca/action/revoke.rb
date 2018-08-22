@@ -1,10 +1,9 @@
 require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/certificate_authority'
 
 require 'optparse'
-require 'json'
 
 module Puppetserver
   module Ca
@@ -13,7 +12,6 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils
 
-        REQUEST_BODY = JSON.dump({ desired_state: 'revoked' })
         CERTNAME_BLACKLIST = %w{--all --config}
 
         SUMMARY = 'Revoke a given certificate'
@@ -94,43 +92,8 @@ BANNER
         end
 
         def revoke_certs(certnames, settings)
-          client = HttpClient.new(settings)
-
-          url = client.make_ca_url(settings[:ca_server],
-                                   settings[:ca_port],
-                                   'certificate_status')
-
-          # results will be a list of trues & falses based on the success
-          # of revocations
-          results = client.with_connection(url) do |connection|
-            certnames.map do |certname|
-              url.resource_name = certname
-              result = connection.put(REQUEST_BODY, url)
-
-              check_result(result, certname)
-            end
-          end
-
-          return results.all?
-        end
-
-        # logs the action and returns a boolean for success/failure
-        def check_result(result, certname)
-          case result.code
-          when '200', '204'
-            @logger.inform "Revoked certificate for #{certname}"
-            return true
-          when '404'
-            @logger.err 'Error:'
-            @logger.err "    Could not find certificate for #{certname}"
-            return false
-          else
-            @logger.err 'Error:'
-            @logger.err "    When revoking #{certname} received:"
-            @logger.err "      code: #{result.code}"
-            @logger.err "      body: #{result.body.to_s}" if result.body
-            return false
-          end
+          ca = Puppetserver::Ca::CertificateAuthority.new(@logger, settings)
+          ca.revoke_certs(certnames)
         end
       end
     end

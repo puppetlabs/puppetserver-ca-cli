@@ -1,11 +1,10 @@
 require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/action/revoke'
+require 'puppetserver/ca/certificate_authority'
 
 require 'optparse'
-require 'json'
 
 module Puppetserver
   module Ca
@@ -94,64 +93,8 @@ BANNER
         end
 
         def clean_certs(certnames, settings)
-          client = HttpClient.new(settings)
-
-          url = client.make_ca_url(settings[:ca_server],
-                                   settings[:ca_port],
-                                   'certificate_status')
-
-          results = client.with_connection(url) do |connection|
-            certnames.map do |certname|
-              url.resource_name = certname
-              revoke_result = connection.put(Action::Revoke::REQUEST_BODY, url)
-              revoked = check_revocation(revoke_result, certname)
-
-              cleaned = nil
-              unless revoked == :error
-                clean_result = connection.delete(url)
-                cleaned = check_result(clean_result, certname)
-              end
-
-              cleaned == :success && [:success, :not_found].include?(revoked)
-            end
-          end
-
-          return results.all?
-        end
-
-        # possibly logs the action, always returns a status symbol 👑
-        def check_revocation(result, certname)
-          case result.code
-          when '200', '204'
-            @logger.inform "Revoked certificate for #{certname}"
-            return :success
-          when '404'
-            return :not_found
-          else
-            @logger.err 'Error:'
-            @logger.err "    Failed revoking certificate for #{certname}"
-            @logger.err "    Received code: #{result.code}, body: #{result.body}"
-            return :error
-          end
-        end
-
-        # logs the action and returns a status symbol 👑
-        def check_result(result, certname)
-          case result.code
-          when '200', '204'
-            @logger.inform "Cleaned files related to #{certname}"
-            return :success
-          when '404'
-            @logger.err 'Error:'
-            @logger.err "    Could not find files for #{certname}"
-            return :not_found
-          else
-            @logger.err 'Error:'
-            @logger.err "    When cleaning #{certname} received:"
-            @logger.err "      code: #{result.code}"
-            @logger.err "      body: #{result.body.to_s}" if result.body
-            return :error
-          end
+          ca = Puppetserver::Ca::CertificateAuthority.new(@logger, settings)
+          ca.clean_certs(certnames)
         end
       end
     end

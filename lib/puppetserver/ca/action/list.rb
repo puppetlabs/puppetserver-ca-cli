@@ -1,6 +1,6 @@
 require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/file_system'
+require 'puppetserver/ca/certificate_authority'
 require 'puppetserver/ca/config/puppet'
 require 'optparse'
 require 'json'
@@ -101,21 +101,6 @@ Options:
             end
         end
 
-        def http_client(settings)
-          @client ||= HttpClient.new(settings)
-        end
-
-        def get_certificate_statuses(settings)
-          client = http_client(settings)
-          url = client.make_ca_url(settings[:ca_server],
-                                   settings[:ca_port],
-                                   'certificate_statuses',
-                                   'any_key')
-          client.with_connection(url) do |connection|
-            connection.get(url)
-          end
-        end
-
         def separate_certs(all_certs)
           certs = all_certs.group_by { |v| v["state"]}
           requested = certs.fetch("requested", [])
@@ -125,15 +110,7 @@ Options:
         end
 
         def get_all_certs(settings)
-          result = get_certificate_statuses(settings)
-
-          unless result.code == '200'
-            @logger.err 'Error:'
-            @logger.err "    code: #{result.code}"
-            @logger.err "    body: #{result.body}" if result.body
-            return nil
-          end
-
+          result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses
           JSON.parse(result.body)
         end
 
