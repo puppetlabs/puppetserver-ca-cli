@@ -4,20 +4,23 @@ require 'utils/ssl'
 require 'tmpdir'
 require 'fileutils'
 
+require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/import'
-require 'puppetserver/ca/cli'
 
 RSpec.describe Puppetserver::Ca::Action::Import do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
+  let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
   let(:usage) do
     /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
   end
 
+  subject { Puppetserver::Ca::Action::Import.new(logger) }
+
   it 'prints the help output & returns 1 if invalid flags are given' do
-    exit_code = Puppetserver::Ca::Cli.run(['import', '--hello'], stdout, stderr)
+    _, exit_code = subject.parse(['--hello'])
     expect(stderr.string).to match(/Error.*--hello/m)
     expect(stderr.string).to match(usage)
     expect(exit_code).to be 1
@@ -25,7 +28,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
 
   it 'prints the help output & returns 1 if no input is given' do
-    exit_code = Puppetserver::Ca::Cli.run(['import'], stdout, stderr)
+    _, exit_code = subject.parse([])
     expect(stderr.string).to match(usage)
     expect(exit_code).to be 1
   end
@@ -33,71 +36,44 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        exit_code = Puppetserver::Ca::Cli.run(['import',
-                                                '--cert-bundle', bundle,
-                                                '--private-key', key,
-                                                '--crl-chain', chain,
-                                                '--config', conf],
-                                              stdout, stderr)
+        _, maybe_code = subject.parse(['--cert-bundle', bundle,
+                                       '--private-key', key,
+                                       '--crl-chain', chain,
+                                       '--config', conf])
         expect(stderr.string).to be_empty
-        expect(exit_code).to be 0
-      end
-    end
-  end
-
-  it 'accepts a --config flag' do
-    Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
-        Puppetserver::Ca::Cli.run(['import',
-                                    '--config', conf,
-                                    '--cert-bundle', bundle,
-                                    '--private-key', key,
-                                    '--crl-chain', chain],
-                                    stdout,
-                                    stderr)
+        expect(maybe_code).to be nil
       end
     end
   end
 
   describe 'validation' do
-    it 'requires the --cert-bundle, --private-key, and --crl-chain options' do
-      out1, err1 = StringIO.new, StringIO.new
-      exit_code = Puppetserver::Ca::Cli.run(
-                    ['import', '--private-key', 'foo', '--crl-chain', 'bar'],
-                    out1,
-                    err1)
-      expect(err1.string).to include('Missing required argument')
-      expect(err1.string).to match(usage)
+    it 'requires the --cert-bundle' do
+      _, exit_code = subject.parse(['--private-key', 'foo', '--crl-chain', 'bar'])
+      expect(stderr.string).to include('Missing required argument')
+      expect(stderr.string).to match(usage)
       expect(exit_code).to be 1
+    end
 
-      out2, err2 = StringIO.new, StringIO.new
-      exit_code = Puppetserver::Ca::Cli.run(
-                    ['import', '--cert-bundle', 'foo', '--crl-chain', 'bar'],
-                    out2,
-                    err2)
-      expect(err2.string).to include('Missing required argument')
-      expect(err2.string).to match(usage)
+    it 'requires the --private-key' do
+      _, exit_code = subject.parse(['--cert-bundle', 'foo', '--crl-chain', 'bar'])
+      expect(stderr.string).to include('Missing required argument')
+      expect(stderr.string).to match(usage)
       expect(exit_code).to be 1
+    end
 
-      out3, err3 = StringIO.new, StringIO.new
-      exit_code = Puppetserver::Ca::Cli.run(
-                    ['import', '--private-key', 'foo', '--cert-bundle', 'bar'],
-                    out3,
-                    err3)
-      expect(err3.string).to include('Missing required argument')
-      expect(err3.string).to match(usage)
+    it 'requires the --crl-chain' do
+      _, exit_code = subject.parse(['--cert-bundle', 'foo', '--private-key', 'bar'])
+      expect(stderr.string).to include('Missing required argument')
+      expect(stderr.string).to match(usage)
       expect(exit_code).to be 1
     end
 
     it 'requires cert-bundle, private-key, and crl-chain to be readable' do
       # All errors are surfaced from validations
       Dir.mktmpdir do |tmpdir|
-        exit_code = Puppetserver::Ca::Cli.run(
-                      ['import',
-                       '--cert-bundle', File.join(tmpdir, 'cert_bundle.pem'),
-                       '--private-key', File.join(tmpdir, 'private_key.pem'),
-                       '--crl-chain', File.join(tmpdir, 'crl_chain.pem')],
-                      stdout, stderr)
+        exit_code = subject.run({ 'cert-bundle' => File.join(tmpdir, 'cert_bundle.pem'),
+                                  'private-key' => File.join(tmpdir, 'private_key.pem'),
+                                  'crl-chain' => File.join(tmpdir, 'crl_chain.pem') })
         expect(stderr.string).to match(/Could not read .*cert_bundle.pem/)
         expect(stderr.string).to match(/Could not read .*private_key.pem/)
         expect(stderr.string).to match(/Could not read .*crl_chain.pem/)
@@ -113,14 +89,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
             f.puts 'garbage'
             f.puts '-----END CERTIFICATE-----'
           end
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not parse .*bundle.pem/)
           expect(stderr.string).to include('garbage')
         end
@@ -131,14 +102,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
           File.open(bundle, 'w') {|f| f.puts '' }
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not detect .*bundle.pem/)
         end
       end
@@ -148,14 +114,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
           File.open(key, 'w') {|f| f.puts '' }
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not parse .*key.pem/)
         end
       end
@@ -165,14 +126,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
           File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to include('Private key and certificate do not match')
         end
       end
@@ -186,14 +142,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
             f.puts 'garbage'
             f.puts '-----END X509 CRL-----'
           end
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not parse .*chain.pem/)
           expect(stderr.string).to include('garbage')
         end
@@ -204,14 +155,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
           File.open(chain, 'w') {|f| f.puts '' }
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not detect .*chain.pem/)
         end
       end
@@ -231,14 +177,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
             f.puts crls[1..-1]
           end
 
-          exit_code = Puppetserver::Ca::Cli.run(
-                        ['import',
-                         '--cert-bundle', bundle,
-                         '--private-key', key,
-                         '--crl-chain', chain],
-                        stdout,
-                        stderr)
-
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to include('Leaf CRL was not issued by leaf certificate')
         end
       end
@@ -274,13 +215,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           f.puts root_crl.to_pem
         end
 
-        exit_code = Puppetserver::Ca::Cli.run(['import',
-                                                '--private-key', key_file,
-                                                '--cert-bundle', bundle_file,
-                                                '--crl-chain', chain_file],
-                                                stdout,
-                                                stderr)
-
+        exit_code = subject.run({ 'cert-bundle' => bundle_file,
+                                  'private-key'=> key_file,
+                                  'crl-chain' => chain_file })
         expect(stderr.string).to include('Leaf certificate could not be validated')
       end
     end
@@ -289,13 +226,10 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
           FileUtils.rm conf
-          exit_code = Puppetserver::Ca::Cli.run(['import',
-                                                  '--config', conf,
-                                                  '--cert-bundle', bundle,
-                                                  '--private-key', key,
-                                                  '--crl-chain', chain],
-                                                  stdout,
-                                                  stderr)
+          exit_code = subject.run({ 'config' => conf,
+                                    'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain })
           expect(stderr.string).to match(/Could not read file .*puppet.conf/)
         end
       end
@@ -311,18 +245,40 @@ RSpec.describe Puppetserver::Ca::Action::Import do
               cadir = #{tmpdir}/ca
           INI
         end
-        exit_code = Puppetserver::Ca::Cli.run(['import',
-                                                '--cert-bundle', bundle,
-                                                '--private-key', key,
-                                                '--crl-chain', chain,
-                                                '--config', conf],
-                                                stdout,
-                                                stderr)
-
+        exit_code = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain })
         expect(exit_code).to eq(0)
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
+      end
+    end
+  end
+
+  it 'does not overwrite existing CA files' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        File.open conf, 'w' do |f|
+          f.puts(<<-INI)
+            [master]
+              cadir = #{tmpdir}/ca
+          INI
+        end
+        exit_code = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain })
+        expect(exit_code).to eq(0)
+
+        exit_code2 = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain })
+        expect(exit_code2).to eq(1)
+        expect(stderr.string).to match(/Existing file.*/)
+        expect(stderr.string).to match(/.*please delete the existing files.*/)
       end
     end
   end

@@ -3,8 +3,6 @@ require 'utils/ssl'
 
 require 'tmpdir'
 require 'fileutils'
-
-require 'puppetserver/ca/cli'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/signing_digest'
@@ -21,7 +19,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   subject { Puppetserver::Ca::Action::Generate.new(logger) }
 
   it 'prints the help output & returns 1 if invalid flags are given' do
-    exit_code = Puppetserver::Ca::Cli.run(['generate', '--hello'], stdout, stderr)
+    _, exit_code = subject.parse(['--hello'])
     expect(stderr.string).to match(/Error.*--hello/m)
     expect(stderr.string).to match(usage)
     expect(exit_code).to eq(1)
@@ -30,7 +28,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
-        exit_code = Puppetserver::Ca::Cli.run(['generate', '--config', conf], stdout, stderr)
+        exit_code = subject.run({ 'config' => conf, 'subject_alt_names' => '' })
         expect(stderr.string).to be_empty
         expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
         expect(exit_code).to eq(0)
@@ -81,6 +79,19 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       master_csr = host.create_csr("master", master_key)
       master_cert = subject.sign_master_cert(int_key, int_cert, master_csr, valid_until, digest, "DNS:bar.net, IP:123.123.0.1")
       expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:bar.net, IP Address:123.123.0.1")
+    end
+  end
+
+  it 'will not overwrite existing CA files' do
+    Dir.mktmpdir do |tmpdir|
+      with_temp_dirs tmpdir do |conf|
+        exit_code = subject.run({ 'config' => conf, 'subject_alt_names' => '' })
+        expect(exit_code).to eq(0)
+        exit_code2 = subject.run({ 'config' => conf, 'subject_alt_names' => ''})
+        expect(exit_code2).to eq(1)
+        expect(stderr.string).to match(/Existing file.*/)
+        expect(stderr.string).to match(/.*please delete the existing files.*/)
+      end
     end
   end
 end
