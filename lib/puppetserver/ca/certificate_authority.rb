@@ -51,7 +51,7 @@ module Puppetserver
       # @param body [JSON/String] body of the put request
       # @param type [Symbol] type of error processing to perform on result
       # @return [Boolean] whether all requests were successful
-      def put(certnames, resource_type:, body:, type:, headers: nil)
+      def put(certnames, resource_type:, body:, type:, headers: {})
         url = make_ca_url(resource_type)
         results = @client.with_connection(url) do |connection|
           certnames.map do |certname|
@@ -78,7 +78,7 @@ module Puppetserver
             return false
           else
             @logger.err 'Error:'
-            @logger.err "    When signing request submitted for #{certname}:"
+            @logger.err "    When attempting to sign certificate request '#{certname}', received"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
@@ -94,7 +94,7 @@ module Puppetserver
             return false
           else
             @logger.err 'Error:'
-            @logger.err "    When revoking #{certname} received:"
+            @logger.err "    When attempting to revoke certificate '#{certname}', received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
@@ -106,7 +106,7 @@ module Puppetserver
             return true
           else
             @logger.err 'Error:'
-            @logger.err "    When certificate request submitted for #{certname}:"
+            @logger.err "    When attempting to submit certificate request for '#{certname}', received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return false
@@ -149,8 +149,9 @@ module Puppetserver
           return :not_found
         else
           @logger.err 'Error:'
-          @logger.err "    Failed revoking certificate for #{certname}"
-          @logger.err "    Received code: #{result.code}, body: #{result.body}"
+          @logger.err "    When attempting to revoke certificate '#{certname}', received:"
+          @logger.err "      code: #{result.code}"
+          @logger.err "      body: #{result.body.to_s}" if result.body
           return :error
         end
       end
@@ -163,11 +164,11 @@ module Puppetserver
           return :success
         when '404'
           @logger.err 'Error:'
-          @logger.err "    Could not find files for #{certname}"
+          @logger.err "    Could not find files to clean for #{certname}"
           return :not_found
         else
           @logger.err 'Error:'
-          @logger.err "    When cleaning #{certname} received:"
+          @logger.err "    When attempting to clean certificate '#{certname}', received:"
           @logger.err "      code: #{result.code}"
           @logger.err "      body: #{result.body.to_s}" if result.body
           return :error
@@ -201,7 +202,7 @@ module Puppetserver
           return nil
         else
           @logger.err 'Error:'
-          @logger.err "    When download requested for certificate #{certname}:"
+          @logger.err "    When attempting to download certificate '#{certname}', received:"
           @logger.err "      code: #{result.code}"
           @logger.err "      body: #{result.body.to_s}" if result.body
           return nil

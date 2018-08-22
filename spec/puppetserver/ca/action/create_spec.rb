@@ -119,7 +119,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
           expect(code).to eq(1)
           expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
           expect(stderr.string).
-            to match(/Error.*download requested.*code: 500.*body: Internal Server Error/m)
+            to match(/Error.*attempting to download.*code: 500.*body: Internal Server Error/m)
         end
       end
     end

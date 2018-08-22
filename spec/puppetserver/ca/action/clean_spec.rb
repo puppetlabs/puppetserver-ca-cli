@@ -94,7 +94,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       code = subject.run({'certnames' => ['foo']})
       expect(code).to eq(1)
       expect(stdout.string).to be_empty
-      expect(stderr.string).to include('Failed revoking certificate')
+      expect(stderr.string).to include('Internal Server Error')
     end
 
     it 'logs an error and returns 1 if any could not be cleaned' do
@@ -105,7 +105,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       code = subject.run({'certnames' => ['foo', 'bar']})
       expect(code).to eq(1)
       expect(stdout.string).to include('Cleaned files related to bar')
-      expect(stderr.string).to match(/Error.*not find files for foo/m)
+      expect(stderr.string).to match(/Error.*not find files.*foo/m)
     end
 
     it 'prints an error and returns 1 if an unknown error occurs' do
@@ -117,7 +117,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       expect(code).to eq(1)
       expect(stdout.string).to include('Cleaned files related to bar')
       expect(stderr.string).
-        to match(/Error.*cleaning foo.*code: 500.*body: Internal Server Error/m)
+        to match(/Error.*attempting to clean.*code: 500.*body: Internal Server Error/m)
     end
   end
 end
