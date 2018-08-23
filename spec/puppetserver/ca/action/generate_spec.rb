@@ -107,19 +107,36 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       expect(subject.munge_alt_names('foo.com,IP:123.456.789')).to eq('DNS:foo.com, IP:123.456.789')
     end
 
-    it 'adds subject alt names to the master cert' do
-      digest = Puppetserver::Ca::Utils::SigningDigest.new.digest
-      host = Puppetserver::Ca::Host.new(digest)
-      valid_until = Time.now + 1000
-      root_key = host.create_private_key(4096)
-      root_cert = subject.self_signed_ca(root_key, "root", valid_until, digest)
-      int_key = host.create_private_key(4096)
-      int_csr = host.create_csr("int_ca", int_key)
-      int_cert = subject.sign_intermediate(root_key, root_cert, int_csr, valid_until, digest)
-      master_key = host.create_private_key(4096)
-      master_csr = host.create_csr("master", master_key)
-      master_cert = subject.sign_master_cert(int_key, int_cert, master_csr, valid_until, digest, "DNS:bar.net, IP:123.123.0.1")
-      expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:bar.net, IP Address:123.123.0.1")
+    it 'adds default subject alt names to the master cert' do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'subject_alt_names' => '',
+                                    'ca_name' => '',
+                                    'certname' => 'foo' })
+          expect(exit_code).to eq(0)
+          master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
+          expect(File.exist?(master_cert_file)).to be true
+          master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
+          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:foo, DNS:puppet")
+        end
+      end
+    end
+
+    it 'adds custom subject alt names to the master cert' do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'subject_alt_names' => 'bar.net,IP:123.123.0.1',
+                                    'ca_name' => '',
+                                    'certname' => 'foo' })
+          expect(exit_code).to eq(0)
+          master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
+          expect(File.exist?(master_cert_file)).to be true
+          master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
+          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:bar.net, IP Address:123.123.0.1")
+        end
+      end
     end
   end
 

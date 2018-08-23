@@ -83,7 +83,7 @@ BANNER
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          puppet = Config::Puppet.parse(config_path: config)
+          puppet = Config::Puppet.parse(config)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           passed = revoke_certs(certnames, puppet.settings)

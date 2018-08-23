@@ -14,7 +14,7 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca import [--help]
-  puppetserver ca import [--config PATH]
+  puppetserver ca import [--config PATH] [--certname NAME]
       --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
@@ -46,7 +46,10 @@ BANNER
           loader = X509Loader.new(bundle_path, key_path, chain_path)
           return 1 if CliParsing.handle_errors(@logger, loader.errors)
 
-          puppet = Config::Puppet.parse(config_path: config_path)
+          settings_overrides = {}
+          settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
+          puppet = Config::Puppet.new(config_path)
+          puppet.load(settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           target_locations = [puppet.settings[:cacert],
@@ -75,7 +78,7 @@ ERR
           FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0640)
 
           # Puppet's internal CA expects these file to exist.
-          FileSystem.ensure_file(puppet.settings[:serial], "0x0001", 0640)
+          FileSystem.ensure_file(puppet.settings[:serial], "001", 0640)
           FileSystem.ensure_file(puppet.settings[:cert_inventory], "", 0640)
 
           @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
@@ -123,6 +126,10 @@ ERR
             end
             opts.on('--crl-chain CHAIN', 'Path to PEM encoded chain') do |chain|
               parsed['crl-chain'] = chain
+            end
+            opts.on('--certname NAME',
+                    'Common name to use for the master cert') do |name|
+              parsed['certname'] = name
             end
           end
         end

@@ -44,8 +44,8 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca generate [--help]
-  puppetserver ca generate [--config PATH]
-  puppetserver ca generate [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca generate [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+                           [--certname NAME] [--ca-name NAME]
 
 Description:
 Generate a root and intermediate signing CA for Puppet Server
@@ -80,8 +80,12 @@ BANNER
           settings_overrides = {}
           settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
           settings_overrides[:ca_name] = input['ca_name'] unless input['ca_name'].empty?
-          settings_overrides[:subject_alt_names] = input['subject_alt_names'] unless input['subject_alt_names'].empty?
-          puppet = Config::Puppet.parse(config_path: config_path, cli_overrides: settings_overrides)
+          # Since puppet expects the key to be called 'dns_alt_names', we need to use that here
+          # to ensure that the overriding works correctly.
+          settings_overrides[:dns_alt_names] = input['subject_alt_names'] unless input['subject_alt_names'].empty?
+
+          puppet = Config::Puppet.new(config_path)
+          puppet.load(settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
@@ -131,7 +135,7 @@ BANNER
             [settings[:hostpubkey], master_key.public_key],
             [settings[:capub], int_key.public_key],
             [settings[:cert_inventory], inventory_entry(master_cert)],
-            [settings[:serial], "0x0002"],
+            [settings[:serial], "002"],
           ]
 
           private_files = [

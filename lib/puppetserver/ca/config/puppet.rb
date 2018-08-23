@@ -24,9 +24,9 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils::Config
 
-        def self.parse(config_path: nil, cli_overrides: {})
+        def self.parse(config_path)
           instance = new(config_path)
-          instance.load(cli_overrides)
+          instance.load
 
           return instance
         end

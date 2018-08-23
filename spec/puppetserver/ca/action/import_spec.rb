@@ -73,7 +73,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       Dir.mktmpdir do |tmpdir|
         exit_code = subject.run({ 'cert-bundle' => File.join(tmpdir, 'cert_bundle.pem'),
                                   'private-key' => File.join(tmpdir, 'private_key.pem'),
-                                  'crl-chain' => File.join(tmpdir, 'crl_chain.pem') })
+                                  'crl-chain' => File.join(tmpdir, 'crl_chain.pem'),
+                                  'certname' => '' })
         expect(stderr.string).to match(/Could not read .*cert_bundle.pem/)
         expect(stderr.string).to match(/Could not read .*private_key.pem/)
         expect(stderr.string).to match(/Could not read .*crl_chain.pem/)
@@ -91,7 +92,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           end
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
-                                    'crl-chain' => chain })
+                                    'crl-chain' => chain,
+                                    'certname' => '' })
           expect(stderr.string).to match(/Could not parse .*bundle.pem/)
           expect(stderr.string).to include('garbage')
         end
@@ -104,7 +106,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           File.open(bundle, 'w') {|f| f.puts '' }
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
-                                    'crl-chain' => chain })
+                                    'crl-chain' => chain,
+                                    'certname' => '' })
           expect(stderr.string).to match(/Could not detect .*bundle.pem/)
         end
       end
@@ -248,7 +251,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         exit_code = subject.run({ 'config' => conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
-                                  'crl-chain' => chain })
+                                  'crl-chain' => chain,
+                                  'certname' => '' })
         expect(exit_code).to eq(0)
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
@@ -269,13 +273,15 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         exit_code = subject.run({ 'config' => conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
-                                  'crl-chain' => chain })
+                                  'crl-chain' => chain,
+                                  'certname' => '' })
         expect(exit_code).to eq(0)
 
         exit_code2 = subject.run({ 'config' => conf,
-                                  'cert-bundle' => bundle,
-                                  'private-key'=> key,
-                                  'crl-chain' => chain })
+                                   'cert-bundle' => bundle,
+                                   'private-key'=> key,
+                                   'crl-chain' => chain,
+                                   'certname' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)
