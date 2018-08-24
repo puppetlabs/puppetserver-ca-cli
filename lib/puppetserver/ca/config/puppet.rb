@@ -134,6 +134,7 @@ module Puppetserver
             :publickeydir => '$ssldir/public_keys',
             :ca_ttl => '15y',
             :certificate_revocation => 'true',
+            :signeddir => '$cadir/signed',
           }
 
           # This loops through the base defaults and gives each setting a

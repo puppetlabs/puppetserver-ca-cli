@@ -125,6 +125,7 @@ BANNER
           FileSystem.ensure_dir(settings[:certdir])
           FileSystem.ensure_dir(settings[:privatekeydir])
           FileSystem.ensure_dir(settings[:publickeydir])
+          FileSystem.ensure_dir(settings[:signeddir])
 
           public_files = [
             [settings[:cacert], [int_cert, root_cert]],
@@ -136,6 +137,7 @@ BANNER
             [settings[:capub], int_key.public_key],
             [settings[:cert_inventory], inventory_entry(master_cert)],
             [settings[:serial], "002"],
+            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert],
           ]
 
           private_files = [
