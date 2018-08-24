@@ -44,8 +44,8 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca generate [--help]
-  puppetserver ca generate [--config PATH]
-  puppetserver ca generate [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca generate [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+                           [--certname NAME] [--ca-name NAME]
 
 Description:
 Generate a root and intermediate signing CA for Puppet Server
@@ -77,31 +77,34 @@ BANNER
           end
 
           # Load, resolve, and validate puppet config settings
-          puppet = Config::Puppet.parse(config_path)
+          settings_overrides = {}
+          settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
+          settings_overrides[:ca_name] = input['ca_name'] unless input['ca_name'].empty?
+          # Since puppet expects the key to be called 'dns_alt_names', we need to use that here
+          # to ensure that the overriding works correctly.
+          settings_overrides[:dns_alt_names] = input['subject_alt_names'] unless input['subject_alt_names'].empty?
+
+          puppet = Config::Puppet.new(config_path)
+          puppet.load(settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
           signer = SigningDigest.new
           return 1 if CliParsing.handle_errors(@logger, signer.errors)
 
-          if input['subject_alt_names'].empty?
-            subject_alt_names = munge_alt_names(puppet.settings[:subject_alt_names])
-          else
-            subject_alt_names = munge_alt_names(input['subject_alt_names'])
-          end
-
           # Generate root and intermediate ca and put all the certificates, crls,
           # and keys where they should go.
-          errors = generate_pki(puppet.settings, signer.digest, subject_alt_names)
+          errors = generate_pki(puppet.settings, signer.digest)
           return 1 if CliParsing.handle_errors(@logger, errors)
 
           @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
           return 0
         end
 
-        def generate_pki(settings, signing_digest, subject_alt_names = '')
+        def generate_pki(settings, signing_digest)
           valid_until = Time.now + settings[:ca_ttl]
           host = Puppetserver::Ca::Host.new(signing_digest)
+          subject_alt_names = munge_alt_names(settings[:subject_alt_names])
 
           root_key = host.create_private_key(settings[:keylength])
           root_cert = self_signed_ca(root_key, settings[:root_ca_name], valid_until, signing_digest)
@@ -115,12 +118,14 @@ BANNER
           master_key = host.create_private_key(settings[:keylength])
           master_csr = host.create_csr(settings[:certname], master_key)
           master_cert = sign_master_cert(int_key, int_cert, master_csr,
-                                       valid_until, signing_digest, subject_alt_names)
+                                         valid_until, signing_digest,
+                                         subject_alt_names)
 
           FileSystem.ensure_dir(settings[:cadir])
           FileSystem.ensure_dir(settings[:certdir])
           FileSystem.ensure_dir(settings[:privatekeydir])
           FileSystem.ensure_dir(settings[:publickeydir])
+          FileSystem.ensure_dir(settings[:signeddir])
 
           public_files = [
             [settings[:cacert], [int_cert, root_cert]],
@@ -131,7 +136,8 @@ BANNER
             [settings[:hostpubkey], master_key.public_key],
             [settings[:capub], int_key.public_key],
             [settings[:cert_inventory], inventory_entry(master_cert)],
-            [settings[:serial], "0x0002"],
+            [settings[:serial], "002"],
+            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert],
           ]
 
           private_files = [
@@ -293,6 +299,8 @@ ERR
 
         def self.parser(parsed = {})
           parsed['subject_alt_names'] = ''
+          parsed['ca_name'] = ''
+          parsed['certname'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
             opts.on('--help', 'Display this generate specific help output') do |help|
@@ -302,8 +310,16 @@ ERR
               parsed['config'] = conf
             end
             opts.on('--subject-alt-names NAME1[,NAME2]',
-                    'Subject alternative names for the CA signing cert') do |sans|
+                    'Subject alternative names for the master cert') do |sans|
               parsed['subject_alt_names'] = sans
+            end
+            opts.on('--ca-name NAME',
+                    'Common name to use for the CA signing cert') do |name|
+              parsed['ca_name'] = name
+            end
+            opts.on('--certname NAME',
+                    'Common name to use for the master cert') do |name|
+              parsed['certname'] = name
             end
           end
         end

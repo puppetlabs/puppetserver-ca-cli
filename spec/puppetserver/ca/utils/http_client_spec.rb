@@ -53,9 +53,11 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         certdir: cadir,
         privatekeydir: cadir,
         publickeydir: cadir,
+        signeddir: cadir,
         hostpubkey: hostpubkey,
         cert_inventory: inventory,
         serial: serial,
+        subject_alt_names: '',
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
