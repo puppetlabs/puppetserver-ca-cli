@@ -21,6 +21,7 @@ module Puppetserver
 Usage:
   puppetserver ca create [--help]
   puppetserver ca create [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
+                         [--subject-alt-names ALTNAME1[,ALTNAME2...]]
 
 Description:
 Creates a new certificate signed by the intermediate CA
@@ -38,6 +39,7 @@ BANNER
 
         def self.parser(parsed = {})
           parsed['certnames'] = []
+          parsed['subject-alt-names'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
             opts.on('--certname FOO,BAR', Array,
@@ -49,6 +51,10 @@ BANNER
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
               parsed['config'] = conf
+            end
+            opts.on('--subject-alt-names NAME1[,NAME2]',
+                    'Subject alternative names for the generated cert') do |sans|
+              parsed['subject-alt-names'] = sans
             end
           end
         end
@@ -96,7 +102,12 @@ BANNER
           end
 
           # Load, resolve, and validate puppet config settings
-          puppet = Config::Puppet.parse(config_path)
+          settings_overrides = {}
+          # Since puppet expects the key to be called 'dns_alt_names', we need to use that here
+          # to ensure that the overriding works correctly.
+          settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
+          puppet = Config::Puppet.new(config_path)
+          puppet.load(settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for csr signing.
@@ -139,7 +150,11 @@ BANNER
         def generate_key_csr(certname, settings, digest)
           host = Puppetserver::Ca::Host.new(digest)
           private_key = host.create_private_key(settings[:keylength])
-          csr = host.create_csr(certname, private_key)
+          extensions = []
+          if !settings[:subject_alt_names].empty?
+            extensions << host.create_extension("subjectAltName", settings[:subject_alt_names])
+          end
+          csr = host.create_csr(certname, private_key, extensions)
 
           return private_key, csr
         end

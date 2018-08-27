@@ -87,7 +87,9 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       allow(connection).to receive(:get).and_return(success_with_content)
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
-          code = subject.run({'certnames' => ['foo'], 'config' => config})
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => ''})
           expect(code).to eq(0)
           expect(stdout.string.chomp).to include('Successfully saved certificate for foo')
           expect(stderr.string).to be_empty
@@ -101,7 +103,9 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       allow(connection).to receive(:get).and_return(not_found, success_with_content)
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
-          code = subject.run({'certnames' => ['foo', 'bar'], 'config' => config})
+          code = subject.run({'certnames' => ['foo', 'bar'],
+                              'config' => config,
+                              'subject-alt-names' => ''})
           expect(code).to eq(1)
           expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
           expect(stderr.string).to match(/Error.*foo.*not be found/m)
@@ -115,12 +119,37 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       allow(connection).to receive(:get).and_return(error, success_with_content)
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
-          code = subject.run({'certnames' => ['foo', 'bar'], 'config' => config})
+          code = subject.run({'certnames' => ['foo', 'bar'],
+                              'config' => config,
+                              'subject-alt-names' => ''})
           expect(code).to eq(1)
           expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
           expect(stderr.string).
             to match(/Error.*attempting to download.*code: 500.*body: Internal Server Error/m)
         end
+      end
+    end
+
+    describe 'subject alternative names' do
+      it 'accepts unprefixed alt names' do
+        result, maybe_code = subject.parse(['--subject-alt-names', 'foo.com',
+                                            '--certname', 'ulla.com'])
+        expect(maybe_code).to eq(nil)
+        expect(result['subject-alt-names']).to eq('foo.com')
+      end
+
+      it 'adds no attributes to csr if subject_alt_names is empty' do
+        settings = { :subject_alt_names => "",
+                     :keylength => 2098}
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr.attributes.count).to eq(0)
+      end
+
+      it 'adds an attribute to csr if subject_alt_names are present' do
+        settings = { :subject_alt_names => "DNS:foo",
+                     :keylength => 2098}
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr.attributes.count).to eq(1)
       end
     end
   end

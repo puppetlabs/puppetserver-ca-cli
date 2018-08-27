@@ -80,21 +80,48 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
     end
   end
 
-  it 'prepends "DNS" to unprefixed alt names' do
-    Dir.mktmpdir do |tmpdir|
-      puppet_conf = File.join(tmpdir, 'puppet.conf')
-      File.open puppet_conf, 'w' do |f|
-        f.puts(<<-INI)
-          [master]
-            dns_alt_names = foo.com,IP:123.456.789
-        INI
+  context "when dns_alt_names are provided" do
+    it 'prepends "DNS" to unprefixed alt names and includes default certname' do
+      allow_any_instance_of(Puppetserver::Ca::Config::Puppet).
+        to receive(:default_certname).and_return("chihuahua-333")
+
+      Dir.mktmpdir do |tmpdir|
+        puppet_conf = File.join(tmpdir, 'puppet.conf')
+        File.open puppet_conf, 'w' do |f|
+          f.puts(<<-INI)
+            [master]
+              dns_alt_names = foo.com,IP:123.456.789
+          INI
+        end
+
+        conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+        conf.load
+
+        expect(conf.errors).to be_empty
+        expect(conf.settings[:subject_alt_names]).
+          to eq('DNS:chihuahua-333, DNS:foo.com, IP:123.456.789')
       end
+    end
+  end
 
-      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
+  context "when dns_alt_names are NOT provided" do
+    it 'it returns an empty string for subject_alt_names' do
+      Dir.mktmpdir do |tmpdir|
+        puppet_conf = File.join(tmpdir, 'puppet.conf')
+        File.open puppet_conf, 'w' do |f|
+          f.puts(<<-INI)
+            [master]
+              certname = foo.com
+          INI
+        end
 
-      expect(conf.errors).to be_empty
-      expect(conf.settings[:subject_alt_names]).to eq('DNS:foo.com, IP:123.456.789')
+        conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+        conf.load
+
+        expect(conf.errors).to be_empty
+        expect(conf.settings[:subject_alt_names]).
+          to eq('')
+      end
     end
   end
 
