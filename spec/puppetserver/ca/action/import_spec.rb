@@ -239,24 +239,22 @@ RSpec.describe Puppetserver::Ca::Action::Import do
     end
   end
 
-  it 'actually, honest to god, moves files' do
+  it 'moves CA files and creates master cert files in the correct location' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        File.open conf, 'w' do |f|
-          f.puts(<<-INI)
-            [master]
-              cadir = #{tmpdir}/ca
-          INI
-        end
         exit_code = subject.run({ 'config' => conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
                                   'crl-chain' => chain,
-                                  'certname' => '' })
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
         expect(exit_code).to eq(0)
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'certs', 'foocert.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem'))).to be true
       end
     end
   end
@@ -264,27 +262,89 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   it 'does not overwrite existing CA files' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        File.open conf, 'w' do |f|
-          f.puts(<<-INI)
-            [master]
-              cadir = #{tmpdir}/ca
-          INI
-        end
         exit_code = subject.run({ 'config' => conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
                                   'crl-chain' => chain,
-                                  'certname' => '' })
+                                  'certname' => '',
+                                  'subject-alt-names' => ''})
         expect(exit_code).to eq(0)
 
         exit_code2 = subject.run({ 'config' => conf,
                                    'cert-bundle' => bundle,
                                    'private-key'=> key,
                                    'crl-chain' => chain,
-                                   'certname' => '' })
+                                   'certname' => '',
+                                   'subject-alt-names' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)
+      end
+    end
+  end
+
+  describe 'subject alternative names' do
+    it 'accepts unprefixed alt names' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          result, maybe_code = subject.parse(['--cert-bundle', bundle,
+                                         '--private-key', key,
+                                         '--crl-chain', chain,
+                                         '--config', conf,
+                                         '--subject-alt-names', 'foo.com'])
+          expect(maybe_code).to eq(nil)
+          expect(result['subject-alt-names']).to eq('foo.com')
+        end
+      end
+    end
+
+    it 'accepts DNS and IP alt names' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          result, maybe_code = subject.parse(['--cert-bundle', bundle,
+                                         '--private-key', key,
+                                         '--crl-chain', chain,
+                                         '--config', conf,
+                                         '--subject-alt-names', 'DNS:foo.com,IP:123.456.789'])
+          expect(maybe_code).to eq(nil)
+          expect(result['subject-alt-names']).to eq('DNS:foo.com,IP:123.456.789')
+        end
+      end
+    end
+
+    it 'adds default subject alt names to the master cert' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain,
+                                    'certname' => 'foo',
+                                    'subject-alt-names' => '' })
+          expect(exit_code).to eq(0)
+          master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
+          expect(File.exist?(master_cert_file)).to be true
+          master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
+          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:foo, DNS:puppet")
+        end
+      end
+    end
+
+    it 'adds custom subject alt names to the master cert' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          exit_code = subject.run({ 'config' => conf,
+                                    'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain,
+                                    'certname' => 'foo',
+                                    'subject-alt-names' => 'bar.net,IP:123.123.0.1' })
+          expect(exit_code).to eq(0)
+          master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
+          expect(File.exist?(master_cert_file)).to be true
+          master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
+          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:bar.net, IP Address:123.123.0.1")
+        end
       end
     end
   end

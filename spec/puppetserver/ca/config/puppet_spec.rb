@@ -80,6 +80,24 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
     end
   end
 
+  it 'prepends "DNS" to unprefixed alt names' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [master]
+            dns_alt_names = foo.com,IP:123.456.789
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      conf.load
+
+      expect(conf.errors).to be_empty
+      expect(conf.settings[:subject_alt_names]).to eq('DNS:foo.com, IP:123.456.789')
+    end
+  end
+
   it 'errs if it cannot resolve dependent settings properly' do
     Dir.mktmpdir do |tmpdir|
       puppet_conf = File.join(tmpdir, 'puppet.conf')

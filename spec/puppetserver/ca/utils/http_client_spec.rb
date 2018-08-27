@@ -18,6 +18,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
     generate_action = Puppetserver::Ca::Action::Generate.new(logger)
 
     Dir.mktmpdir do |tmpdir|
+      ssldir = tmpdir
       cadir = tmpdir
       cacert = File.join(tmpdir, 'ca_crt.pem')
       cakey = File.join(tmpdir, 'ca_key.pem')
@@ -25,7 +26,6 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       rootkey = File.join(tmpdir, 'root_key.pem')
       cacrl = File.join(tmpdir, 'ca_crl.pem')
       localcacert = File.join(tmpdir, 'localcacert.pem')
-      localcacrl = File.join(tmpdir, 'localcacrl.pem')
       hostcrl = File.join(tmpdir, 'hostcrl.pem')
       hostcert = File.join(tmpdir, 'hostcert.pem')
       hostprivkey = File.join(tmpdir, 'hostkey.pem')
@@ -45,7 +45,6 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         rootkey: rootkey,
         cacrl: cacrl,
         localcacert: localcacert,
-        localcacrl: localcacrl,
         hostcrl: hostcrl,
         hostcert: hostcert,
         hostprivkey: hostprivkey,
@@ -58,6 +57,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         cert_inventory: inventory,
         serial: serial,
         subject_alt_names: '',
+        ssldir: ssldir,
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
