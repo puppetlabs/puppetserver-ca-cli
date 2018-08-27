@@ -29,8 +29,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
         exit_code = subject.run({ 'config' => conf,
-                                  'subject_alt_names' => '',
-                                  'ca_name' => '',
+                                  'subject-alt-names' => '',
+                                  'ca-name' => '',
                                   'certname' => '' })
         expect(stderr.string).to be_empty
         expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
@@ -43,8 +43,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
         exit_code = subject.run({ 'config' => conf,
-                                  'subject_alt_names' => '',
-                                  'ca_name' => '',
+                                  'subject-alt-names' => '',
+                                  'ca-name' => '',
                                   'certname' => 'foocert' })
         expect(exit_code).to eq(0)
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
@@ -61,8 +61,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |conf|
           exit_code = subject.run({ 'config' => conf,
-                                    'subject_alt_names' => '',
-                                    'ca_name' => 'Foo CA',
+                                    'subject-alt-names' => '',
+                                    'ca-name' => 'Foo CA',
                                     'certname' => '' })
           expect(exit_code).to eq(0)
           ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
@@ -77,8 +77,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |conf|
           exit_code = subject.run({ 'config' => conf,
-                                    'subject_alt_names' => '',
-                                    'ca_name' => '',
+                                    'subject-alt-names' => '',
+                                    'ca-name' => '',
                                     'certname' => '' })
           expect(exit_code).to eq(0)
           ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
@@ -94,25 +94,21 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it 'accepts unprefixed alt names' do
       result, maybe_code = subject.parse(['--subject-alt-names', 'foo.com'])
       expect(maybe_code).to eq(nil)
-      expect(result['subject_alt_names']).to eq('foo.com')
+      expect(result['subject-alt-names']).to eq('foo.com')
     end
 
     it 'accepts DNS and IP alt names' do
       result, maybe_code = subject.parse(['--subject-alt-names', 'DNS:foo.com,IP:123.456.789'])
       expect(maybe_code).to eq(nil)
-      expect(result['subject_alt_names']).to eq('DNS:foo.com,IP:123.456.789')
-    end
-
-    it 'prepends "DNS" to unprefixed alt names' do
-      expect(subject.munge_alt_names('foo.com,IP:123.456.789')).to eq('DNS:foo.com, IP:123.456.789')
+      expect(result['subject-alt-names']).to eq('DNS:foo.com,IP:123.456.789')
     end
 
     it 'adds default subject alt names to the master cert' do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |conf|
           exit_code = subject.run({ 'config' => conf,
-                                    'subject_alt_names' => '',
-                                    'ca_name' => '',
+                                    'subject-alt-names' => '',
+                                    'ca-name' => '',
                                     'certname' => 'foo' })
           expect(exit_code).to eq(0)
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
@@ -127,8 +123,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |conf|
           exit_code = subject.run({ 'config' => conf,
-                                    'subject_alt_names' => 'bar.net,IP:123.123.0.1',
-                                    'ca_name' => '',
+                                    'subject-alt-names' => 'bar.net,IP:123.123.0.1',
+                                    'ca-name' => '',
                                     'certname' => 'foo' })
           expect(exit_code).to eq(0)
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
@@ -144,13 +140,13 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     Dir.mktmpdir do |tmpdir|
       with_temp_dirs tmpdir do |conf|
         exit_code = subject.run({ 'config' => conf,
-                                  'subject_alt_names' => '',
-                                  'ca_name' => '',
+                                  'subject-alt-names' => '',
+                                  'ca-name' => '',
                                   'certname' => '' })
         expect(exit_code).to eq(0)
         exit_code2 = subject.run({ 'config' => conf,
-                                  'subject_alt_names' => '',
-                                  'ca_name' => '',
+                                  'subject-alt-names' => '',
+                                  'ca-name' => '',
                                   'certname' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)

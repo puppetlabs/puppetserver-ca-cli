@@ -20,7 +20,7 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca create [--help]
-  puppetserver ca create [--config] --certname CERTNAME[,ADDLCERTNAME]
+  puppetserver ca create [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
 
 Description:
 Creates a new certificate signed by the intermediate CA
@@ -103,11 +103,6 @@ BANNER
           signer = SigningDigest.new
           return 1 if CliParsing.handle_errors(@logger, signer.errors)
 
-          # Make sure we have all the directories where we will be writing files
-          FileSystem.ensure_dir(puppet.settings[:certdir])
-          FileSystem.ensure_dir(puppet.settings[:privatekeydir])
-          FileSystem.ensure_dir(puppet.settings[:publickeydir])
-
           # Generate and save certs and associated keys
           all_passed = generate_certs(certnames, puppet.settings, signer.digest)
           return all_passed ? 0 : 1
@@ -118,6 +113,12 @@ BANNER
         # the signed certs and associated keys. Returns true if all certs were
         # successfully created and saved.
         def generate_certs(certnames, settings, digest)
+          # Make sure we have all the directories where we will be writing files
+          FileSystem.ensure_dirs([settings[:ssldir],
+                                  settings[:certdir],
+                                  settings[:privatekeydir],
+                                  settings[:publickeydir]])
+
           ca = Puppetserver::Ca::CertificateAuthority.new(@logger, settings)
 
           passed = certnames.map do |certname|

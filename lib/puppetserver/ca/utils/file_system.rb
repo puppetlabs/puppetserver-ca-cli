@@ -6,6 +6,15 @@ module Puppetserver
     module Utils
       class FileSystem
 
+        DIR_MODES = {
+          :ssldir => 0771,
+          :cadir => 0755,
+          :certdir => 0755,
+          :privatekeydir => 0750,
+          :publickeydir => 0755,
+          :signeddir => 0755
+        }
+
         def self.instance
           @instance ||= new
         end
@@ -14,13 +23,9 @@ module Puppetserver
           instance.write_file(*args)
         end
 
-        def self.ensure_dir(setting)
-          instance.ensure_dir(setting)
-        end
-
-        def self.ensure_file(location, content, mode)
-          if !File.exist?(location)
-            instance.write_file(location, content, mode)
+        def self.ensure_dirs(one_or_more_dirs)
+          Array(one_or_more_dirs).each do |directory|
+            instance.ensure_dir(directory)
           end
         end
 
@@ -78,10 +83,11 @@ module Puppetserver
           FileUtils.chown(@user, @group, path)
         end
 
-        def ensure_dir(setting)
-          if !File.exist?(setting)
-            FileUtils.mkdir_p(setting, mode: 0750)
-            FileUtils.chown(@user, @group, setting)
+        # Warning: directory mode should be specified in DIR_MODES above
+        def ensure_dir(directory)
+          if !File.exist?(directory)
+            FileUtils.mkdir_p(directory, mode: DIR_MODES[directory])
+            FileUtils.chown(@user, @group, directory)
           end
         end
       end

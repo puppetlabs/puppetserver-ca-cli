@@ -126,9 +126,8 @@ module Puppetserver
             :ca_server => '$server',
             :ca_port => '$masterport',
             :localcacert => '$certdir/ca.pem',
-            :localcacrl => '$ssldir/crl.pem',
-            :hostcert => '$certdir/$certname.pem',
             :hostcrl => '$ssldir/crl.pem',
+            :hostcert => '$certdir/$certname.pem',
             :hostprivkey => '$privatekeydir/$certname.pem',
             :hostpubkey => '$publickeydir/$certname.pem',
             :publickeydir => '$ssldir/public_keys',
@@ -153,12 +152,13 @@ module Puppetserver
             settings[setting_name] = setting_value
           end
 
+          # rename dns_alt_names to subject_alt_names now that we support IP alt names
+          settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "puppet,$certname")
+
           # Some special cases where we need to manipulate config settings:
           settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
-
-          # rename dns_alt_names to subject_alt_names now that we support IP alt names
-          settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "puppet,$certname")
+          settings[:subject_alt_names] = munge_alt_names(settings[:subject_alt_names])
 
           settings.each do |key, value|
             next unless value.is_a? String
@@ -227,6 +227,17 @@ module Puppetserver
           end
         end
 
+        def munge_alt_names(names)
+          raw_names = names.split(/\s*,\s*/).map(&:strip)
+          munged_names = raw_names.map do |name|
+            # Prepend the DNS tag if no tag was specified
+            if !name.start_with?("IP:") && !name.start_with?("DNS:")
+              "DNS:#{name}"
+            else
+              name
+            end
+          end.sort.uniq.join(", ")
+        end
 
         def parse_crl_usage(setting)
           case setting.to_s

@@ -92,9 +92,11 @@ module Utils
     def with_files_in(tmpdir, &block)
       fixtures_dir = File.join(tmpdir, 'fixtures')
       ca_dir = File.join(tmpdir, 'ca')
+      ssl_dir = File.join(tmpdir, 'ssl')
 
       FileUtils.mkdir_p fixtures_dir
       FileUtils.mkdir_p ca_dir
+      FileUtils.mkdir_p ssl_dir
 
       bundle_file = File.join(fixtures_dir, 'bundle.pem')
       key_file = File.join(fixtures_dir, 'key.pem')
@@ -105,6 +107,7 @@ module Utils
         f.puts <<-CONF
         [master]
           cadir = #{ca_dir}
+          ssldir = #{ssl_dir}
         CONF
       end
 
