@@ -82,11 +82,14 @@ module Puppetserver
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
         end
-
-        if !@settings[:subject_alt_names].empty?
-          alt_names_ext = ef.create_extension("subjectAltName", @settings[:subject_alt_names], false)
-          cert.add_extension(alt_names_ext)
-        end
+        sans =
+          if @settings[:subject_alt_names].empty?
+            "DNS:puppet, DNS:#{@settings[:certname]}"
+          else
+            @settings[:subject_alt_names]
+          end
+        alt_names_ext = ef.create_extension("subjectAltName", sans, false)
+        cert.add_extension(alt_names_ext)
 
         cert.sign(int_key, @digest)
         cert

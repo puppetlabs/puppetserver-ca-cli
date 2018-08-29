@@ -90,7 +90,7 @@ BANNER
             [settings[:hostpubkey], master_key.public_key],
             [settings[:hostcert], master_cert],
             [settings[:cert_inventory], ca.inventory_entry(master_cert)],
-            [settings[:serial], "0x0002"],
+            [settings[:serial], "002"],
             [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert]
           ]
 

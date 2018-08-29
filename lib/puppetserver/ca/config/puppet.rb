@@ -152,8 +152,11 @@ module Puppetserver
             settings[setting_name] = setting_value
           end
 
+          # If subject-alt-names are provided, we need to add the certname in addition
+          overrides[:dns_alt_names] << ',$certname' if overrides[:dns_alt_names]
+
           # rename dns_alt_names to subject_alt_names now that we support IP alt names
-          settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "puppet,$certname")
+          settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "")
 
           # Some special cases where we need to manipulate config settings:
           settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
