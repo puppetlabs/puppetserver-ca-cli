@@ -1,4 +1,6 @@
 require 'hocon'
+require 'securerandom'
+
 require 'puppetserver/ca/utils/config'
 
 module Puppetserver
@@ -62,16 +64,25 @@ module Puppetserver
         #                         for overriding the defaults
         # @return [Hash] CA-related settings
         def supply_defaults(overrides = {})
+          puppet_settings = Puppetserver::Ca::Config::Puppet.parse
           ca_settings = overrides['certificate-authority'] || {}
           settings = {}
 
           cadir = settings[:cadir] = ca_settings.fetch('cadir', user_specific_ca_dir)
 
+          defaults = {
+            ca_name: "Puppet CA: #{puppet_settings[:certname]}",
+            root_ca_name: "Puppet Root CA: #{SecureRandom.hex(7)}",
+          }
+
+          settings[:ca_name] = ca_settings.fetch('ca_name', 'Puppet CA: $certname')
           settings[:cacert] = ca_settings.fetch('cacert', "#{cadir}/ca_crt.pem")
           settings[:cakey] = ca_settings.fetch('cakey', "#{cadir}/ca_key.pem")
           settings[:cacrl] = ca_settings.fetch('cacrl', "#{cadir}/ca_crl.pem")
           settings[:serial] = ca_settings.fetch('serial', "#{cadir}/serial")
           settings[:cert_inventory] = ca_settings.fetch('cert-inventory', "#{cadir}/inventory.txt")
+          settings[:root_ca_name] = ca_settings.fetch('root-ca-name', "Puppet Root CA: #{SecureRandom.hex(7)}")
+          settings[:rootkey] = ca_settings.fetch('rootkey', "#{cadir}/root_key.pem")
 
           return settings
         end
