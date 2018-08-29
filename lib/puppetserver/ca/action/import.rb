@@ -1,7 +1,7 @@
 require 'optparse'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/x509_loader'
-require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/config/combined'
 require 'puppetserver/ca/local_certificate_authority'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/signing_digest'
@@ -56,8 +56,8 @@ BANNER
           settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
           settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
 
-          puppet = Config::Puppet.new(config_path)
-          puppet.load(settings_overrides)
+          puppet = Config::Combined.new(puppet_config_path: config_path,
+                                      settings_overrides: settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.

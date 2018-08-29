@@ -74,10 +74,13 @@ module Puppetserver
           settings[:cacert] = ca_settings.fetch('cacert', "#{cadir}/ca_crt.pem")
           settings[:cakey] = ca_settings.fetch('cakey', "#{cadir}/ca_key.pem")
           settings[:cacrl] = ca_settings.fetch('cacrl', "#{cadir}/ca_crl.pem")
+          settings[:ca_ttl] = ca_settings.fetch('ca-ttl', 473000000) # 15 year default TTL
           settings[:cert_inventory] = ca_settings.fetch('cert-inventory', "#{cadir}/inventory.txt")
-          settings[:serial] = ca_settings.fetch('serial', "#{cadir}/serial")
           settings[:root_ca_name] = ca_settings.fetch('root-ca-name', "Puppet Root CA: #{SecureRandom.hex(7)}")
           settings[:rootkey] = ca_settings.fetch('rootkey', "#{cadir}/root_key.pem")
+          settings[:serial] = ca_settings.fetch('serial', "#{cadir}/serial")
+          settings[:signeddir] = ca_settings.fetch('signeddir', "#{cadir}/signeddir")
+          settings[:capub] = ca_settings.fetch('capub', "#{cadir}/ca_pub.pem")
 
           return settings
         end

@@ -3,7 +3,7 @@ require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/local_certificate_authority'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/signing_digest'
-require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/config/combined'
 
 module Puppetserver
   module Ca
@@ -65,10 +65,10 @@ BANNER
 
           # Generate root and intermediate ca and put all the certificates, crls,
           # and keys where they should go.
-          errors = generate_pki(puppet.settings, signer.digest)
+          errors = generate_pki(config.settings, signer.digest)
           return 1 if CliParsing.handle_errors(@logger, errors)
 
-          @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
+          @logger.inform "Generation succeeded. Find your files in #{config.settings[:cadir]}"
           return 0
         end
 

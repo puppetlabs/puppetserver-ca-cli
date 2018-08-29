@@ -49,7 +49,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         f.puts(<<-INI)
           [master]
             ssldir = /foo/bar
-            cacrl = /fizz/buzz/crl.pem
+            hostcert = /fizz/buzz/host.pem
         INI
       end
 
@@ -57,26 +57,8 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       conf.load
 
       expect(conf.errors).to be_empty
-      expect(conf.settings[:cacert]).to eq('/foo/bar/ca/ca_crt.pem')
-      expect(conf.settings[:cacrl]).to eq('/fizz/buzz/crl.pem')
-    end
-  end
-
-  it 'converts ca_ttl setting correctly into seconds' do
-    Dir.mktmpdir do |tmpdir|
-      puppet_conf = File.join(tmpdir, 'puppet.conf')
-      File.open puppet_conf, 'w' do |f|
-        f.puts(<<-INI)
-          [master]
-            ca_ttl = 5y
-        INI
-      end
-
-      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
-
-      expect(conf.errors).to be_empty
-      expect(conf.settings[:ca_ttl]).to eq(157680000)
+      expect(conf.settings[:hostcrl]).to eq('/foo/bar/crl.pem')
+      expect(conf.settings[:hostcert]).to eq('/fizz/buzz/host.pem')
     end
   end
 
@@ -112,7 +94,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       conf.load
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')
-      expect(conf.settings[:cacert]).to eq('$vardir/ssl/ca/ca_crt.pem')
+      expect(conf.settings[:hostcrl]).to eq('$vardir/ssl/crl.pem')
     end
   end
 end

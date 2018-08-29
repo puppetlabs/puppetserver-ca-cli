@@ -9,19 +9,6 @@ module Puppetserver
       # Puppet. Includes a simple ini parser that will ignore Puppet's
       # more complicated conventions.
       class Puppet
-        # How we convert from various units to seconds.
-        TTL_UNITMAP = {
-          # 365 days isn't technically a year, but is sufficient for most purposes
-          "y" => 365 * 24 * 60 * 60,
-          "d" => 24 * 60 * 60,
-          "h" => 60 * 60,
-          "m" => 60,
-          "s" => 1
-        }
-
-        # A regex describing valid formats with groups for capturing the value and units
-        TTL_FORMAT = /^(\d+)(y|d|h|m|s)?$/
-
         include Puppetserver::Ca::Utils::Config
 
         def self.parse(config_path)
@@ -31,7 +18,7 @@ module Puppetserver
           return instance
         end
 
-        attr_reader :errors, :settings
+        attr_reader :errors, :settings, :valid_settings
 
         def initialize(supplied_config_path = nil)
           @using_default_location = !supplied_config_path
@@ -39,6 +26,41 @@ module Puppetserver
 
           @settings = nil
           @errors = []
+          @valid_settings = []
+
+          # Order for base settings here matters!
+          # These need to be evaluated before we can construct their dependent
+          # defaults below
+          @base_defaults = [
+            [:confdir, user_specific_conf_dir],
+            [:ssldir,'$confdir/ssl'],
+            [:certdir, '$ssldir/certs'],
+            [:certname, default_certname],
+            [:server, '$certname'],
+            [:masterport, '8140'],
+            [:privatekeydir, '$ssldir/private_keys'],
+            [:publickeydir, '$ssldir/public_keys'],
+          ]
+          @dependent_defaults = {
+            :keylength => 4096,
+            :ca_server => '$server',
+            :ca_port => '$masterport',
+            :localcacert => '$certdir/ca.pem',
+            :hostcrl => '$ssldir/crl.pem',
+            :hostcert => '$certdir/$certname.pem',
+            :hostprivkey => '$privatekeydir/$certname.pem',
+            :hostpubkey => '$publickeydir/$certname.pem',
+            :publickeydir => '$ssldir/public_keys',
+            :certificate_revocation => 'true',
+          }
+
+          @base_defaults.each do |item|
+            @valid_settings << item.first
+          end
+          @valid_settings += @dependent_defaults.keys
+          # Puppet calls this dns_alt_names, but we want to call it subject_alt_names,
+          # so it has to be added outside of the defaults lists
+          @valid_settings << :dns_alt_names
         end
 
         # Return the correct confdir. We check for being root on *nix,
@@ -97,57 +119,18 @@ module Puppetserver
           substitutions = Hash.new {|h, k| k }
           settings = {}
 
-          # Order for base settings here matters!
-          # These need to be evaluated before we can construct their dependent
-          # defaults below
-          base_defaults = [
-            [:confdir, user_specific_conf_dir],
-            [:ssldir,'$confdir/ssl'],
-            [:cadir, '$ssldir/ca'],
-            [:certdir, '$ssldir/certs'],
-            [:certname, default_certname],
-            [:server, '$certname'],
-            [:masterport, '8140'],
-            [:privatekeydir, '$ssldir/private_keys'],
-            [:publickeydir, '$ssldir/public_keys'],
-          ]
-
-          dependent_defaults = {
-            :ca_name => 'Puppet CA: $certname',
-            :root_ca_name => "Puppet Root CA: #{SecureRandom.hex(7)}",
-            :keylength => 4096,
-            :cacert => '$cadir/ca_crt.pem',
-            :cakey => '$cadir/ca_key.pem',
-            :capub => '$cadir/ca_pub.pem',
-            :rootkey => '$cadir/root_key.pem',
-            :cacrl => '$cadir/ca_crl.pem',
-            :serial => '$cadir/serial',
-            :cert_inventory => '$cadir/inventory.txt',
-            :ca_server => '$server',
-            :ca_port => '$masterport',
-            :localcacert => '$certdir/ca.pem',
-            :hostcrl => '$ssldir/crl.pem',
-            :hostcert => '$certdir/$certname.pem',
-            :hostprivkey => '$privatekeydir/$certname.pem',
-            :hostpubkey => '$publickeydir/$certname.pem',
-            :publickeydir => '$ssldir/public_keys',
-            :ca_ttl => '15y',
-            :certificate_revocation => 'true',
-            :signeddir => '$cadir/signed',
-          }
-
           # This loops through the base defaults and gives each setting a
           # default if the value isn't specified in the config file. Default
           # values given may depend upon the value of a previous base setting,
           # thus the creation of the substitution hash.
-          base_defaults.each do |setting_name, default_value|
+          @base_defaults.each do |setting_name, default_value|
             substitution_name = '$' + setting_name.to_s
             setting_value = overrides.fetch(setting_name, default_value)
             subbed_value = setting_value.sub(unresolved_setting, substitutions)
             settings[setting_name] = substitutions[substitution_name] = subbed_value
           end
 
-          dependent_defaults.each do |setting_name, default_value|
+          @dependent_defaults.each do |setting_name, default_value|
             setting_value = overrides.fetch(setting_name, default_value)
             settings[setting_name] = setting_value
           end
@@ -156,7 +139,6 @@ module Puppetserver
           settings[:subject_alt_names] = overrides.fetch(:dns_alt_names, "puppet,$certname")
 
           # Some special cases where we need to manipulate config settings:
-          settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
           settings[:subject_alt_names] = munge_alt_names(settings[:subject_alt_names])
 
@@ -206,25 +188,6 @@ module Puppetserver
 
         def run(command)
           %x( #{command} )
-        end
-
-        # Convert the value to Numeric, parsing numeric string with units if necessary.
-        def munge_ttl_setting(ca_ttl_setting)
-          case
-          when ca_ttl_setting.is_a?(Numeric)
-            if ca_ttl_setting < 0
-              @errors << "Invalid negative 'time to live' #{ca_ttl_setting.inspect} - did you mean 'unlimited'?"
-            end
-            ca_ttl_setting
-
-          when ca_ttl_setting == 'unlimited'
-            Float::INFINITY
-
-          when (ca_ttl_setting.is_a?(String) and ca_ttl_setting =~ TTL_FORMAT)
-            $1.to_i * TTL_UNITMAP[$2 || 's']
-          else
-            @errors <<  "Invalid 'time to live' format '#{ca_ttl_setting.inspect}' for parameter: :ca_ttl"
-          end
         end
 
         def munge_alt_names(names)

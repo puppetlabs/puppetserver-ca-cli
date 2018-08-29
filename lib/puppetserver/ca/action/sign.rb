@@ -57,7 +57,7 @@ Options:
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          config = Config::Combined.new(config_file)
+          config = Config::Combined.new(puppet_config_path: config_file)
           return 1 if CliParsing.handle_errors(@logger, config.errors)
 
           ca = Puppetserver::Ca::CertificateAuthority.new(@logger, config.settings)
