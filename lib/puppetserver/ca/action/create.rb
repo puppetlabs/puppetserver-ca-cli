@@ -1,7 +1,7 @@
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/certificate_authority'
-require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/config/combined'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
 

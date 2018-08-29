@@ -1,6 +1,6 @@
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/config/combined'
 require 'puppetserver/ca/certificate_authority'
 
 require 'optparse'
@@ -76,17 +76,17 @@ BANNER
 
         def run(args)
           certnames = args['certnames']
-          config = args['config']
+          config_file = args['config']
 
-          if config
-            errors = FileSystem.validate_file_paths(config)
+          if config_file
+            errors = FileSystem.validate_file_paths(config_file)
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          puppet = Config::Puppet.parse(config)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          config = Config::Combined.new(config_file)
+          return 1 if CliParsing.handle_errors(@logger, config.errors)
 
-          passed = revoke_certs(certnames, puppet.settings)
+          passed = revoke_certs(certnames, config.settings)
 
           return passed ? 0 : 1
         end

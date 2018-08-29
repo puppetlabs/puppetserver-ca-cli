@@ -14,7 +14,7 @@ RSpec.describe 'Puppetserver::Ca::Config::PuppetServer' do
       CONF
       end
 
-      conf = Puppetserver::Ca::Config::PuppetServer.new(puppetserver_conf)
+      conf = Puppetserver::Ca::Config::PuppetServer.new({}, puppetserver_conf)
       conf.load
       expect(conf.settings[:cadir]).to eq('/etc/fake/path/ca')
       expect(conf.settings[:cacert]).to eq('/etc/fake/path/ca/ca_crt.pem')
@@ -34,7 +34,7 @@ RSpec.describe 'Puppetserver::Ca::Config::PuppetServer' do
       CONF
       end
 
-      conf = Puppetserver::Ca::Config::PuppetServer.new(puppetserver_conf)
+      conf = Puppetserver::Ca::Config::PuppetServer.new({}, puppetserver_conf)
       conf.load
       expect(conf.errors.size).to eq(1)
       expect(conf.errors[0]).to match(/Expecting close brace/)
