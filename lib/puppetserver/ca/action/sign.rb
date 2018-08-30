@@ -18,8 +18,10 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca sign [--help]
-  puppetserver ca sign [--config] --certname CERTNAME[,CERTNAME]
-  puppetserver ca sign  --all
+  puppetserver ca sign [--puppet-config CONF] [--server-config CONF]
+                       --certname CERTNAME[,CERTNAME]
+  puppetserver ca sign [--puppet-config CONF] [--server-config CONF]
+                       --all
 
 Description:
 Given a comma-separated list of valid certnames, instructs the CA to sign each cert.
@@ -33,8 +35,11 @@ Options:
             opts.on('--certname x,y,z', Array, 'the name(s) of the cert(s) to be signed') do |cert|
               parsed['certname'] = cert
             end
-            opts.on('--config PUPPET.CONF', 'Custom path to Puppet\'s config file') do |conf|
-              parsed['config'] = conf
+            opts.on('--puppet-config CONF', 'Custom path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            opts.on('--server-config CONF', 'Custom path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
             opts.on('--help', 'Display this command specific help output') do |help|
               parsed['help'] = true
@@ -50,14 +55,17 @@ Options:
         end
 
         def run(input)
-          config_file = input['config']
+          puppet_config_file = input['puppet-config']
+          server_config_file = input['server-config']
 
-          if config_file
-            errors = FileSystem.validate_file_paths(config_file)
+          files = [puppet_config_file, server_config_file].compact
+          if !files.empty?
+            errors = FileSystem.validate_file_paths(files)
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          config = Config::Combined.new(puppet_config_path: config_file)
+          config = Config::Combined.new(puppet_config_path: puppet_config_file,
+                                        server_config_path: server_config_file)
           return 1 if CliParsing.handle_errors(@logger, config.errors)
 
           ca = Puppetserver::Ca::CertificateAuthority.new(@logger, config.settings)

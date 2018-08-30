@@ -16,8 +16,8 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca list [--help]
-  puppetserver ca list [--config]
-  puppetserver ca list [--all]
+  puppetserver ca list [--puppet-config CONF] [--server-config CONF]
+                       [--all]
 
 Description:
 List outstanding certificate requests. If --all is specified, signed and revoked certificates will be listed as well.
@@ -34,8 +34,11 @@ Options:
         def self.parser(parsed = {})
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--config CONF', 'Custom path to Puppet\'s config file') do |conf|
-              parsed['config'] = conf
+            opts.on('--puppet-config CONF', 'Custom path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            opts.on('--server-config CONF', 'Custom path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
             opts.on('--help', 'Display this command specific help output') do |help|
               parsed['help'] = true
@@ -47,14 +50,17 @@ Options:
         end
 
         def run(input)
-          config_file = input['config']
+          puppet_config_file = input['puppet-config']
+          server_config_file = input['server-config']
 
-          if config_file
-            errors = FileSystem.validate_file_paths(config_file)
+          files = [puppet_config_file, server_config_file].compact
+          if !files.empty?
+            errors = FileSystem.validate_file_paths(files)
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          config = Config::Combined.new(puppet_config_path: config_file)
+          config = Config::Combined.new(puppet_config_path: puppet_config_file,
+                                        server_config_path: server_config_file)
           return 1 if CliParsing.handle_errors(@logger, config.errors)
 
           all_certs = get_all_certs(config.settings)

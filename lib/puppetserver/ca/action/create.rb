@@ -14,21 +14,23 @@ module Puppetserver
 
         # Only allow printing ascii characters, excluding /
         VALID_CERTNAME = /\A[ -.0-~]+\Z/
-        CERTNAME_BLACKLIST = %w{--all --config}
+        CERTNAME_BLACKLIST = %w{--all --puppet-config --server-config}
 
         SUMMARY = "Create a new certificate signed by the CA"
         BANNER = <<-BANNER
 Usage:
   puppetserver ca create [--help]
-  puppetserver ca create [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
+  puppetserver ca create [--puppet-config PATH] [--server-config PATH]
+                         [--certname CERTNAME[,ADDLCERTNAME]]
 
 Description:
 Creates a new certificate signed by the intermediate CA
 and stores generated keys and certs on disk.
 
-To determine the target location, the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+To determine the target location, the default puppet.conf and
+puppetserver.conf are consulted for custom values. If using custom
+conf files, provide them with the --puppet-config and --server-config
+flags.
 
 Options:
 BANNER
@@ -47,8 +49,11 @@ BANNER
             opts.on('--help', 'Display this create specific help output') do |help|
               parsed['help'] = true
             end
-            opts.on('--config CONF', 'Path to puppet.conf') do |conf|
-              parsed['config'] = conf
+            opts.on('--puppet-config CONF', 'Path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            opts.on('--server-config CONF', 'Path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
           end
         end

@@ -12,13 +12,14 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils
 
-        CERTNAME_BLACKLIST = %w{--all --config}
+        CERTNAME_BLACKLIST = %w{--all --puppet-config --server-config}
 
         SUMMARY = 'Revoke a given certificate'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca revoke [--help]
-  puppetserver ca revoke [--config] --certname CERTNAME[,ADDLCERTNAME]
+  puppetserver ca revoke [--puppet-config CONF] [--server-config CONF]
+                         --certname CERTNAME[,ADDLCERTNAME]
 
 Description:
 Given one or more valid certnames, instructs the CA to revoke them over
@@ -35,8 +36,11 @@ BANNER
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
-            o.on('--config PUPPET.CONF', 'Custom path to puppet.conf') do |conf|
-              parsed['config'] = conf
+            o.on('--puppet-config CONF', 'Custom path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            o.on('--server-config CONF', 'Custom path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
             o.on('--help', 'Displays this revoke specific help output') do |help|
               parsed['help'] = true
@@ -76,14 +80,17 @@ BANNER
 
         def run(args)
           certnames = args['certnames']
-          config_file = args['config']
+          puppet_config_file = args['puppet-config']
+          server_config_file = args['server-config']
 
-          if config_file
-            errors = FileSystem.validate_file_paths(config_file)
+          files = [puppet_config_file, server_config_file].compact
+          if !files.empty?
+            errors = FileSystem.validate_file_paths(files)
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
-          config = Config::Combined.new(puppet_config_path: config_file)
+          config = Config::Combined.new(puppet_config_path: puppet_config_file,
+                                        server_config_path: server_config_file)
           return 1 if CliParsing.handle_errors(@logger, config.errors)
 
           passed = revoke_certs(certnames, config.settings)

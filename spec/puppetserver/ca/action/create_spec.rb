@@ -29,11 +29,13 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       expect(result['certnames']).to eq(['foo', 'bar'])
     end
 
-    it 'takes a custom puppet.conf location' do
+    it 'takes a custom config file locations' do
       result, maybe_code = subject.parse(['--certname', 'foo',
-                                          '--config', '/dev/tcp/example.com'])
+                                          '--puppet-config', '/dev/tcp/example.com',
+                                          '--server-config', '/dev/fake/puppetserver.conf'])
       expect(maybe_code).to be(nil)
-      expect(result['config']).to eq('/dev/tcp/example.com')
+      expect(result['puppet-config']).to eq('/dev/tcp/example.com')
+      expect(result['server-config']).to eq('/dev/fake/puppetserver.conf')
     end
   end
 
@@ -51,10 +53,10 @@ RSpec.describe Puppetserver::Ca::Action::Create do
     end
 
     it 'cannot create certs with the names of flags' do
-      result, code = subject.parse(['--certname', '--config'])
+      result, code = subject.parse(['--certname', '--server-config'])
       expect(code).to eq(1)
-      expect(stderr.string).to include('Cannot manage cert named `--config`')
-      expect(result['certnames']).to eq(['--config'])
+      expect(stderr.string).to include('Cannot manage cert named `--server-config`')
+      expect(result['certnames']).to eq(['--server-config'])
     end
 
     it 'requires certnames to be in all lowercase characters' do
