@@ -108,13 +108,20 @@ module Utils
       bundle_file = File.join(fixtures_dir, 'bundle.pem')
       key_file = File.join(fixtures_dir, 'key.pem')
       chain_file = File.join(fixtures_dir, 'chain.pem')
-      config_file = File.join(fixtures_dir, 'puppet.conf')
+      puppet_config_file = File.join(fixtures_dir, 'puppet.conf')
+      server_config_file = File.join(fixtures_dir, 'puppetserver.conf')
 
-      File.open(config_file, 'w') do |f|
+      File.open(puppet_config_file, 'w') do |f|
         f.puts <<-CONF
         [master]
-          cadir = #{ca_dir}
           ssldir = #{ssl_dir}
+        CONF
+      end
+      File.open(server_config_file, 'w') do |f|
+        f.puts <<-CONF
+        certificate-authority : {
+          cadir: #{ca_dir}
+        }
         CONF
       end
 
@@ -144,7 +151,7 @@ module Utils
       end
 
 
-      block.call(bundle_file, key_file, chain_file, config_file)
+      block.call(bundle_file, key_file, chain_file, puppet_config_file, server_config_file)
     end
 
   end

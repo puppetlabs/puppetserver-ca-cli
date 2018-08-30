@@ -16,9 +16,9 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca import [--help]
-  puppetserver ca import [--config PATH] [--certname NAME]
+  puppetserver ca import [--puppet-config PATH] [--server-config PATH] [--certname NAME]
                          [--subject-alt-names ALTNAME1[,ALTNAME2...]]
-      --private-key PATH --cert-bundle PATH --crl-chain PATH
+                         --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
 Given a private key, cert bundle, and a crl chain,
@@ -42,9 +42,10 @@ BANNER
           bundle_path = input['cert-bundle']
           key_path = input['private-key']
           chain_path = input['crl-chain']
-          config_path = input['config']
+          puppet_config_path = input['puppet-config']
+          server_config_path = input['server-config']
 
-          files = [bundle_path, key_path, chain_path, config_path].compact
+          files = [bundle_path, key_path, chain_path, puppet_config_path, server_config_path].compact
 
           errors = FileSystem.validate_file_paths(files)
           return 1 if CliParsing.handle_errors(@logger, errors)
@@ -56,8 +57,9 @@ BANNER
           settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
           settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
 
-          puppet = Config::Combined.new(puppet_config_path: config_path,
-                                      settings_overrides: settings_overrides)
+          puppet = Config::Combined.new(puppet_config_path: puppet_config_path,
+                                        server_config_path: server_config_path,
+                                        settings_overrides: settings_overrides)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
@@ -154,8 +156,11 @@ ERR
             opts.on('--help', 'Display this import specific help output') do |help|
               parsed['help'] = true
             end
-            opts.on('--config CONF', 'Path to puppet.conf') do |conf|
-              parsed['config'] = conf
+            opts.on('--puppet-config CONF', 'Path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            opts.on('--server-config CONF', 'Path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
             opts.on('--private-key KEY', 'Path to PEM encoded key') do |key|
               parsed['private-key'] = key

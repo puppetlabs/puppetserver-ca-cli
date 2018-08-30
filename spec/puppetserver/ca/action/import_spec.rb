@@ -35,11 +35,12 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
+      with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
         _, maybe_code = subject.parse(['--cert-bundle', bundle,
                                        '--private-key', key,
                                        '--crl-chain', chain,
-                                       '--config', conf])
+                                       '--puppet-config', puppet_conf,
+                                       '--server-config', server_conf])
         expect(stderr.string).to be_empty
         expect(maybe_code).to be nil
       end
@@ -227,9 +228,10 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
     it 'validates config from cli is readable' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain, conf|
-          FileUtils.rm conf
-          exit_code = subject.run({ 'config' => conf,
+        with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
+          FileUtils.rm puppet_conf
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain })
@@ -241,8 +243,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
   it 'moves CA files and creates master cert files in the correct location' do
     Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
-        exit_code = subject.run({ 'config' => conf,
+      with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
+        exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                  'server-config' => server_conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
                                   'crl-chain' => chain,
@@ -261,8 +264,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
   it 'does not overwrite existing CA files' do
     Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
-        exit_code = subject.run({ 'config' => conf,
+      with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
+        exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                  'server-config' => server_conf,
                                   'cert-bundle' => bundle,
                                   'private-key'=> key,
                                   'crl-chain' => chain,
@@ -270,7 +274,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
                                   'subject-alt-names' => ''})
         expect(exit_code).to eq(0)
 
-        exit_code2 = subject.run({ 'config' => conf,
+        exit_code2 = subject.run({ 'puppet-config' => puppet_conf,
+                                   'server-config' => server_conf,
                                    'cert-bundle' => bundle,
                                    'private-key'=> key,
                                    'crl-chain' => chain,
@@ -286,12 +291,13 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   describe 'subject alternative names' do
     it 'accepts unprefixed alt names' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain, conf|
+        with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
           result, maybe_code = subject.parse(['--cert-bundle', bundle,
-                                         '--private-key', key,
-                                         '--crl-chain', chain,
-                                         '--config', conf,
-                                         '--subject-alt-names', 'foo.com'])
+                                              '--private-key', key,
+                                              '--crl-chain', chain,
+                                              '--puppet-config', puppet_conf,
+                                              '--server-config', server_conf,
+                                              '--subject-alt-names', 'foo.com'])
           expect(maybe_code).to eq(nil)
           expect(result['subject-alt-names']).to eq('foo.com')
         end
@@ -300,11 +306,12 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
     it 'accepts DNS and IP alt names' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain, conf|
+        with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
           result, maybe_code = subject.parse(['--cert-bundle', bundle,
                                          '--private-key', key,
                                          '--crl-chain', chain,
-                                         '--config', conf,
+                                         '--puppet-config', puppet_conf,
+                                         '--server-config', server_conf,
                                          '--subject-alt-names', 'DNS:foo.com,IP:123.456.789'])
           expect(maybe_code).to eq(nil)
           expect(result['subject-alt-names']).to eq('DNS:foo.com,IP:123.456.789')
@@ -314,8 +321,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
     it 'adds default subject alt names to the master cert' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain, conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain,
@@ -332,8 +340,9 @@ RSpec.describe Puppetserver::Ca::Action::Import do
 
     it 'adds custom subject alt names to the master cert' do
       Dir.mktmpdir do |tmpdir|
-        with_files_in tmpdir do |bundle, key, chain, conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_files_in tmpdir do |bundle, key, chain, puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain,
