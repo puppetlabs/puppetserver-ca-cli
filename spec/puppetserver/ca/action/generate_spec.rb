@@ -145,9 +145,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
                                   'certname' => '' })
         expect(exit_code).to eq(0)
         exit_code2 = subject.run({ 'config' => conf,
-                                  'subject-alt-names' => '',
-                                  'ca-name' => '',
-                                  'certname' => '' })
+                                   'subject-alt-names' => '',
+                                   'ca-name' => '',
+                                   'certname' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)
