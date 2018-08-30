@@ -130,6 +130,74 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       end
     end
 
+    context "with a csr_attributes file" do
+      let(:csr_attributes) {
+        { 'extension_requests' => {
+            '1.3.6.1.4.1.34380.1.1.1' => 'ED803750-E3C7-44F5-BB08-41A04433FE2E',
+            '1.3.6.1.4.1.34380.1.1.1.4' => 'I am undefined but still work' },
+          'custom_attributes' => {
+            '1.2.840.113549.1.9.7' => '342thbjkt82094y0uthhor289jnqthpc2290' }
+        }
+      }
+
+      let(:settings) {
+        { :subject_alt_names => '',
+          :keylength => 2098,
+          :csr_attributes => '$confdir/csr_attributes.yaml' } }
+
+      before(:each) do
+        allow(File).to receive(:exist?).and_return(true)
+      end
+
+      it "adds attributes and extensions to the csr" do
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr.attributes.count).to eq(2)
+      end
+
+      it "return nil for csr if extension is incorrect" do
+        csr_attributes['extension_requests'].merge!({'funny_extension' => "hahahah"})
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr).to eq(nil)
+      end
+
+      it "return nil for csr if extension name provided is subjectAltName" do
+        csr_attributes['extension_requests'].merge!({'subjectAltName' => "ulla"})
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr).to eq(nil)
+      end
+
+      it "return nil for csr if custom attribute name provided isn't correct" do
+        csr_attributes['custom_attributes'].merge!({'funny_att' => "hahahah"})
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr).to eq(nil)
+      end
+
+      it "return nil for csr if extension name provided is private" do
+        csr_attributes['custom_attributes'].merge!({'extReq' => "ulla"})
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        expect(csr).to eq(nil)
+      end
+
+      it 'logs an error if csr attributes were incorrect' do
+        csr_attributes['custom_attributes'].merge!({'funny_att' => "hahahah"})
+        allow(YAML).to receive(:load_file).and_return(csr_attributes)
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            code = subject.run({'certnames' => ['foo', 'bar'],
+                                'config' => config,
+                                'subject-alt-names' => ''})
+            expect(code).to eq(1)
+            expect(stderr.string).to match(/Error.*Cannot create CSR.*funny_att/m)
+          end
+        end
+      end
+    end
+
     describe 'subject alternative names' do
       it 'accepts unprefixed alt names' do
         result, maybe_code = subject.parse(['--subject-alt-names', 'foo.com',
@@ -139,15 +207,17 @@ RSpec.describe Puppetserver::Ca::Action::Create do
       end
 
       it 'adds no attributes to csr if subject_alt_names is empty' do
-        settings = { :subject_alt_names => "",
-                     :keylength => 2098}
+        settings = { :subject_alt_names => '',
+                     :keylength => 2098,
+                     :csr_attributes => '$confdir/csr_attributes.yaml'}
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(0)
       end
 
       it 'adds an attribute to csr if subject_alt_names are present' do
-        settings = { :subject_alt_names => "DNS:foo",
-                     :keylength => 2098}
+        settings = { :subject_alt_names => 'DNS:foo',
+                     :keylength => 2098,
+                     :csr_attributes => '$confdir/csr_attributes.yaml'}
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(1)
       end

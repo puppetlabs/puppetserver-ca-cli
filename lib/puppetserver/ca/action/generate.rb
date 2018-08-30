@@ -78,6 +78,7 @@ BANNER
           root_key, root_cert, root_crl = ca.create_root_cert
           int_key, int_cert, int_crl = ca.create_intermediate_cert(root_key, root_cert)
           master_key, master_cert = ca.create_master_cert(int_key, int_cert)
+          return ca.host.errors if ca.host.errors.any?
 
           FileSystem.ensure_dirs([settings[:ssldir],
                                   settings[:cadir],
