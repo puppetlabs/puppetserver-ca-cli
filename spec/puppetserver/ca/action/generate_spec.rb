@@ -27,8 +27,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
-      with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf,
+      with_temp_dirs tmpdir do |puppet_conf, server_conf|
+        exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                  'server-config' => server_conf,
                                   'subject-alt-names' => '',
                                   'ca-name' => '',
                                   'certname' => '' })
@@ -41,8 +42,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
   it 'generates a bundle ca_crt file, ca_key, int_key, ca_crl, and master cert file' do
     Dir.mktmpdir do |tmpdir|
-      with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf,
+      with_temp_dirs tmpdir do |puppet_conf, server_conf|
+        exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                  'server-config' => server_conf,
                                   'subject-alt-names' => '',
                                   'ca-name' => '',
                                   'certname' => 'foocert' })
@@ -59,8 +61,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   describe 'command line name overrides' do
     it 'uses the ca_name as specified on the command line' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_temp_dirs tmpdir do |puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'subject-alt-names' => '',
                                     'ca-name' => 'Foo CA',
                                     'certname' => '' })
@@ -75,8 +78,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     it 'uses the default ca_name if none specified' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_temp_dirs tmpdir do |puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'subject-alt-names' => '',
                                     'ca-name' => '',
                                     'certname' => '' })
@@ -105,8 +109,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     it 'adds default subject alt names to the master cert' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_temp_dirs tmpdir do |puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'subject-alt-names' => '',
                                     'ca-name' => '',
                                     'certname' => 'foo' })
@@ -121,8 +126,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     it 'adds custom subject alt names to the master cert' do
       Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |conf|
-          exit_code = subject.run({ 'config' => conf,
+        with_temp_dirs tmpdir do |puppet_conf, server_conf|
+          exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                    'server-config' => server_conf,
                                     'subject-alt-names' => 'bar.net,IP:123.123.0.1',
                                     'ca-name' => '',
                                     'certname' => 'foo' })
@@ -138,16 +144,18 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
   it 'will not overwrite existing CA files' do
     Dir.mktmpdir do |tmpdir|
-      with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf,
+      with_temp_dirs tmpdir do |puppet_conf, server_conf|
+        exit_code = subject.run({ 'puppet-config' => puppet_conf,
+                                  'server-config' => server_conf,
                                   'subject-alt-names' => '',
                                   'ca-name' => '',
                                   'certname' => '' })
         expect(exit_code).to eq(0)
-        exit_code2 = subject.run({ 'config' => conf,
-                                  'subject-alt-names' => '',
-                                  'ca-name' => '',
-                                  'certname' => '' })
+        exit_code2 = subject.run({ 'puppet-config' => puppet_conf,
+                                   'server-config' => server_conf,
+                                   'subject-alt-names' => '',
+                                   'ca-name' => '',
+                                   'certname' => '' })
         expect(exit_code2).to eq(1)
         expect(stderr.string).to match(/Existing file.*/)
         expect(stderr.string).to match(/.*please delete the existing files.*/)

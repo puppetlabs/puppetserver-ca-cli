@@ -15,7 +15,8 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca generate [--help]
-  puppetserver ca generate [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca generate [--puppet-config PATH] [--server-config PATH]
+                           [--subject-alt-names ALTNAME1[,ALTNAME2...]]
                            [--certname NAME] [--ca-name NAME]
 
 Description:
@@ -41,9 +42,12 @@ BANNER
 
         def run(input)
           # Validate config_path provided
-          config_path = input['config']
-          if config_path
-            errors = FileSystem.validate_file_paths(config_path)
+          puppet_config_path = input['puppet-config']
+          server_config_path = input['server-config']
+
+          files = [puppet_config_path, server_config_path].compact
+          if !files.empty?
+            errors = FileSystem.validate_file_paths(files)
             return 1 if CliParsing.handle_errors(@logger, errors)
           end
 
@@ -55,9 +59,10 @@ BANNER
           # to ensure that the overriding works correctly.
           settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
 
-          puppet = Config::Puppet.new(config_path)
-          puppet.load(settings_overrides)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          config = Config::Combined.new(puppet_config_path: puppet_config_path,
+                                        server_config_path: server_config_path,
+                                        settings_overrides: settings_overrides)
+          return 1 if CliParsing.handle_errors(@logger, config.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
           signer = SigningDigest.new
@@ -146,8 +151,11 @@ ERR
             opts.on('--help', 'Display this generate specific help output') do |help|
               parsed['help'] = true
             end
-            opts.on('--config CONF', 'Path to puppet.conf') do |conf|
-              parsed['config'] = conf
+            opts.on('--puppet-config CONF', 'Path to puppet.conf') do |conf|
+              parsed['puppet-config'] = conf
+            end
+            opts.on('--server-config CONF', 'Path to puppetserver.conf') do |conf|
+              parsed['server-config'] = conf
             end
             opts.on('--subject-alt-names NAME1[,NAME2]',
                     'Subject alternative names for the master cert') do |sans|
