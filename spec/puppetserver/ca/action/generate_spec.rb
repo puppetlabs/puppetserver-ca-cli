@@ -114,7 +114,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
           expect(File.exist?(master_cert_file)).to be true
           master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:puppet, DNS:foo")
+          expect(master_cert.extensions[7].to_s).to eq("subjectAltName = DNS:puppet, DNS:foo")
         end
       end
     end
@@ -130,7 +130,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
           expect(File.exist?(master_cert_file)).to be true
           master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-          expect(master_cert.extensions[6].to_s).to eq("subjectAltName = DNS:foo, DNS:bar.net, IP Address:123.123.0.1")
+          expect(master_cert.extensions[7].to_s).to eq("subjectAltName = DNS:foo, DNS:bar.net, IP Address:123.123.0.1")
         end
       end
     end

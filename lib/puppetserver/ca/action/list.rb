@@ -111,7 +111,7 @@ Options:
 
         def get_all_certs(settings)
           result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses
-          JSON.parse(result.body)
+          JSON.parse(result.body) if result
         end
 
         def parse(args)

@@ -20,7 +20,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
         int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
 
         _, cert = subject.create_master_cert(int_key, int_cert)
-        expect(cert.extensions.count).to eq(7)
+        expect(cert.extensions.count).to eq(8)
       end
     end
 
@@ -44,7 +44,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
         int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
 
         _, cert = subject.create_master_cert(int_key, int_cert)
-        expect(cert.extensions.count).to eq(9)
+        expect(cert.extensions.count).to eq(10)
       end
     end
   end
