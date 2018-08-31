@@ -39,6 +39,10 @@ module Puppetserver
         @settings = settings
       end
 
+      def errors
+        @host.errors
+      end
+
       def valid_until
         Time.now + @settings[:ca_ttl]
       end
@@ -62,7 +66,7 @@ module Puppetserver
 
       def create_master_cert(ca_key, ca_cert)
         master_key = @host.create_private_key(@settings[:keylength])
-        master_csr = @host.create_csr(@settings[:certname], master_key)
+        master_csr = @host.create_csr(name: @settings[:certname], key: master_key)
         master_cert = sign_master_cert(ca_key, ca_cert, master_csr)
         return master_key, master_cert
       end
@@ -77,11 +81,24 @@ module Puppetserver
         cert.not_before = CERT_VALID_FROM
         cert.not_after = valid_until
 
+        return unless add_custom_extensions(cert)
+
         ef = extension_factory_for(int_cert, cert)
+        add_master_extensions(cert, ef)
+        add_subject_alt_names_extension(cert, ef)
+        cert.sign(int_key, @digest)
+
+        cert
+      end
+
+      def add_master_extensions(cert, ef)
         MASTER_EXTENSIONS.each do |ext|
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
         end
+      end
+
+      def add_subject_alt_names_extension(cert, ef)
         sans =
           if @settings[:subject_alt_names].empty?
             "DNS:puppet, DNS:#{@settings[:certname]}"
@@ -90,9 +107,21 @@ module Puppetserver
           end
         alt_names_ext = ef.create_extension("subjectAltName", sans, false)
         cert.add_extension(alt_names_ext)
+      end
 
-        cert.sign(int_key, @digest)
-        cert
+      # This takes all the extension requests from csr_attributes.yaml and
+      # adds those to the cert
+      def add_custom_extensions(cert)
+        extension_requests = @host.get_extension_requests(@settings[:csr_attributes])
+
+        if extension_requests
+          extensions = @host.validated_extensions(extension_requests)
+          extensions.each do |ext|
+            cert.add_extension(ext)
+          end
+        end
+
+        @host.errors.empty?
       end
 
       def create_root_cert
@@ -146,7 +175,7 @@ module Puppetserver
 
       def create_intermediate_cert(root_key, root_cert)
         int_key = @host.create_private_key(@settings[:keylength])
-        int_csr = @host.create_csr(@settings[:ca_name], int_key)
+        int_csr = @host.create_csr(name: @settings[:ca_name], key: int_key)
         int_cert = sign_intermediate(root_key, root_cert, int_csr)
         int_crl = create_crl_for(int_cert, int_key)
 

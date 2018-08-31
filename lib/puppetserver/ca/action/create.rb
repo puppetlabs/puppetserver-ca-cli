@@ -134,6 +134,7 @@ BANNER
 
           passed = certnames.map do |certname|
             key, csr = generate_key_csr(certname, settings, digest)
+            return false unless csr
             return false unless ca.submit_certificate_request(certname, csr)
             return false unless ca.sign_certs([certname])
             if result = ca.get_certificate(certname)
@@ -152,9 +153,13 @@ BANNER
           private_key = host.create_private_key(settings[:keylength])
           extensions = []
           if !settings[:subject_alt_names].empty?
-            extensions << host.create_extension("subjectAltName", settings[:subject_alt_names])
+            extensions << OpenSSL::X509::Extension.new("subjectAltName", settings[:subject_alt_names], false)
           end
-          csr = host.create_csr(certname, private_key, extensions)
+          csr = host.create_csr(name: certname,
+                                key: private_key,
+                                cli_extensions: extensions,
+                                csr_attributes_path: settings[:csr_attributes])
+          return if CliParsing.handle_errors(@logger, host.errors)
 
           return private_key, csr
         end

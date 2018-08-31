@@ -58,6 +58,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
         serial: serial,
         subject_alt_names: '',
         ssldir: ssldir,
+        csr_attributes: '',
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
