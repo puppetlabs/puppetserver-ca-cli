@@ -16,6 +16,8 @@ module Puppetserver
       SSL_SERVER_CERT = "1.3.6.1.5.5.7.3.1"
       SSL_CLIENT_CERT = "1.3.6.1.5.5.7.3.2"
 
+      CLI_AUTH_EXT_OID = "1.3.6.1.4.1.34380.1.3.39"
+
       MASTER_EXTENSIONS = [
         ["basicConstraints", "CA:FALSE", true],
         ["nsComment", "Puppet Server Internal Certificate", false],
@@ -96,6 +98,10 @@ module Puppetserver
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
         end
+
+        # Status API access for the CA CLI
+        cli_auth_ext = OpenSSL::X509::Extension.new(CLI_AUTH_EXT_OID, OpenSSL::ASN1::UTF8String.new("true").to_der, false)
+        cert.add_extension(cli_auth_ext)
       end
 
       def add_subject_alt_names_extension(cert, ef)
