@@ -162,4 +162,74 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
     end
   end
+
+  it 'honors existing master key pair when generating masters cert' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
+        public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
+        cert_path = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
+
+        FileUtils.mkdir_p(File.dirname(private_path))
+        FileUtils.mkdir_p(File.dirname(public_path))
+
+        pkey = OpenSSL::PKey::RSA.new(1024)
+        File.open(private_path, 'w') {|f| f.puts pkey.to_pem}
+        File.open(public_path, 'w') {|f| f.puts pkey.public_key.to_pem}
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'ca-name' => '',
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(0)
+
+        expect(File.exist?(File.join(cert_path))).to be true
+        expect(File.read(private_path)).to eq pkey.to_pem
+        expect(File.read(public_path)).to eq pkey.public_key.to_pem
+
+        cert = OpenSSL::X509::Certificate.new(File.read(cert_path))
+        expect(cert.public_key.to_pem).to eq pkey.public_key.to_pem
+        expect(cert.check_private_key(pkey)).to be true
+      end
+    end
+  end
+
+  it 'fails if only one of masters public, private keys are present' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        pkey = OpenSSL::PKey::RSA.new(1024)
+        private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
+
+        FileUtils.mkdir_p File.dirname(private_path)
+        File.write(private_path, pkey.to_pem)
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'ca-name' => '',
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(1)
+        expect(stderr.string).to match(/Missing public key/)
+      end
+    end
+
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        pkey = OpenSSL::PKey::RSA.new(1024)
+        public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
+
+        FileUtils.mkdir_p File.dirname(public_path)
+        File.write(public_path, pkey.public_key.to_pem)
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'ca-name' => '',
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(1)
+        expect(stderr.string).to match(/Missing private key/)
+      end
+    end
+  end
 end

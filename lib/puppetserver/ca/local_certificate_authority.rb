@@ -67,9 +67,15 @@ module Puppetserver
       end
 
       def create_master_cert(ca_key, ca_cert)
-        master_key = @host.create_private_key(@settings[:keylength])
-        master_csr = @host.create_csr(name: @settings[:certname], key: master_key)
-        master_cert = sign_master_cert(ca_key, ca_cert, master_csr)
+        master_cert = nil
+        master_key = @host.create_private_key(@settings[:keylength],
+                                              @settings[:hostprivkey],
+                                              @settings[:hostpubkey])
+        if master_key
+          master_csr = @host.create_csr(name: @settings[:certname], key: master_key)
+          master_cert = sign_master_cert(ca_key, ca_cert, master_csr)
+        end
+
         return master_key, master_cert
       end
 

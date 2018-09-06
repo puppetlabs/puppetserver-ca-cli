@@ -9,6 +9,8 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       :root_ca_name => 'bulla',
       :certname => 'ulla',
       :keylength => 2098,
+      :hostprivkey => '$privatekeydir/$certname.pem',
+      :hostpubkey => '$publickeydir/$certname.pem',
       :csr_attributes => '$confdir/csr_attributes.yaml' } }
 
   let(:subject) { Puppetserver::Ca::LocalCertificateAuthority.new(OpenSSL::Digest::SHA256.new, settings) }
