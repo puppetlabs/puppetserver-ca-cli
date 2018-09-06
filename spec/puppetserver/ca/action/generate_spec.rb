@@ -52,6 +52,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         expect(File.exist?(File.join(tmpdir, 'ca', 'root_key.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ssl', 'certs', 'foocert.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem'))).to be true
+        expect(File.exist?(File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem'))).to be true
       end
     end
   end
