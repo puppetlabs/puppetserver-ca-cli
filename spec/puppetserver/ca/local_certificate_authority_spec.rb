@@ -8,7 +8,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       :subject_alt_names => '',
       :root_ca_name => 'bulla',
       :certname => 'ulla',
-      :keylength => 2098,
+      :keylength => 512,
       :hostprivkey => '$privatekeydir/$certname.pem',
       :hostpubkey => '$publickeydir/$certname.pem',
       :csr_attributes => '$confdir/csr_attributes.yaml' } }

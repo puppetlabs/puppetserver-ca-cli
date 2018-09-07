@@ -173,7 +173,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         FileUtils.mkdir_p(File.dirname(private_path))
         FileUtils.mkdir_p(File.dirname(public_path))
 
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         File.open(private_path, 'w') {|f| f.puts pkey.to_pem}
         File.open(public_path, 'w') {|f| f.puts pkey.public_key.to_pem}
 
@@ -198,7 +198,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   it 'fails if only one of masters public, private keys are present' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
 
         FileUtils.mkdir_p File.dirname(private_path)
@@ -216,7 +216,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
 
         FileUtils.mkdir_p File.dirname(public_path)

@@ -35,7 +35,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
 
       settings = {
         ca_ttl: (5 * 365 * 24 * 60 * 60),
-        keylength: 2048,
+        keylength: 512,
         root_ca_name: "root",
         ca_name: 'leaf',
         cadir: cadir,
@@ -64,7 +64,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       signer = Puppetserver::Ca::Utils::SigningDigest.new
       generate_action.generate_pki(settings, signer.digest)
 
-      hostkey = OpenSSL::PKey::RSA.new(2048)
+      hostkey = OpenSSL::PKey::RSA.new(512)
       cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))
       cacert_content = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
       hostcert_content = create_cert(hostkey, 'foobar', cakey_content, cacert_content)

@@ -128,7 +128,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
     it 'validates the private key and leaf cert match' do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
-          File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
+          File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(512).to_pem }
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain })
@@ -171,7 +171,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         with_files_in tmpdir do |bundle, key, chain, conf|
           crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
 
-          baz_key = OpenSSL::PKey::RSA.new(1024)
+          baz_key = OpenSSL::PKey::RSA.new(512)
           baz_cert = create_cert(baz_key, 'baz')
           baz_crl = create_crl(baz_cert, baz_key)
 
@@ -194,8 +194,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         key_file = File.join(tmpdir, 'key.pem')
         chain_file = File.join(tmpdir, 'chain.pem')
 
-        root_key = OpenSSL::PKey::RSA.new(1024)
-        leaf_key = OpenSSL::PKey::RSA.new(1024)
+        root_key = OpenSSL::PKey::RSA.new(512)
+        leaf_key = OpenSSL::PKey::RSA.new(512)
 
         File.open(key_file, 'w') do |f|
           f.puts leaf_key.to_pem
@@ -262,7 +262,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   it 'honors existing master key pair when generating masters cert' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
         public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
         cert_path = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
@@ -295,7 +295,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   it 'fails if only one of masters public, private keys are present' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
 
         FileUtils.mkdir_p(File.dirname(private_path))
@@ -316,7 +316,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
 
-        pkey = OpenSSL::PKey::RSA.new(1024)
+        pkey = OpenSSL::PKey::RSA.new(512)
         public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
 
         FileUtils.mkdir_p(File.dirname(public_path))
