@@ -162,6 +162,7 @@ module Puppetserver
           settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
           settings[:subject_alt_names] = munge_alt_names(settings[:subject_alt_names])
+          settings[:keylength] = settings[:keylength].to_i
 
           settings.each do |key, value|
             next unless value.is_a? String
