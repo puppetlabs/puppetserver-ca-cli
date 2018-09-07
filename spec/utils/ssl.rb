@@ -84,6 +84,7 @@ module Utils
         [master]
           cadir = #{ca_dir}
           ssldir = #{ssl_dir}
+          keylength = 512
         CONF
       end
       block.call(config_file)
@@ -108,15 +109,16 @@ module Utils
         [master]
           cadir = #{ca_dir}
           ssldir = #{ssl_dir}
+          keylength = 512
         CONF
       end
 
       not_before = Time.now - 1
 
-      root_key = OpenSSL::PKey::RSA.new(1024)
+      root_key = OpenSSL::PKey::RSA.new(512)
       root_cert = create_cert(root_key, 'foo')
 
-      leaf_key = OpenSSL::PKey::RSA.new(1024)
+      leaf_key = OpenSSL::PKey::RSA.new(512)
       File.open(key_file, 'w') do |f|
         f.puts leaf_key.to_pem
       end

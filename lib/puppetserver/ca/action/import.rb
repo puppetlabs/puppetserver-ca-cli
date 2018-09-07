@@ -100,7 +100,14 @@ BANNER
             [settings[:cakey], loader.key],
           ]
 
-          errors = FileSystem.check_for_existing_files(public_files.map(&:first) + private_files.map(&:first))
+          files_to_check = public_files + private_files
+          # We don't want to error if master's keys exist. Certain workflows
+          # allow the agent to have already be installed with keys and then
+          # upgraded to be a master. The host class will honor keys, if both
+          # public and private exist, and error if only one exists - as is
+          # previous behavior.
+          files_to_check = files_to_check.map(&:first) - [settings[:hostpubkey], settings[:hostprivkey]]
+          errors = FileSystem.check_for_existing_files(files_to_check)
 
           if !errors.empty?
             instructions = <<-ERR

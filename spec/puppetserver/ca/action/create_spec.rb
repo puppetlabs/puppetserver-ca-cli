@@ -142,7 +142,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
 
       let(:settings) {
         { :subject_alt_names => '',
-          :keylength => 2098,
+          :keylength => 512,
           :csr_attributes => '$confdir/csr_attributes.yaml' } }
 
       before(:each) do
@@ -229,7 +229,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
 
       it 'adds no attributes to csr if subject_alt_names is empty' do
         settings = { :subject_alt_names => '',
-                     :keylength => 2098,
+                     :keylength => 512,
                      :csr_attributes => '$confdir/csr_attributes.yaml'}
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(0)
@@ -237,7 +237,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
 
       it 'adds an attribute to csr if subject_alt_names are present' do
         settings = { :subject_alt_names => 'DNS:foo',
-                     :keylength => 2098,
+                     :keylength => 512,
                      :csr_attributes => '$confdir/csr_attributes.yaml'}
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(1)

@@ -128,7 +128,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
     it 'validates the private key and leaf cert match' do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
-          File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(1024).to_pem }
+          File.open(key, 'w') {|f| f.puts OpenSSL::PKey::RSA.new(512).to_pem }
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain })
@@ -171,7 +171,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         with_files_in tmpdir do |bundle, key, chain, conf|
           crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
 
-          baz_key = OpenSSL::PKey::RSA.new(1024)
+          baz_key = OpenSSL::PKey::RSA.new(512)
           baz_cert = create_cert(baz_key, 'baz')
           baz_crl = create_crl(baz_cert, baz_key)
 
@@ -194,8 +194,8 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         key_file = File.join(tmpdir, 'key.pem')
         chain_file = File.join(tmpdir, 'chain.pem')
 
-        root_key = OpenSSL::PKey::RSA.new(1024)
-        leaf_key = OpenSSL::PKey::RSA.new(1024)
+        root_key = OpenSSL::PKey::RSA.new(512)
+        leaf_key = OpenSSL::PKey::RSA.new(512)
 
         File.open(key_file, 'w') do |f|
           f.puts leaf_key.to_pem
@@ -255,6 +255,82 @@ RSpec.describe Puppetserver::Ca::Action::Import do
         expect(File.exist?(File.join(tmpdir, 'ssl', 'certs', 'foocert.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem'))).to be true
         expect(File.exist?(File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem'))).to be true
+      end
+    end
+  end
+
+  it 'honors existing master key pair when generating masters cert' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        pkey = OpenSSL::PKey::RSA.new(512)
+        private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
+        public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
+        cert_path = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
+
+        FileUtils.mkdir_p(File.dirname(private_path))
+        FileUtils.mkdir_p(File.dirname(public_path))
+
+        File.write(private_path, pkey.to_pem)
+        File.write(public_path, pkey.public_key.to_pem)
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain,
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(0)
+
+        expect(File.exist?(File.join(cert_path))).to be true
+        expect(File.read(private_path)).to eq pkey.to_pem
+        expect(File.read(public_path)).to eq pkey.public_key.to_pem
+
+        cert = OpenSSL::X509::Certificate.new(File.read(cert_path))
+        expect(cert.public_key.to_pem).to eq pkey.public_key.to_pem
+      end
+    end
+  end
+
+  it 'fails if only one of masters public, private keys are present' do
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+        pkey = OpenSSL::PKey::RSA.new(512)
+        private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
+
+        FileUtils.mkdir_p(File.dirname(private_path))
+        File.write(private_path, pkey.to_pem)
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain,
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(1)
+        expect(stderr.string).to match(/Missing public key/)
+      end
+    end
+
+    Dir.mktmpdir do |tmpdir|
+      with_files_in tmpdir do |bundle, key, chain, conf|
+
+        pkey = OpenSSL::PKey::RSA.new(512)
+        public_path = File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem')
+
+        FileUtils.mkdir_p(File.dirname(public_path))
+        File.write(public_path, pkey.public_key.to_pem)
+
+        exit_code = subject.run({ 'config' => conf,
+                                  'cert-bundle' => bundle,
+                                  'private-key'=> key,
+                                  'crl-chain' => chain,
+                                  'certname' => 'foocert',
+                                  'subject-alt-names' => '' })
+
+        expect(exit_code).to eq(1)
+        expect(stderr.string).to match(/Missing private key/)
       end
     end
   end
@@ -325,7 +401,10 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
           expect(File.exist?(master_cert_file)).to be true
           master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-          expect(master_cert.extensions[7].to_s).to eq("subjectAltName = DNS:puppet, DNS:foo")
+          alt_names = master_cert.extensions.find do |ext|
+            ext.to_s =~ /subjectAltName/
+          end
+          expect(alt_names.to_s).to eq("subjectAltName = DNS:puppet, DNS:foo")
         end
       end
     end
@@ -343,7 +422,10 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foo.pem')
           expect(File.exist?(master_cert_file)).to be true
           master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-          expect(master_cert.extensions[7].to_s).to eq("subjectAltName = DNS:foo, DNS:bar.net, IP Address:123.123.0.1")
+          alt_names = master_cert.extensions.find do |ext|
+            ext.to_s =~ /subjectAltName/
+          end
+          expect(alt_names.to_s).to eq("subjectAltName = DNS:foo, DNS:bar.net, IP Address:123.123.0.1")
         end
       end
     end
