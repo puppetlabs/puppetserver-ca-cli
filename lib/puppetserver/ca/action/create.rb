@@ -153,7 +153,10 @@ BANNER
           private_key = host.create_private_key(settings[:keylength])
           extensions = []
           if !settings[:subject_alt_names].empty?
-            extensions << OpenSSL::X509::Extension.new("subjectAltName", settings[:subject_alt_names], false)
+            ef = OpenSSL::X509::ExtensionFactory.new
+            extensions << ef.create_extension("subjectAltName",
+                                              settings[:subject_alt_names],
+                                              false)
           end
           csr = host.create_csr(name: certname,
                                 key: private_key,
