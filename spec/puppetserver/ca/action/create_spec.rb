@@ -242,6 +242,21 @@ RSpec.describe Puppetserver::Ca::Action::Create do
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(1)
       end
+
+      it 'correctly encodes subject alt names' do
+        settings = { :subject_alt_names => 'DNS:foo, DNS:puppet',
+                     :keylength => 512,
+                     :csr_attributes => '$confdir/csr_attributes.yaml'}
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+
+        # If the subject alt names are correctly encoded then we should be able
+        # to decode just their context dependent values (ie just the names,
+        # not their type labels)
+        alt_request = csr.attributes[0].value.value[0].value[0].value[1].value
+        alt_names = OpenSSL::ASN1.decode(alt_request)
+        alt_names = alt_names.value.map {|name| name.value }
+        expect(alt_names).to include('foo', 'puppet')
+      end
     end
   end
 end
