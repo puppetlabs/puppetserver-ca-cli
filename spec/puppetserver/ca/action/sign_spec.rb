@@ -94,11 +94,11 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
       expect(exit_code).to eq(1)
     end
 
-    it 'fails when no pending certs' do
+    it 'returns 24 when no pending certs' do
       allow_any_instance_of(Puppetserver::Ca::CertificateAuthority).
         to receive(:get_certificate_statuses).and_return(empty)
       exit_code = action.run({'all' => true})
-      expect(exit_code).to eq(1)
+      expect(exit_code).to eq(24)
       expect(err.string).to include('No waiting certificate requests to sign')
     end
 

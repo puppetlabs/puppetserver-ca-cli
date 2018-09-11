@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'utils/http'
 
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/logger'
@@ -48,9 +49,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
   end
 
   describe 'revocation' do
-    Result = Struct.new(:code, :body)
-
-    let(:success) { Result.new('204', '') }
+    let(:success) { Utils::Http::Result.new('204', '') }
     let(:connection) { double }
 
     before do
@@ -74,7 +73,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
     end
 
     it 'logs an error and returns 1 if any could not be revoked' do
-      not_found = Result.new('404', 'Not Found')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(not_found, success)
 
       code = subject.run({'certnames' => ['foo', 'bar']})
@@ -84,7 +83,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
     end
 
     it 'prints an error and returns 1 if an unknown error occurs' do
-      error = Result.new('500', 'Internal Server Error')
+      error = Utils::Http::Result.new('500', 'Internal Server Error')
       allow(connection).to receive(:put).and_return(error, success)
 
       code = subject.run({'certnames' => ['foo', 'bar']})

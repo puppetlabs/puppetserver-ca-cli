@@ -64,9 +64,8 @@ Options:
 
           if input['all']
             requested_certnames = get_all_pending_certs(ca)
-            if requested_certnames.nil?
-              return 1
-            end
+            return 1 if requested_certnames.nil?
+            return 24 if requested_certnames.empty?
           else
             requested_certnames = input['certname']
           end
@@ -87,7 +86,7 @@ Options:
           if requested_certnames.empty?
             @logger.err 'Error:'
             @logger.err "    No waiting certificate requests to sign"
-            return nil
+            return requested_certnames
           end
 
           return requested_certnames

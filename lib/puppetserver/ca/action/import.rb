@@ -86,11 +86,14 @@ BANNER
           public_files = [
             [settings[:cacert], loader.certs],
             [settings[:cacrl], loader.crls],
+            [settings[:cadir] + '/infra_crl.pem', loader.crls],
             [settings[:localcacert], loader.certs],
             [settings[:hostcrl], loader.crls],
             [settings[:hostpubkey], master_key.public_key],
             [settings[:hostcert], master_cert],
             [settings[:cert_inventory], ca.inventory_entry(master_cert)],
+            [settings[:cadir] + '/infra_inventory.txt', ''],
+            [settings[:cadir] + '/infra_serials', ''],
             [settings[:serial], "002"],
             [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert]
           ]
