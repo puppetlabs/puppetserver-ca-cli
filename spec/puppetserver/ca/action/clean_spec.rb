@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'utils/http'
 
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/logger'
@@ -48,11 +49,9 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
   end
 
   describe 'clean' do
-    Result = Struct.new(:code, :body)
-
-    let(:success) { Result.new('204', '') }
-    let(:not_found) { Result.new('404', 'Not Found') }
-    let(:error) { Result.new('500', 'Internal Server Error') }
+    let(:success) { Utils::Http::Result.new('204', '') }
+    let(:not_found) { Utils::Http::Result.new('404', 'Not Found') }
+    let(:error) { Utils::Http::Result.new('500', 'Internal Server Error') }
     let(:connection) { double }
 
     before do
@@ -98,7 +97,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
     end
 
     it 'logs an error and returns 1 if any could not be cleaned' do
-      not_found = Result.new('404', 'Not Found')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
       allow(connection).to receive(:delete).and_return(not_found, success)
 
@@ -109,7 +108,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
     end
 
     it 'prints an error and returns 1 if an unknown error occurs' do
-      error = Result.new('500', 'Internal Server Error')
+      error = Utils::Http::Result.new('500', 'Internal Server Error')
       allow(connection).to receive(:put).and_return(success)
       allow(connection).to receive(:delete).and_return(error, success)
 

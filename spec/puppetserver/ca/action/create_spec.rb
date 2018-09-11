@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/ssl'
+require 'utils/http'
 
 require 'tmpdir'
 
@@ -65,10 +66,8 @@ RSpec.describe Puppetserver::Ca::Action::Create do
   end
 
   describe 'downloading' do
-    Result = Struct.new(:code, :body)
-
-    let(:success) { Result.new('204', '') }
-    let(:success_with_content) { Result.new('200', 'some cert') }
+    let(:success) { Utils::Http::Result.new('204', '') }
+    let(:success_with_content) { Utils::Http::Result.new('200', 'some cert') }
     let(:connection) { double }
 
     before do
@@ -98,7 +97,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
     end
 
     it 'logs an error if any could not be downloaded' do
-      not_found = Result.new('404', 'Not Found')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
       allow(connection).to receive(:get).and_return(not_found, success_with_content)
       Dir.mktmpdir do |tmpdir|
@@ -114,7 +113,7 @@ RSpec.describe Puppetserver::Ca::Action::Create do
     end
 
     it 'prints an error if an unknown error occurs' do
-      error = Result.new('500', 'Internal Server Error')
+      error = Utils::Http::Result.new('500', 'Internal Server Error')
       allow(connection).to receive(:put).and_return(success)
       allow(connection).to receive(:get).and_return(error, success_with_content)
       Dir.mktmpdir do |tmpdir|
