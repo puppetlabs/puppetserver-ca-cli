@@ -59,7 +59,10 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         expect(created_correctly.('ca', 'ca_key.pem', '640')).to be true
         expect(created_correctly.('ca', 'root_key.pem', '640')).to be true
         expect(created_correctly.('ca', 'ca_crl.pem', '644')).to be true
+        expect(created_correctly.('ca', 'infra_crl.pem', '644')).to be true
         expect(created_correctly.('ca', 'inventory.txt', '644')).to be true
+        expect(created_correctly.('ca', 'infra_inventory.txt', '644')).to be true
+        expect(created_correctly.('ca', 'infra_serials', '644')).to be true
         expect(created_correctly.('ca', 'serial', '644')).to be true
         expect(created_correctly.('ssl', 'certs', 'foocert.pem', '644')).to be true
         expect(created_correctly.('ssl', 'private_keys', 'foocert.pem', '640')).to be true
