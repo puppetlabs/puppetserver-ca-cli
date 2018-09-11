@@ -9,15 +9,15 @@ require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/host'
 
-RSpec.describe Puppetserver::Ca::Action::Generate do
+RSpec.describe Puppetserver::Ca::Action::Setup do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
-  let(:usage) { /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m }
+  let(:usage) { /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m }
 
-  subject { Puppetserver::Ca::Action::Generate.new(logger) }
+  subject { Puppetserver::Ca::Action::Setup.new(logger) }
 
   it 'prints the help output & returns 1 if invalid flags are given' do
     _, exit_code = subject.parse(['--hello'])
@@ -40,7 +40,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     end
   end
 
-  include_examples 'properly sets up ca and ssl dir', Puppetserver::Ca::Action::Generate
+  include_examples 'properly sets up ca and ssl dir', Puppetserver::Ca::Action::Setup
 
   describe 'command line name overrides' do
     it 'uses the ca_name as specified on the command line' do

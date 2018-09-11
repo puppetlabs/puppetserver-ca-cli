@@ -8,19 +8,20 @@ require 'puppetserver/ca/config/puppet'
 module Puppetserver
   module Ca
     module Action
-      class Generate
+      class Setup
         include Puppetserver::Ca::Utils
 
-        SUMMARY = "Generate a root and intermediate signing CA for Puppet Server"
+        SUMMARY = "Setup a self-signed CA chain for Puppet Server"
         BANNER = <<-BANNER
 Usage:
-  puppetserver ca generate [--help]
-  puppetserver ca generate [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca setup [--help]
+  puppetserver ca setup [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
                            [--certname NAME] [--ca-name NAME]
 
 Description:
-Generate a root and intermediate signing CA for Puppet Server
-and store generated CA keys, certs, and crls on disk.
+Setup a root and intermediate signing CA for Puppet Server
+and store generated CA keys, certs, crls, and associated
+master related files on disk.
 
 The `--subject-alt-names` flag can be used to add SANs to the
 certificate generated for the Puppet master. Multiple names can be
@@ -154,7 +155,7 @@ ERR
           parsed['certname'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--help', 'Display this generate specific help output') do |help|
+            opts.on('--help', 'Display this setup specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
