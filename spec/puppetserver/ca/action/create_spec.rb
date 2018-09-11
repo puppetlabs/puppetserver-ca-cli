@@ -4,7 +4,7 @@ require 'utils/http'
 
 require 'tmpdir'
 
-require 'puppetserver/ca/action/create'
+require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/http_client'
 
