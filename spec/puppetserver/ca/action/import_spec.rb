@@ -249,12 +249,21 @@ RSpec.describe Puppetserver::Ca::Action::Import do
                                   'certname' => 'foocert',
                                   'subject-alt-names' => '' })
         expect(exit_code).to eq(0)
-        expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crl.pem'))).to be true
-        expect(File.exist?(File.join(tmpdir, 'ca', 'ca_key.pem'))).to be true
-        expect(File.exist?(File.join(tmpdir, 'ca', 'ca_crt.pem'))).to be true
-        expect(File.exist?(File.join(tmpdir, 'ssl', 'certs', 'foocert.pem'))).to be true
-        expect(File.exist?(File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem'))).to be true
-        expect(File.exist?(File.join(tmpdir, 'ssl', 'public_keys', 'foocert.pem'))).to be true
+        created_correctly = ->(*args) do
+          perms = args.pop
+          file = File.join(tmpdir, *args)
+          File.exists?(file) &&
+            File.stat(file).mode.to_s(8)[-3..-1] == perms
+        end
+
+        expect(created_correctly.('ca', 'ca_crt.pem', '644')).to be true
+        expect(created_correctly.('ca', 'ca_key.pem', '640')).to be true
+        expect(created_correctly.('ca', 'ca_crl.pem', '644')).to be true
+        expect(created_correctly.('ca', 'inventory.txt', '644')).to be true
+        expect(created_correctly.('ca', 'serial', '644')).to be true
+        expect(created_correctly.('ssl', 'certs', 'foocert.pem', '644')).to be true
+        expect(created_correctly.('ssl', 'private_keys', 'foocert.pem', '640')).to be true
+        expect(created_correctly.('ssl', 'public_keys', 'foocert.pem', '644')).to be true
       end
     end
   end
