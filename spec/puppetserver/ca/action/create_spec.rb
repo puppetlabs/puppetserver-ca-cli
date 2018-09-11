@@ -8,14 +8,14 @@ require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/http_client'
 
-RSpec.describe Puppetserver::Ca::Action::Create do
+RSpec.describe Puppetserver::Ca::Action::Generate do
   include Utils::SSL
 
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
 
-  subject { Puppetserver::Ca::Action::Create.new(logger) }
+  subject { Puppetserver::Ca::Action::Generate.new(logger) }
 
   describe 'flags' do
     it 'takes a single certname' do

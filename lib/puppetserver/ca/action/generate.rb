@@ -8,7 +8,7 @@ require 'puppetserver/ca/utils/signing_digest'
 module Puppetserver
   module Ca
     module Action
-      class Create
+      class Generate
 
         include Puppetserver::Ca::Utils
 
@@ -16,15 +16,15 @@ module Puppetserver
         VALID_CERTNAME = /\A[ -.0-~]+\Z/
         CERTNAME_BLACKLIST = %w{--all --config}
 
-        SUMMARY = "Create a new certificate signed by the CA"
+        SUMMARY = "Generate a new certificate signed by the CA"
         BANNER = <<-BANNER
 Usage:
-  puppetserver ca create [--help]
-  puppetserver ca create [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
-                         [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca generate [--help]
+  puppetserver ca generate [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
+                           [--subject-alt-names ALTNAME1[,ALTNAME2...]]
 
 Description:
-Creates a new certificate signed by the intermediate CA
+Generates a new certificate signed by the intermediate CA
 and stores generated keys and certs on disk.
 
 To determine the target location, the default puppet.conf
@@ -46,7 +46,7 @@ BANNER
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
-            opts.on('--help', 'Display this create specific help output') do |help|
+            opts.on('--help', 'Display this generate specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
@@ -66,7 +66,7 @@ BANNER
           errors = CliParsing.parse_with_errors(parser, args)
 
           if results['certnames'].empty?
-            errors << '    At least one certname is required to create'
+            errors << '    At least one certname is required to generate'
           else
             results['certnames'].each do |certname|
               if CERTNAME_BLACKLIST.include?(certname)
@@ -119,7 +119,7 @@ BANNER
           return all_passed ? 0 : 1
         end
 
-        # Create csrs and keys, then submit them to CA, request for the CA to sign
+        # Generate csrs and keys, then submit them to CA, request for the CA to sign
         # them, download the signed certificates from the CA, and finally save
         # the signed certs and associated keys. Returns true if all certs were
         # successfully created and saved.

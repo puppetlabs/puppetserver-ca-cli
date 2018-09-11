@@ -23,7 +23,7 @@ BANNER
 
       VALID_ACTIONS = {
         'clean'    => Action::Clean,
-        'create'   => Action::Create,
+        'generate' => Action::Generate,
         'setup'    => Action::Setup,
         'import'   => Action::Import,
         'list'     => Action::List,
