@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/ssl'
+require 'shared_examples/setup'
 
 require 'tmpdir'
 require 'fileutils'
@@ -39,37 +40,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     end
   end
 
-  it 'generates correct files with correct permissions' do
-    Dir.mktmpdir do |tmpdir|
-      with_temp_dirs tmpdir do |conf|
-        exit_code = subject.run({ 'config' => conf,
-                                  'subject-alt-names' => '',
-                                  'ca-name' => '',
-                                  'certname' => 'foocert' })
-        expect(exit_code).to eq(0)
-
-        created_correctly = ->(*args) do
-          perms = args.pop
-          file = File.join(tmpdir, *args)
-          File.exists?(file) &&
-            File.stat(file).mode.to_s(8)[-3..-1] == perms
-        end
-
-        expect(created_correctly.('ca', 'ca_crt.pem', '644')).to be true
-        expect(created_correctly.('ca', 'ca_key.pem', '640')).to be true
-        expect(created_correctly.('ca', 'root_key.pem', '640')).to be true
-        expect(created_correctly.('ca', 'ca_crl.pem', '644')).to be true
-        expect(created_correctly.('ca', 'infra_crl.pem', '644')).to be true
-        expect(created_correctly.('ca', 'inventory.txt', '644')).to be true
-        expect(created_correctly.('ca', 'infra_inventory.txt', '644')).to be true
-        expect(created_correctly.('ca', 'infra_serials', '644')).to be true
-        expect(created_correctly.('ca', 'serial', '644')).to be true
-        expect(created_correctly.('ssl', 'certs', 'foocert.pem', '644')).to be true
-        expect(created_correctly.('ssl', 'private_keys', 'foocert.pem', '640')).to be true
-        expect(created_correctly.('ssl', 'public_keys', 'foocert.pem', '644')).to be true
-      end
-    end
-  end
+  include_examples 'properly sets up ca and ssl dir', Puppetserver::Ca::Action::Generate
 
   describe 'command line name overrides' do
     it 'uses the ca_name as specified on the command line' do

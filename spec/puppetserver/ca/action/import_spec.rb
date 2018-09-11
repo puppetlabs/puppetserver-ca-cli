@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/ssl'
+require 'shared_examples/setup'
 
 require 'tmpdir'
 require 'fileutils'
@@ -239,37 +240,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
     end
   end
 
-  it 'moves CA files and creates master cert files in the correct location' do
-    Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
-        exit_code = subject.run({ 'config' => conf,
-                                  'cert-bundle' => bundle,
-                                  'private-key'=> key,
-                                  'crl-chain' => chain,
-                                  'certname' => 'foocert',
-                                  'subject-alt-names' => '' })
-        expect(exit_code).to eq(0)
-        created_correctly = ->(*args) do
-          perms = args.pop
-          file = File.join(tmpdir, *args)
-          File.exists?(file) &&
-            File.stat(file).mode.to_s(8)[-3..-1] == perms
-        end
-
-        expect(created_correctly.('ca', 'ca_crt.pem', '644')).to be true
-        expect(created_correctly.('ca', 'ca_key.pem', '640')).to be true
-        expect(created_correctly.('ca', 'ca_crl.pem', '644')).to be true
-        expect(created_correctly.('ca', 'infra_crl.pem', '644')).to be true
-        expect(created_correctly.('ca', 'inventory.txt', '644')).to be true
-        expect(created_correctly.('ca', 'infra_inventory.txt', '644')).to be true
-        expect(created_correctly.('ca', 'infra_serials', '644')).to be true
-        expect(created_correctly.('ca', 'serial', '644')).to be true
-        expect(created_correctly.('ssl', 'certs', 'foocert.pem', '644')).to be true
-        expect(created_correctly.('ssl', 'private_keys', 'foocert.pem', '640')).to be true
-        expect(created_correctly.('ssl', 'public_keys', 'foocert.pem', '644')).to be true
-      end
-    end
-  end
+  include_examples 'properly sets up ca and ssl dir', Puppetserver::Ca::Action::Import
 
   it 'honors existing master key pair when generating masters cert' do
     Dir.mktmpdir do |tmpdir|
