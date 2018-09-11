@@ -4,7 +4,7 @@ require 'shared_examples/setup'
 
 require 'tmpdir'
 require 'fileutils'
-require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/host'

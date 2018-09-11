@@ -6,7 +6,7 @@ require 'fileutils'
 require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/action/setup'
 
 RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
