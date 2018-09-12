@@ -1,13 +1,13 @@
 require 'optparse'
-require 'puppetserver/ca/version'
-require 'puppetserver/ca/logger'
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/import'
-require 'puppetserver/ca/action/setup'
-require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/list'
+require 'puppetserver/ca/action/revoke'
+require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
+require 'puppetserver/ca/logger'
+require 'puppetserver/ca/version'
 require 'puppetserver/ca/utils/cli_parsing'
 
 
@@ -21,18 +21,28 @@ Manage the Private Key Infrastructure for
 Puppet Server's built-in Certificate Authority
 BANNER
 
-      VALID_ACTIONS = {
+      INIT_ACTIONS = {
+        'import'   => Action::Import,
+        'setup'    => Action::Setup,
+      }
+
+      MAINT_ACTIONS = {
         'clean'    => Action::Clean,
         'generate' => Action::Generate,
-        'setup'    => Action::Setup,
-        'import'   => Action::Import,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
         'sign'     => Action::Sign
       }
 
-      ACTION_LIST = "\nAvailable Actions:\n" +
-        VALID_ACTIONS.map do |action, cls|
+      VALID_ACTIONS = INIT_ACTIONS.merge(MAINT_ACTIONS).sort.to_h
+
+      ACTION_LIST = "\nAvailable Actions:\n\n" +
+        "  Certificate Actions (requires a running Puppet Server):\n\n" +
+        MAINT_ACTIONS.map do |action, cls|
+          "    #{action}\t#{cls::SUMMARY}"
+        end.join("\n") + "\n\n" +
+        "  Initialization Actions (requires Puppet Server to be stopped):\n\n" +
+        INIT_ACTIONS.map do |action, cls|
           "    #{action}\t#{cls::SUMMARY}"
         end.join("\n")
 
