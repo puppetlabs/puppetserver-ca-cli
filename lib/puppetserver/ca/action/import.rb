@@ -12,12 +12,12 @@ module Puppetserver
       class Import
         include Puppetserver::Ca::Utils
 
-        SUMMARY = "Import the CA's key, certs, and crls"
+        SUMMARY = "Import an external CA chain and generate master PKI"
         BANNER = <<-BANNER
 Usage:
   puppetserver ca import [--help]
   puppetserver ca import [--config PATH] [--certname NAME]
-                         [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+                         [--subject-alt-names NAME[,NAME]]
       --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
@@ -181,7 +181,7 @@ ERR
                     'Common name to use for the master cert') do |name|
               parsed['certname'] = name
             end
-            opts.on('--subject-alt-names NAME1[,NAME2]',
+            opts.on('--subject-alt-names NAME[,NAME]',
                     'Subject alternative names for the master cert') do |sans|
               parsed['subject-alt-names'] = sans
             end

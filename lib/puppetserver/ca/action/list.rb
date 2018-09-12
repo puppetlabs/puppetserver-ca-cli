@@ -12,7 +12,7 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils
 
-        SUMMARY = 'List all certificate requests'
+        SUMMARY = 'List certificates and CSRs'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca list [--help]

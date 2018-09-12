@@ -15,11 +15,11 @@ module Puppetserver
 
         CERTNAME_BLACKLIST = %w{--all --config}
 
-        SUMMARY = 'Clean files from the CA for certificate(s)'
+        SUMMARY = 'Revoke cert(s) and remove related files from CA'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca clean [--help]
-  puppetserver ca clean [--config] --certname CERTNAME[,ADDLCERTNAME]
+  puppetserver ca clean [--config] --certname NAME[,NAME]
 
 Description:
 Given one or more valid certnames, instructs the CA to revoke certificates
@@ -34,11 +34,11 @@ BANNER
           parsed['certnames'] = []
           OptionParser.new do |o|
             o.banner = BANNER
-            o.on('--certname foo,bar', Array,
+            o.on('--certname NAME[,NAME]', Array,
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
-            o.on('--config PUPPET.CONF', 'Custom path to puppet.conf') do |conf|
+            o.on('--config CONF', 'Custom path to puppet.conf') do |conf|
               parsed['config'] = conf
             end
             o.on('--help', 'Display this clean specific help output') do |help|

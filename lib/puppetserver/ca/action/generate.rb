@@ -20,8 +20,8 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca generate [--help]
-  puppetserver ca generate [--config PATH] [--certname CERTNAME[,ADDLCERTNAME]]
-                           [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca generate [--config PATH] [--certname NAME[,NAME]]
+                           [--subject-alt-names NAME[,NAME]]
 
 Description:
 Generates a new certificate signed by the intermediate CA
@@ -42,7 +42,7 @@ BANNER
           parsed['subject-alt-names'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--certname FOO,BAR', Array,
+            opts.on('--certname NAME[,NAME]', Array,
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
@@ -52,7 +52,7 @@ BANNER
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
               parsed['config'] = conf
             end
-            opts.on('--subject-alt-names NAME1[,NAME2]',
+            opts.on('--subject-alt-names NAME[,NAME]',
                     'Subject alternative names for the generated cert') do |sans|
               parsed['subject-alt-names'] = sans
             end

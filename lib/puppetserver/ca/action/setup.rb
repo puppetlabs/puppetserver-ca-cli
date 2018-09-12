@@ -15,7 +15,7 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca setup [--help]
-  puppetserver ca setup [--config PATH] [--subject-alt-names ALTNAME1[,ALTNAME2...]]
+  puppetserver ca setup [--config PATH] [--subject-alt-names NAME[,NAME]]
                            [--certname NAME] [--ca-name NAME]
 
 Description:
@@ -161,7 +161,7 @@ ERR
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
               parsed['config'] = conf
             end
-            opts.on('--subject-alt-names NAME1[,NAME2]',
+            opts.on('--subject-alt-names NAME[,NAME]',
                     'Subject alternative names for the master cert') do |sans|
               parsed['subject-alt-names'] = sans
             end

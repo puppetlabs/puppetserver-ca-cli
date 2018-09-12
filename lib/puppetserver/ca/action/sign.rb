@@ -14,11 +14,11 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils
 
-        SUMMARY = 'Sign a given certificate'
+        SUMMARY = 'Sign certificate request(s)'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca sign [--help]
-  puppetserver ca sign [--config] --certname CERTNAME[,CERTNAME]
+  puppetserver ca sign [--config] --certname NAME[,NAME]
   puppetserver ca sign  --all
 
 Description:
@@ -30,10 +30,10 @@ Options:
         def self.parser(parsed = {})
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--certname x,y,z', Array, 'the name(s) of the cert(s) to be signed') do |cert|
+            opts.on('--certname NAME[,NAME]', Array, 'the name(s) of the cert(s) to be signed') do |cert|
               parsed['certname'] = cert
             end
-            opts.on('--config PUPPET.CONF', 'Custom path to Puppet\'s config file') do |conf|
+            opts.on('--config CONF', 'Custom path to Puppet\'s config file') do |conf|
               parsed['config'] = conf
             end
             opts.on('--help', 'Display this command specific help output') do |help|
