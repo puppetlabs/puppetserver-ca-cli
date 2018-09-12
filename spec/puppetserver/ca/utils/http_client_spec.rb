@@ -6,7 +6,7 @@ require 'fileutils'
 require 'puppetserver/ca/utils/http_client'
 require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/action/setup'
 
 RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
@@ -15,7 +15,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
     stdout = StringIO.new
     stderr = StringIO.new
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
-    generate_action = Puppetserver::Ca::Action::Generate.new(logger)
+    setup_action = Puppetserver::Ca::Action::Setup.new(logger)
 
     Dir.mktmpdir do |tmpdir|
       ssldir = tmpdir
@@ -62,7 +62,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
-      generate_action.generate_pki(settings, signer.digest)
+      setup_action.generate_pki(settings, signer.digest)
 
       hostkey = OpenSSL::PKey::RSA.new(512)
       cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))

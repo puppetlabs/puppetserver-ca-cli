@@ -16,16 +16,16 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage:.* puppetserver ca clean.*Display this clean specific help output.*/m
   end
 
-  describe 'the create action' do
-    include_examples 'basic cli args',
-      'create',
-      /.*Usage:.* puppetserver ca create.*Display this create specific help output.*/m
-  end
-
   describe 'the generate action' do
     include_examples 'basic cli args',
       'generate',
       /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m
+  end
+
+  describe 'the setup action' do
+    include_examples 'basic cli args',
+      'setup',
+      /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m
   end
 
   describe 'the import action' do
