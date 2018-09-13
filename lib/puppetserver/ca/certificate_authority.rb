@@ -18,31 +18,49 @@ module Puppetserver
         @ca_port = settings[:ca_port]
       end
 
+      def worst_result(previous_result, current_result)
+        %i{success invalid not_found error}.each do |state|
+          if previous_result == state
+            return current_result
+          elsif current_result == state
+            return previous_result
+          else
+            next
+          end
+        end
+      end
+
       # Returns a URI-like wrapper around CA specific urls
       def make_ca_url(resource_type = nil, certname = nil)
         HttpClient::URL.new('https', @ca_server, @ca_port, 'puppet-ca', 'v1', resource_type, certname)
       end
 
       def sign_certs(certnames)
-        put(certnames,
-            resource_type: 'certificate_status',
-            body: SIGN_BODY,
-            type: :sign)
+        results = put(certnames,
+                      resource_type: 'certificate_status',
+                      body: SIGN_BODY,
+                      type: :sign)
+
+        results.all? {|result| result == :success }
       end
 
       def revoke_certs(certnames)
-        put(certnames,
-            resource_type: 'certificate_status',
-            body: REVOKE_BODY,
-            type: :revoke)
+        results = put(certnames,
+                    resource_type: 'certificate_status',
+                    body: REVOKE_BODY,
+                    type: :revoke)
+
+        results.reduce {|prev, curr| worst_result(prev, curr) }
       end
 
       def submit_certificate_request(certname, csr)
-        put([certname],
-            resource_type: 'certificate_request',
-            body: csr.to_pem,
-            headers: {'Content-Type' => 'text/plain'},
-            type: :submit)
+        results = put([certname],
+                    resource_type: 'certificate_request',
+                    body: csr.to_pem,
+                    headers: {'Content-Type' => 'text/plain'},
+                    type: :submit)
+
+        results.all? {|result| result == :success }
       end
 
       # Make an HTTP PUT request to CA
@@ -60,8 +78,6 @@ module Puppetserver
             process_results(type, certname, result)
           end
         end
-
-        results.all?
       end
 
       # logs the action and returns true/false for success
@@ -71,45 +87,49 @@ module Puppetserver
           case result.code
           when '204'
             @logger.inform "Successfully signed certificate request for #{certname}"
-            return true
+            return :success
           when '404'
             @logger.err 'Error:'
             @logger.err "    Could not find certificate request for #{certname}"
-            return false
+            return :not_found
           else
             @logger.err 'Error:'
             @logger.err "    When attempting to sign certificate request '#{certname}', received"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
-            return false
+            return :error
           end
         when :revoke
           case result.code
           when '200', '204'
             @logger.inform "Revoked certificate for #{certname}"
-            return true
+            return :success
           when '404'
             @logger.err 'Error:'
             @logger.err "    Could not find certificate for #{certname}"
-            return false
+            return :not_found
+          when '409'
+            @logger.err 'Error:'
+            @logger.err "    Could not revoke unsigned csr for #{certname}"
+            return :invalid
           else
             @logger.err 'Error:'
             @logger.err "    When attempting to revoke certificate '#{certname}', received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
-            return false
+            return :error
           end
         when :submit
           case result.code
           when '200', '204'
             @logger.inform "Successfully submitted certificate request for #{certname}"
-            return true
+            return :success
           else
             @logger.err 'Error:'
             @logger.err "    When attempting to submit certificate request for '#{certname}', received:"
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
-            return false
+            return :error
           end
         end
       end
@@ -132,11 +152,24 @@ module Puppetserver
               cleaned = check_clean(certname, clean_result)
             end
 
-            cleaned == :success && [:success, :not_found].include?(revoked)
+            if revoked == :error || cleaned != :success
+              :error
+
+            # If we get passed the first conditional we know that
+            # cleaned must == :success and revoked must be one of
+            # :invalid, :not_found, or :success. We'll treat both
+            # :not_found and :success of revocation here as successes.
+            # However we'll treat invalid's specially.
+            elsif revoked == :invalid
+              :invalid
+
+            else
+              :success
+            end
           end
         end
 
-        return results.all?
+        return results.reduce {|prev, curr| worst_result(prev, curr) }
       end
 
       # possibly logs the action, always returns a status symbol 👑
@@ -145,6 +178,8 @@ module Puppetserver
         when '200', '204'
           @logger.inform "Revoked certificate for #{certname}"
           return :success
+        when '409'
+          return :invalid
         when '404'
           return :not_found
         else

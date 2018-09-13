@@ -82,6 +82,28 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
       expect(stderr.string).to match(/Error.*not find certificate for foo/m)
     end
 
+    it 'logs an error and returns 24 if any were certificate requests rather than certs' do
+      unsigned = Utils::Http::Result.new('409', 'Conflict')
+      allow(connection).to receive(:put).and_return(unsigned, success)
+
+      code = subject.run({'certnames' => ['foo', 'bar']})
+      expect(code).to eq(24)
+      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stderr.string).to match(/Error.*not revoke unsigned csr for foo/m)
+    end
+
+    it 'returns 1 if any erred, regardless of if some were unsigned' do
+      unsigned = Utils::Http::Result.new('409', 'Conflict')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
+      allow(connection).to receive(:put).and_return(not_found, success, unsigned)
+
+      code = subject.run({'certnames' => ['foo', 'bar', 'baz']})
+      expect(code).to eq(1)
+      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stderr.string).to match(/Error.*not revoke unsigned csr for baz/m)
+      expect(stderr.string).to match(/Error.*not find certificate for foo/m)
+    end
+
     it 'prints an error and returns 1 if an unknown error occurs' do
       error = Utils::Http::Result.new('500', 'Internal Server Error')
       allow(connection).to receive(:put).and_return(error, success)

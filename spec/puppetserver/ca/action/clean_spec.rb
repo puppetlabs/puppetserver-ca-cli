@@ -96,15 +96,40 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       expect(stderr.string).to include('Internal Server Error')
     end
 
-    it 'logs an error and returns 1 if any could not be cleaned' do
+    it 'logs an error and returns 1 if some did not exist' do
       not_found = Utils::Http::Result.new('404', 'Not Found')
-      allow(connection).to receive(:put).and_return(success)
+      allow(connection).to receive(:put).and_return(not_found, success)
       allow(connection).to receive(:delete).and_return(not_found, success)
 
       code = subject.run({'certnames' => ['foo', 'bar']})
       expect(code).to eq(1)
       expect(stdout.string).to include('Cleaned files related to bar')
       expect(stderr.string).to match(/Error.*not find files.*foo/m)
+    end
+
+    it 'logs an error and returns 24 if some were unsigned' do
+      unsigned = Utils::Http::Result.new('409', 'Conflict')
+      allow(connection).to receive(:put).and_return(unsigned, success)
+      allow(connection).to receive(:delete).and_return(success, success)
+
+      code = subject.run({'certnames' => ['foo', 'bar']})
+      expect(code).to eq(24)
+      expect(stdout.string).to include('Cleaned files related to bar')
+      expect(stdout.string).to include('Cleaned files related to foo')
+      expect(stderr.string).to be_empty
+    end
+
+    it 'logs returns 1 if some were unsigned and not found' do
+      unsigned = Utils::Http::Result.new('409', 'Conflict')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
+      allow(connection).to receive(:put).and_return(unsigned, success, not_found)
+      allow(connection).to receive(:delete).and_return(success, success, not_found)
+
+      code = subject.run({'certnames' => ['foo', 'bar', 'baz']})
+      expect(code).to eq(1)
+      expect(stdout.string).to include('Cleaned files related to bar')
+      expect(stdout.string).to include('Cleaned files related to foo')
+      expect(stderr.string).to match(/Error.*not find files.*baz/m)
     end
 
     it 'prints an error and returns 1 if an unknown error occurs' do
