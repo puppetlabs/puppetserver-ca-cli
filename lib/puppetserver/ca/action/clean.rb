@@ -87,9 +87,15 @@ BANNER
           puppet = Config::Puppet.parse(config)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
-          passed = clean_certs(certnames, puppet.settings)
-
-          return passed ? 0 : 1
+          result = clean_certs(certnames, puppet.settings)
+          case result
+          when :success
+            return 0
+          when :invalid
+            return 24
+          when :not_found, :error
+            return 1
+          end
         end
 
         def clean_certs(certnames, settings)

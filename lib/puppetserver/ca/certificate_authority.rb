@@ -152,11 +152,24 @@ module Puppetserver
               cleaned = check_clean(certname, clean_result)
             end
 
-            cleaned == :success && [:success, :not_found].include?(revoked)
+            if revoked == :error || cleaned != :success
+              :error
+
+            # If we get passed the first conditional we know that
+            # cleaned must == :success and revoked must be one of
+            # :invalid, :not_found, or :success. We'll treat both
+            # :not_found and :success of revocation here as successes.
+            # However we'll treat invalid's specially.
+            elsif revoked == :invalid
+              :invalid
+
+            else
+              :success
+            end
           end
         end
 
-        return results.all?
+        return results.reduce {|prev, curr| worst_result(prev, curr) }
       end
 
       # possibly logs the action, always returns a status symbol 👑
@@ -165,6 +178,8 @@ module Puppetserver
         when '200', '204'
           @logger.inform "Revoked certificate for #{certname}"
           return :success
+        when '409'
+          return :invalid
         when '404'
           return :not_found
         else
