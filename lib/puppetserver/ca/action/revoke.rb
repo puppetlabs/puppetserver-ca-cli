@@ -86,9 +86,16 @@ BANNER
           puppet = Config::Puppet.parse(config)
           return 1 if CliParsing.handle_errors(@logger, puppet.errors)
 
-          passed = revoke_certs(certnames, puppet.settings)
+          result =  revoke_certs(certnames, puppet.settings)
 
-          return passed ? 0 : 1
+          case result
+          when :success
+            return 0
+          when :invalid
+            return 24
+          when :not_found, :error
+            return 1
+          end
         end
 
         def revoke_certs(certnames, settings)
