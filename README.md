@@ -13,8 +13,52 @@ You may install it yourself with:
 
 ## Usage
 
-This is still a Work in Progress and is not intended for public usage yet.
-Use at your own risk!
+For initial CA setup, we provide two options. These need to be run before starting
+Puppet Server for the first time.
+
+To set up a default CA, with a self-signed root cert and an intermediate signing cert:
+```
+puppetserver ca setup
+```
+
+To import a custom CA:
+```
+puppetserver ca import --cert-bundle certs.pem --crl-chain crls.pem --private-key ca_key.pem
+```
+
+The remaining actions provided by this gem require a running Puppet Server, since
+it primarily uses the CA's API endpoints to do its work. The following examples
+assume that you are using the gem packaged within Puppet Server.
+
+To sign a pending certificate request:
+```
+puppetserver ca sign --certname foo.example.com
+```
+
+To list certificates and CSRs:
+```
+puppetserver ca list --all
+```
+
+To revoke a signed certificate:
+```
+puppetserver ca revoke --certname foo.example.com
+```
+
+To revoke the cert and clean up all SSL files for a given certname:
+```
+puppetserver ca clean --certname foo.example.com
+```
+
+To create a new keypair and certificate for a certname:
+```
+puppetserver ca generate --certname foo.example.com
+```
+
+For more details, see the help output:
+```
+puppetserver ca --help
+```
 
 This code in this project is licensed under the Apache Software License v2,
 please see the included [License](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/LICENSE.md)
