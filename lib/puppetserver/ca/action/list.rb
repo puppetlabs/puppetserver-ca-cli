@@ -97,7 +97,7 @@ Options:
 
           certs.each do |cert|
             @logger.inform "    #{cert["name"]}".ljust(padded + 6) + " (SHA256) " + " #{cert["fingerprints"]["SHA256"]}" +
-                               (cert["dns_alt_names"].empty? ? "" : "\talt names: #{cert["dns_alt_names"]}")
+                               (cert["subject_alt_names"].empty? ? "" : "\talt names: #{cert["subject_alt_names"]}")
             end
         end
 
