@@ -142,5 +142,58 @@ module Utils
       block.call(bundle_file, key_file, chain_file, config_file)
     end
 
+    def with_ca_in(tmpdir, &block)
+      ca_dir = File.join(tmpdir, 'ca')
+      ssl_dir = File.join(tmpdir, 'ssl')
+
+      FileUtils.mkdir_p ca_dir
+      FileUtils.mkdir_p ssl_dir
+      FileUtils.mkdir_p "#{ca_dir}/signed"
+
+      bundle_file = File.join(ca_dir, 'bundle.pem')
+      key_file = File.join(ca_dir, 'key.pem')
+      chain_file = File.join(ca_dir, 'chain.pem')
+      config_file = File.join(ca_dir, 'puppet.conf')
+
+      File.open(config_file, 'w') do |f|
+        f.puts <<-CONF
+        [master]
+          cadir = #{ca_dir}
+          cacert = #{bundle_file}
+          cakey = #{key_file}
+          cacrl = #{chain_file}
+          ssldir = #{ssl_dir}
+          keylength = 512
+        CONF
+      end
+
+      not_before = Time.now - 1
+
+      root_key = OpenSSL::PKey::RSA.new(512)
+      root_cert = create_cert(root_key, 'foo')
+
+      leaf_key = OpenSSL::PKey::RSA.new(512)
+      File.open(key_file, 'w') do |f|
+        f.puts leaf_key.to_pem
+      end
+
+      leaf_cert = create_cert(leaf_key, 'bar', root_key, root_cert)
+
+      File.open(bundle_file, 'w') do |f|
+        f.puts leaf_cert.to_pem
+        f.puts root_cert.to_pem
+      end
+
+      root_crl = create_crl(root_cert, root_key)
+      leaf_crl = create_crl(leaf_cert, leaf_key)
+
+      File.open(chain_file, 'w') do |f|
+        f.puts leaf_crl.to_pem
+        f.puts root_crl.to_pem
+      end
+
+
+      block.call(config_file, ca_dir)
+    end
   end
 end

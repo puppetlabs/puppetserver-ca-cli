@@ -8,8 +8,6 @@ module Puppetserver
       # Puppetserver or any TK config service. Uses the ruby-hocon gem for parsing.
       class PuppetServer
 
-        include Puppetserver::Ca::Utils::Config
-
         def self.parse(config_path = nil)
           instance = new(config_path)
           instance.load
@@ -50,7 +48,7 @@ module Puppetserver
         # Note that Puppet Server runs as the [pe-]puppet user but to
         # start/stop it you must be root.
         def user_specific_ca_dir
-          if running_as_root?
+          if Puppetserver::Ca::Utils::Config.running_as_root?
             '/etc/puppetlabs/puppetserver/ca'
           else
             "#{ENV['HOME']}/.puppetlabs/etc/puppetserver/ca"

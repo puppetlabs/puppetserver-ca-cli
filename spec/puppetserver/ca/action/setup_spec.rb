@@ -33,6 +33,7 @@ RSpec.describe Puppetserver::Ca::Action::Setup do
                                   'subject-alt-names' => '',
                                   'ca-name' => '',
                                   'certname' => '' })
+        puts stderr.string
         expect(stderr.string).to be_empty
         expect(stdout.string.strip).to eq("Generation succeeded. Find your files in #{tmpdir}/ca")
         expect(exit_code).to eq(0)

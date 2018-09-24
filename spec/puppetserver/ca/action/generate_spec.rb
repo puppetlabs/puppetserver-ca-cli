@@ -129,6 +129,28 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
     end
 
+    it "refuses to overwrite existing cert files" do
+      allow(connection).to receive(:put).and_return(success)
+      allow(connection).to receive(:get).and_return(success_with_content)
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => ''})
+          expect(code).to eq(0)
+          expect(stderr.string).to be_empty
+          expect(stdout.string.chomp).to include('Successfully saved certificate for foo')
+
+          code = subject.run({'certnames' => ['foo', 'bar'],
+                              'config' => config,
+                              'subject-alt-names' => ''})
+          expect(code).to eq(1)
+          expect(stderr.string).to match(/Error.*Existing file at.*foo/m)
+          expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
+        end
+      end
+    end
+
     context "with a csr_attributes file" do
       let(:csr_attributes) {
         { 'extension_requests' => {
@@ -146,6 +168,8 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
       before(:each) do
         allow(File).to receive(:exist?).and_return(true)
+        allow_any_instance_of(Puppetserver::Ca::Action::Generate)
+          .to receive(:check_for_existing_ssl_files).and_return([])
       end
 
       it "adds attributes and extensions to the csr" do
@@ -226,27 +250,25 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         expect(result['subject-alt-names']).to eq('foo.com')
       end
 
-      it 'adds no attributes to csr if subject_alt_names is empty' do
-        settings = { :subject_alt_names => '',
+      it 'ignores the subject_alt_names setting' do
+        settings = { :subject_alt_names => 'DNS:foobar',
                      :keylength => 512,
                      :csr_attributes => '$confdir/csr_attributes.yaml'}
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr.attributes.count).to eq(0)
       end
 
-      it 'adds an attribute to csr if subject_alt_names are present' do
-        settings = { :subject_alt_names => 'DNS:foo',
-                     :keylength => 512,
+      it 'adds an attribute to csr if subject_alt_names are passed' do
+        settings = { :keylength => 512,
                      :csr_attributes => '$confdir/csr_attributes.yaml'}
-        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new, "DNS:foobar")
         expect(csr.attributes.count).to eq(1)
       end
 
       it 'correctly encodes subject alt names' do
-        settings = { :subject_alt_names => 'DNS:foo, DNS:puppet',
-                     :keylength => 512,
+        settings = { :keylength => 512,
                      :csr_attributes => '$confdir/csr_attributes.yaml'}
-        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
+        _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new, 'DNS:foo, DNS:puppet')
 
         # If the subject alt names are correctly encoded then we should be able
         # to decode just their context dependent values (ie just the names,
@@ -255,6 +277,56 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         alt_names = OpenSSL::ASN1.decode(alt_request)
         alt_names = alt_names.value.map {|name| name.value }
         expect(alt_names).to include('foo', 'puppet')
+      end
+    end
+  end
+
+  describe "ca-client flag" do
+    it "does not contact the CA API when a ca-client cert is requested" do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          allow(subject).to receive(:generate_authorized_certs) { true }
+          expect(subject).to receive(:generate_certs).never
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => '',
+                              'ca-client' => true})
+          expect(code).to eq(0)
+          expect(stderr.string).to be_empty
+        end
+      end
+    end
+
+    it "adds the auth extension to the cert" do
+      Dir.mktmpdir do |tmpdir|
+        with_ca_in(tmpdir) do |config, ca_dir|
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => '',
+                              'ca-client' => true})
+          expect(stderr.string).to be_empty
+          expect(code).to eq(0)
+          cert = OpenSSL::X509::Certificate.new(File.read(File.join(ca_dir, "signed", "foo.pem")))
+          auth_ext = cert.extensions.find do |ext|
+            ext.oid == "1.3.6.1.4.1.34380.1.3.39"
+          end
+          expect(auth_ext.value).to eq("..true")
+        end
+      end
+    end
+
+    it "updates the serial file" do
+      Dir.mktmpdir do |tmpdir|
+        with_ca_in(tmpdir) do |config, ca_dir|
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => '',
+                              'ca-client' => true})
+          expect(stderr.string).to be_empty
+          expect(code).to eq(0)
+          serial = File.read(File.join(ca_dir, "serial")).chomp.to_i
+          expect(serial).to eq(2)
+        end
       end
     end
   end

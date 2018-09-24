@@ -22,8 +22,6 @@ module Puppetserver
         # A regex describing valid formats with groups for capturing the value and units
         TTL_FORMAT = /^(\d+)(y|d|h|m|s)?$/
 
-        include Puppetserver::Ca::Utils::Config
-
         def self.parse(config_path)
           instance = new(config_path)
           instance.load
@@ -49,7 +47,7 @@ module Puppetserver
         # start/stop it you must be root.
         def user_specific_conf_dir
           @user_specific_conf_dir ||=
-            if running_as_root?
+            if Puppetserver::Ca::Utils::Config.running_as_root?
               '/etc/puppetlabs/puppet'
             else
               "#{ENV['HOME']}/.puppetlabs/etc/puppet"
@@ -161,7 +159,7 @@ module Puppetserver
           # Some special cases where we need to manipulate config settings:
           settings[:ca_ttl] = munge_ttl_setting(settings[:ca_ttl])
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
-          settings[:subject_alt_names] = munge_alt_names(settings[:subject_alt_names])
+          settings[:subject_alt_names] = Puppetserver::Ca::Utils::Config.munge_alt_names(settings[:subject_alt_names])
           settings[:keylength] = settings[:keylength].to_i
 
           settings.each do |key, value|
@@ -229,18 +227,6 @@ module Puppetserver
           else
             @errors <<  "Invalid 'time to live' format '#{ca_ttl_setting.inspect}' for parameter: :ca_ttl"
           end
-        end
-
-        def munge_alt_names(names)
-          raw_names = names.split(/\s*,\s*/).map(&:strip)
-          munged_names = raw_names.map do |name|
-            # Prepend the DNS tag if no tag was specified
-            if !name.start_with?("IP:") && !name.start_with?("DNS:")
-              "DNS:#{name}"
-            else
-              name
-            end
-          end.sort.uniq.join(", ")
         end
 
         def parse_crl_usage(setting)
