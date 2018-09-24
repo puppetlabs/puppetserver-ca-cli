@@ -7,11 +7,11 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
   let(:out)    { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, out, err) }
   let(:action) { Puppetserver::Ca::Action::List.new(logger) }
-  let(:result) {[{"name"=>"foo", "state"=>"signed", "dns_alt_names"=>["DNS:foo", "DNS:bar"],
+  let(:result) {[{"name"=>"foo", "state"=>"signed", "subject_alt_names"=>["DNS:foo", "DNS:bar"],
                   "fingerprint"=>"three", "fingerprints"=>{"SHA1"=>"two", "SHA256"=>"three", "SHA512"=>"four", "default"=>"five"}},
-                 {"name"=>"baz", "state"=>"requested", "dns_alt_names"=>["DNS:baz", "DNS:bar"],
+                 {"name"=>"baz", "state"=>"requested", "subject_alt_names"=>["DNS:baz", "DNS:bar"],
                   "fingerprint"=>"two", "fingerprints"=>{"SHA1"=>"one", "SHA256"=>"two", "SHA512"=>"three", "default"=>"four"}},
-                 {"name"=>"foobar", "state"=>"revoked", "dns_alt_names"=>["DNS:foobar", "DNS:barfoo"],
+                 {"name"=>"foobar", "state"=>"revoked", "subject_alt_names"=>["DNS:foobar", "DNS:barfoo"],
                   "fingerprint"=>"onetwo", "fingerprints"=>{"SHA1"=>"one", "SHA256"=>"onetwo", "SHA512"=>"three", "default"=>"four"}}]}
 
   describe 'error handling' do
