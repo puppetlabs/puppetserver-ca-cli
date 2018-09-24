@@ -96,8 +96,12 @@ Options:
           end
 
           certs.each do |cert|
+            # In newer versions of the CA api we return subjcet_alt_names
+            # in addition to dns_alt_names, this field includes DNS alt
+            # names but also IP alt names.
+            alt_names = cert["subject_alt_names"] || cert["dns_alt_names"]
             @logger.inform "    #{cert["name"]}".ljust(padded + 6) + " (SHA256) " + " #{cert["fingerprints"]["SHA256"]}" +
-                               (cert["subject_alt_names"].empty? ? "" : "\talt names: #{cert["subject_alt_names"]}")
+                               (alt_names.empty? ? "" : "\talt names: #{alt_names}")
             end
         end
 
