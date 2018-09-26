@@ -1,4 +1,5 @@
 require 'puppetserver/ca/host'
+require 'puppetserver/ca/utils/file_system'
 
 require 'openssl'
 
@@ -39,10 +40,11 @@ module Puppetserver
         @digest = digest
         @host = Host.new(digest)
         @settings = settings
+        @errors = []
       end
 
       def errors
-        @host.errors
+        @errors += @host.errors
       end
 
       def valid_until
@@ -62,6 +64,14 @@ module Puppetserver
                              format_time(cert.not_after), cert.subject]
       end
 
+      def next_serial(serial_file)
+        if File.exist?(serial_file)
+          File.read(serial_file).to_i
+        else
+          1
+        end
+      end
+
       def format_time(time)
         time.strftime('%Y-%m-%dT%H:%M:%S%Z')
       end
@@ -73,33 +83,63 @@ module Puppetserver
                                               @settings[:hostpubkey])
         if master_key
           master_csr = @host.create_csr(name: @settings[:certname], key: master_key)
-          master_cert = sign_master_cert(ca_key, ca_cert, master_csr)
+          if @settings[:subject_alt_names].empty?
+            alt_names = "DNS:puppet, DNS:#{@settings[:certname]}"
+          else
+            alt_names = @settings[:subject_alt_names]
+          end
+
+          master_cert = sign_authorized_cert(ca_key, ca_cert, master_csr, alt_names)
         end
 
         return master_key, master_cert
       end
 
-      def sign_master_cert(int_key, int_cert, csr)
+      # Used when generating certificates offline.
+      def load_ca
+        signing_cert = nil
+        key = nil
+
+        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) && File.exist?(@settings[:cacrl])
+          loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
+          if loader.errors.empty?
+            signing_cert = loader.certs[0]
+            key = loader.key
+          else
+            @errors += loader.errors
+          end
+        else
+          @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
+        end
+
+        return signing_cert, key
+      end
+
+      def sign_authorized_cert(int_key, int_cert, csr, alt_names = '')
         cert = OpenSSL::X509::Certificate.new
         cert.public_key = csr.public_key
         cert.subject = csr.subject
         cert.issuer = int_cert.subject
         cert.version = 2
-        cert.serial = 1
+        cert.serial = next_serial(@settings[:serial])
         cert.not_before = CERT_VALID_FROM
         cert.not_after = valid_until
 
         return unless add_custom_extensions(cert)
 
         ef = extension_factory_for(int_cert, cert)
-        add_master_extensions(cert, ef)
-        add_subject_alt_names_extension(cert, ef)
+        add_authorized_extensions(cert, ef)
+
+        if !alt_names.empty?
+          add_subject_alt_names_extension(alt_names, cert, ef)
+        end
+
         cert.sign(int_key, @digest)
 
         cert
       end
 
-      def add_master_extensions(cert, ef)
+      def add_authorized_extensions(cert, ef)
         MASTER_EXTENSIONS.each do |ext|
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
@@ -110,14 +150,8 @@ module Puppetserver
         cert.add_extension(cli_auth_ext)
       end
 
-      def add_subject_alt_names_extension(cert, ef)
-        sans =
-          if @settings[:subject_alt_names].empty?
-            "DNS:puppet, DNS:#{@settings[:certname]}"
-          else
-            @settings[:subject_alt_names]
-          end
-        alt_names_ext = ef.create_extension("subjectAltName", sans, false)
+      def add_subject_alt_names_extension(alt_names, cert, ef)
+        alt_names_ext = ef.create_extension("subjectAltName", alt_names, false)
         cert.add_extension(alt_names_ext)
       end
 
@@ -215,6 +249,10 @@ module Puppetserver
         cert.sign(ca_key, @digest)
 
         cert
+      end
+
+      def update_serial_file(serial)
+        Puppetserver::Ca::Utils::FileSystem.write_file(@settings[:serial], serial, 0644)
       end
     end
   end
