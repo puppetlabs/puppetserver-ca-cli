@@ -92,6 +92,7 @@ BANNER
             [settings[:hostpubkey], master_key.public_key],
             [settings[:hostcert], master_cert],
             [settings[:cert_inventory], ca.inventory_entry(master_cert)],
+            [settings[:capub], loader.key.public_key],
             [settings[:cadir] + '/infra_inventory.txt', ''],
             [settings[:cadir] + '/infra_serials', ''],
             [settings[:serial], "002"],

@@ -34,6 +34,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
         files = [['ca', 'ca_crt.pem', '644'],
                  ['ca', 'ca_crl.pem', '644'],
                  ['ca', 'ca_key.pem', '640'],
+                 ['ca', 'ca_pub.pem', '644'],
                  ['ca', 'infra_crl.pem', '644'],
                  ['ca', 'inventory.txt', '644'],
                  ['ca', 'infra_inventory.txt', '644'],
