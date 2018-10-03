@@ -95,12 +95,33 @@ module Puppetserver
         return master_key, master_cert
       end
 
+      def load_root
+        root_cert = nil
+        root_key = nil
+
+        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) &&
+          File.exist?(@settings[:cacrl]) && File.exist?(@settings[:rootkey])
+          loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl], @settings[:rootkey])
+          if loader.errors.empty?
+            root_cert = loader.certs[1]
+            root_key = loader.root_key
+          else
+            @errors += loader.errors
+          end
+        else
+          @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
+        end
+
+        return root_cert, root_key
+      end
+
       # Used when generating certificates offline.
       def load_ca
         signing_cert = nil
         key = nil
 
-        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) && File.exist?(@settings[:cacrl])
+        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) &&
+          File.exist?(@settings[:cacrl]) && File.exist?(@settings[:rootkey])
           loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
           if loader.errors.empty?
             signing_cert = loader.certs[0]
@@ -219,9 +240,9 @@ module Puppetserver
         crl
       end
 
-      def create_intermediate_cert(root_key, root_cert)
+      def create_intermediate_cert(root_key, root_cert, ca_name = @settings[:ca_name])
         int_key = @host.create_private_key(@settings[:keylength])
-        int_csr = @host.create_csr(name: @settings[:ca_name], key: int_key)
+        int_csr = @host.create_csr(name: ca_name, key: int_key)
         int_cert = sign_intermediate(root_key, root_cert, int_csr)
         int_crl = create_crl_for(int_cert, int_key)
 

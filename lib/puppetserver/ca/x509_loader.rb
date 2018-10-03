@@ -5,13 +5,14 @@ module Puppetserver
     # Load, validate, and store x509 objects needed by the Puppet Server CA.
     class X509Loader
 
-      attr_reader :errors, :certs, :key, :crls
+      attr_reader :errors, :certs, :key, :crls, :root_key
 
-      def initialize(bundle_path, key_path, chain_path)
+      def initialize(bundle_path, key_path, chain_path, root_key_path)
         @errors = []
 
         @certs = load_certs(bundle_path)
         @key = load_key(key_path)
+        @root_key = load_key(root_key_path)
         @crls = load_crls(chain_path)
 
         validate(@certs, @key, @crls)

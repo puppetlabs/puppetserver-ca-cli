@@ -78,6 +78,11 @@ BANNER
                     Causes the cert to be generated offline.') do |ca_client|
               parsed['ca-client'] = true
             end
+            opts.on('--int-ca',
+                    'Whether this cert should be an intermediate CA cert\
+                    chaining from the existing root.') do |int_ca|
+              parsed['int-ca'] = true
+            end
           end
         end
 
@@ -140,6 +145,8 @@ BANNER
           # Generate and save certs and associated keys
           if input['ca-client']
             all_passed = generate_authorized_certs(certnames, alt_names, puppet.settings, signer.digest)
+          elsif input['int-ca']
+            all_passed = generate_intermediate_ca_certs(certnames, puppet.settings, signer.digest)
           else
             all_passed = generate_certs(certnames, alt_names, puppet.settings, signer.digest)
           end
@@ -175,6 +182,30 @@ BANNER
             next false unless save_file(cert.to_pem, certname, settings[:signeddir], "Certificate")
             next false unless save_keys(certname, settings, key)
             ca.update_serial_file(cert.serial + 1)
+            true
+          end
+          passed.all?
+        end
+
+        def generate_intermediate_ca_certs(certnames, settings, digest)
+          FileSystem.ensure_dirs([settings[:ssldir],
+                                  settings[:certdir],
+                                  settings[:privatekeydir],
+                                  settings[:publickeydir]])
+
+          ca = Puppetserver::Ca::LocalCertificateAuthority.new(digest, settings)
+          root_cert, root_key = ca.load_root
+          return false if CliParsing.handle_errors(@logger, ca.errors)
+
+          passed = certnames.map do |certname|
+            errors = check_for_existing_ssl_files(certname, settings)
+            next false if CliParsing.handle_errors(@logger, errors)
+
+            key, cert, crl = ca.create_intermediate_cert(root_key, root_cert, "Puppet CA: #{certname}")
+            next false unless save_file(cert.to_pem, certname, settings[:certdir], "Certificate")
+            next false unless save_file(cert.to_pem, certname, settings[:signeddir], "Certificate")
+            next false unless save_file(crl.to_pem, "#{certname}_crl", settings[:ssldir], "CRL")
+            next false unless save_keys(certname, settings, key)
             true
           end
           passed.all?
