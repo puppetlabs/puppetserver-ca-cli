@@ -99,7 +99,9 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it 'logs an error if any could not be downloaded' do
       not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
-      allow(connection).to receive(:get).and_return(not_found, success_with_content)
+      # Look for each cert twice, before and after signing
+      allow(connection).to receive(:get).and_return(not_found, not_found,
+                                                    not_found, success_with_content)
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
           code = subject.run({'certnames' => ['foo', 'bar'],
@@ -114,8 +116,11 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     it 'prints an error if an unknown error occurs' do
       error = Utils::Http::Result.new('500', 'Internal Server Error')
+      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
-      allow(connection).to receive(:get).and_return(error, success_with_content)
+      # Look for each cert twice, before and after signing
+      allow(connection).to receive(:get).and_return(error, error,
+                                                    not_found, success_with_content)
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
           code = subject.run({'certnames' => ['foo', 'bar'],
@@ -147,6 +152,24 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
           expect(code).to eq(1)
           expect(stderr.string).to match(/Error.*Existing file at.*foo/m)
           expect(stdout.string.chomp).to include('Successfully saved certificate for bar')
+        end
+      end
+    end
+
+    context "with autosigning enabled" do
+      it 'does not request that the cert be signed if the CA already autosigned it' do
+        allow(connection).to receive(:put).and_return(success).once
+        allow(connection).to receive(:get).and_return(success_with_content)
+
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            code = subject.run({'certnames' => ['foo'],
+                                'config' => config,
+                                'subject-alt-names' => ''})
+            expect(code).to eq(0)
+            expect(stdout.string.chomp).to include('Successfully saved certificate for foo')
+            expect(stdout.string.chomp).to include('Certificate for foo was autosigned.')
+          end
         end
       end
     end
