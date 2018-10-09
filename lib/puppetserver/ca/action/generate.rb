@@ -199,28 +199,36 @@ BANNER
 
             current_alt_names = process_alt_names(alt_names, certname)
 
-            key, csr = generate_key_csr(certname, settings, digest, current_alt_names)
-            next false unless csr
-            next false unless ca.submit_certificate_request(certname, csr)
+            next false unless submit_csr(certname, ca, settings, digest, current_alt_names)
 
             # Check if the CA autosigned the cert
-            if result = ca.get_certificate(certname)
+            if download_cert(ca, certname, settings)
               @logger.inform "Certificate for #{certname} was autosigned."
-              next false unless save_file(result.body, certname, settings[:certdir], "Certificate")
-              next false unless save_keys(certname, settings, key)
               true
             else
               next false unless ca.sign_certs([certname])
-              if result = ca.get_certificate(certname)
-                next false unless save_file(result.body, certname, settings[:certdir], "Certificate")
-                next false unless save_keys(certname, settings, key)
-                true
-              else
-                false
-              end
+              download_cert(ca, certname, settings)
             end
           end
           passed.all?
+        end
+
+        def submit_csr(certname, ca, settings, digest, alt_names)
+          key, csr = generate_key_csr(certname, settings, digest, alt_names)
+          return false unless csr
+          # Always save the keys, since soemtimes the server saves the CSR
+          # even when it returns a 400 (e.g. when the CSR contains alt names
+          # but the server isn't configured to sign such certs)
+          return false unless save_keys(certname, settings, key)
+          return false unless ca.submit_certificate_request(certname, csr)
+          true
+        end
+
+        def download_cert(ca, certname, settings)
+          if result = ca.get_certificate(certname)
+            return false unless save_file(result.body, certname, settings[:certdir], "Certificate")
+            true
+          end
         end
 
         # For certs signed offline, any alt names are added directly to the cert,
