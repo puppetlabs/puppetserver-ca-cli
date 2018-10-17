@@ -139,11 +139,38 @@ BANNER
 
           # Generate and save certs and associated keys
           if input['ca-client']
+            # Refused to generate certs offfline if the CA service is running
+            return 1 if check_server_online(puppet.settings)
             all_passed = generate_authorized_certs(certnames, alt_names, puppet.settings, signer.digest)
           else
             all_passed = generate_certs(certnames, alt_names, puppet.settings, signer.digest)
           end
           return all_passed ? 0 : 1
+        end
+
+        # Queries the simple status endpoint for the status of the CA service.
+        # Returns true if it receives back a response of "running", and false if
+        # no connection can be made, or a different response is received.
+        def check_server_online(settings)
+          status_url = HttpClient::URL.new('https', settings[:server], settings[:masterport], 'status', 'v1', 'simple', 'ca')
+          begin
+            # Generating certs offline is necessary if the master cert has been destroyed
+            # or compromised. Since querying the status endpoint does not require a client cert, and
+            # we commonly won't have one, don't require one for creating the connection.
+            HttpClient.new(settings, with_client_cert: false).with_connection(status_url) do |conn|
+              result = conn.get
+              if result.body == "running"
+                @logger.err "CA service is running. Please stop it before attempting to generate certs offline."
+                true
+              else
+                false
+              end
+            end
+            true
+          rescue Errno::ECONNREFUSED => e
+            # Couldn't make a connection
+            false
+          end
         end
 
         # Certs authorized to talk to the CA API need to be signed offline,
