@@ -41,7 +41,7 @@ module Puppetserver
                       body: SIGN_BODY,
                       type: :sign)
 
-        results.all? {|result| result == :success }
+        results.all? { |result| result == :success }
       end
 
       def revoke_certs(certnames)
@@ -50,7 +50,7 @@ module Puppetserver
                     body: REVOKE_BODY,
                     type: :revoke)
 
-        results.reduce {|prev, curr| worst_result(prev, curr) }
+        results.reduce { |prev, curr| worst_result(prev, curr) }
       end
 
       def submit_certificate_request(certname, csr)
@@ -60,7 +60,7 @@ module Puppetserver
                     headers: {'Content-Type' => 'text/plain'},
                     type: :submit)
 
-        results.all? {|result| result == :success }
+        results.all? { |result| result == :success }
       end
 
       # Make an HTTP PUT request to CA

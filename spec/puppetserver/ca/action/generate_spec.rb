@@ -305,10 +305,36 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   end
 
   describe "ca-client flag" do
+    let(:result) { Utils::Http::Result.new('200', 'running') }
+    let(:connection) { double }
+
+    before do
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:with_connection).and_yield(connection)
+      allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:make_store)
+    end
+
+    it "refuses to generate a cert if the server is running" do
+      allow(connection).to receive(:get).and_return(result)
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          allow(subject).to receive(:generate_authorized_certs) { true }
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => '',
+                              'ca-client' => true})
+          expect(code).to eq(1)
+          expect(stderr.string).to include("CA service is running")
+        end
+      end
+    end
+
     it "does not contact the CA API when a ca-client cert is requested" do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
           allow(subject).to receive(:generate_authorized_certs) { true }
+          allow(subject).to receive(:check_server_online).and_return(false)
           expect(subject).to receive(:generate_certs).never
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
@@ -323,6 +349,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it "adds the auth extension to the cert" do
       Dir.mktmpdir do |tmpdir|
         with_ca_in(tmpdir) do |config, ca_dir|
+          allow(subject).to receive(:check_server_online).and_return(false)
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
                               'subject-alt-names' => '',
@@ -341,6 +368,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it "updates the serial file" do
       Dir.mktmpdir do |tmpdir|
         with_ca_in(tmpdir) do |config, ca_dir|
+          allow(subject).to receive(:check_server_online).and_return(false)
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
                               'subject-alt-names' => '',

@@ -15,12 +15,20 @@ module Puppetserver
 
         attr_reader :store
 
-        def initialize(settings)
+        # Not all connections require a client cert to be present.
+        # For example, when querying the status endpoint.
+        def initialize(settings, with_client_cert: true)
           @store = make_store(settings[:localcacert],
                               settings[:certificate_revocation],
                               settings[:hostcrl])
-          @cert = load_cert(settings[:hostcert])
-          @key = load_key(settings[:hostprivkey])
+
+          if with_client_cert
+            @cert = load_cert(settings[:hostcert])
+            @key = load_key(settings[:hostprivkey])
+          else
+            @cert = nil
+            @key = nil
+          end
         end
 
         def load_cert(cert_path)
