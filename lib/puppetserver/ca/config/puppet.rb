@@ -104,7 +104,7 @@ module Puppetserver
             [:cadir, '$ssldir/ca'],
             [:certdir, '$ssldir/certs'],
             [:certname, default_certname],
-            [:server, '$certname'],
+            [:server, 'puppet'],
             [:masterport, '8140'],
             [:privatekeydir, '$ssldir/private_keys'],
             [:publickeydir, '$ssldir/public_keys'],
