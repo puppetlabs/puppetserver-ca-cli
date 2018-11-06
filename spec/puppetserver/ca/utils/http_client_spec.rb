@@ -10,56 +10,26 @@ require 'puppetserver/ca/action/setup'
 
 RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
+  let(:tmpdir) {Dir.mktmpdir}
+  let(:settings) {
+    with_ca_in(tmpdir) do |config, confdir|
+      Puppetserver::Ca::Config::Puppet.new(config).load({
+        :hostcert => "#{tmpdir}/hostcert.pem",
+        :hostprivkey => "#{tmpdir}/hostkey.pem",
+        :confdir => confdir
+      })
+    end
+  }
+
+  after do
+    FileUtils.rm_rf(tmpdir)
+  end
 
   it 'creates a store that can validate connections to CA' do
     stdout = StringIO.new
     stderr = StringIO.new
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
     setup_action = Puppetserver::Ca::Action::Setup.new(logger)
-
-    Dir.mktmpdir do |tmpdir|
-      ssldir = tmpdir
-      cadir = tmpdir
-      cacert = File.join(tmpdir, 'ca_crt.pem')
-      cakey = File.join(tmpdir, 'ca_key.pem')
-      capub = File.join(tmpdir, 'ca_pub.pem')
-      rootkey = File.join(tmpdir, 'root_key.pem')
-      cacrl = File.join(tmpdir, 'ca_crl.pem')
-      localcacert = File.join(tmpdir, 'localcacert.pem')
-      hostcrl = File.join(tmpdir, 'hostcrl.pem')
-      hostcert = File.join(tmpdir, 'hostcert.pem')
-      hostprivkey = File.join(tmpdir, 'hostkey.pem')
-      hostpubkey = File.join(tmpdir, 'hostpubkey.pem')
-      inventory = File.join(tmpdir, 'inventory.txt')
-      serial = File.join(tmpdir, 'serial')
-
-      settings = {
-        ca_ttl: (5 * 365 * 24 * 60 * 60),
-        keylength: 512,
-        root_ca_name: "root",
-        ca_name: 'leaf',
-        cadir: cadir,
-        cacert: cacert,
-        cakey: cakey,
-        capub: capub,
-        rootkey: rootkey,
-        cacrl: cacrl,
-        localcacert: localcacert,
-        hostcrl: hostcrl,
-        hostcert: hostcert,
-        hostprivkey: hostprivkey,
-        certname: 'foo',
-        certdir: cadir,
-        privatekeydir: cadir,
-        publickeydir: cadir,
-        signeddir: cadir,
-        hostpubkey: hostpubkey,
-        cert_inventory: inventory,
-        serial: serial,
-        subject_alt_names: '',
-        ssldir: ssldir,
-        csr_attributes: '',
-      }
 
       signer = Puppetserver::Ca::Utils::SigningDigest.new
       setup_action.generate_pki(settings, signer.digest)
@@ -68,8 +38,8 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))
       cacert_content = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
       hostcert_content = create_cert(hostkey, 'foobar', cakey_content, cacert_content)
-      File.write(hostcert, hostcert_content)
-      File.write(hostprivkey, hostkey)
+      File.write("#{tmpdir}/hostcert.pem", hostcert_content)
+      File.write("#{tmpdir}/hostkey.pem", hostkey)
 
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
@@ -81,6 +51,5 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
 
       expect(store.verify(hostcert)).to be(true)
       expect(store.verify(cacert)).to be(true)
-    end
   end
 end

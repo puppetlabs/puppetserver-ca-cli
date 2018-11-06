@@ -1,5 +1,6 @@
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/utils/file_system'
+require 'puppetserver/ca/x509_loader'
 
 require 'openssl'
 
