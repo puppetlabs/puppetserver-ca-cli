@@ -36,11 +36,37 @@ module Puppetserver
         ["authorityKeyIdentifier", "keyid:always", false]
       ].freeze
 
+      attr_reader :cert, :key, :crl
+
       def initialize(digest, settings)
         @digest = digest
         @host = Host.new(digest)
         @settings = settings
         @errors = []
+
+        if ssl_assets_exist?
+          @cert, @key, @crl = load_ssl_assets
+        end
+      end
+
+      def ssl_assets_exist?
+        File.exist?(@settings[:cacert]) &&
+          File.exist?(@settings[:cakey]) &&
+          File.exist?(@settings[:cacrl])
+      end
+
+      def load_ssl_assets(settings=@settings)
+        loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
+        if loader.errors.empty?
+          cert = loader.certs.first
+          key = loader.key
+          crl = loader.crls.first
+          return cert, key, crl
+        else
+          @errors += loader.errors
+          @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
+          nil
+        end
       end
 
       def errors
@@ -93,26 +119,6 @@ module Puppetserver
         end
 
         return master_key, master_cert
-      end
-
-      # Used when generating certificates offline.
-      def load_ca
-        signing_cert = nil
-        key = nil
-
-        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) && File.exist?(@settings[:cacrl])
-          loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
-          if loader.errors.empty?
-            signing_cert = loader.certs[0]
-            key = loader.key
-          else
-            @errors += loader.errors
-          end
-        else
-          @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
-        end
-
-        return signing_cert, key
       end
 
       def sign_authorized_cert(int_key, int_cert, csr, alt_names = '')

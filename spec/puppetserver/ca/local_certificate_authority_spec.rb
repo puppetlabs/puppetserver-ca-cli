@@ -1,22 +1,54 @@
 require 'puppetserver/ca/local_certificate_authority'
+require 'puppetserver/ca/config/puppet'
 
+require 'utils/ssl'
 require 'puppetserver/ca/utils/signing_digest'
 
 RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
+  include Utils::SSL
 
+  let(:tmpdir) { Dir.mktmpdir }
   let(:settings) {
-    { :ca_ttl => 157680000,
-      :ca_name => 'bulla2',
-      :subject_alt_names => '',
-      :root_ca_name => 'bulla',
-      :certname => 'ulla',
-      :keylength => 512,
-      :hostprivkey => '$privatekeydir/$certname.pem',
-      :hostpubkey => '$publickeydir/$certname.pem',
-      :csr_attributes => '$confdir/csr_attributes.yaml',
-      :serial => '$cadir/serial' } }
+    with_ca_in(tmpdir) do |config, confdir|
+      return Puppetserver::Ca::Config::Puppet.new(config).load({confdir: confdir })
+    end
+  }
+
+  after(:each) do
+    FileUtils.rm_rf(tmpdir)
+  end
 
   let(:subject) { Puppetserver::Ca::LocalCertificateAuthority.new(OpenSSL::Digest::SHA256.new, settings) }
+
+  describe '#initialize' do
+    it 'loads ssl assets if they exist' do
+      expect(subject.cert).to be_kind_of(OpenSSL::X509::Certificate)
+      expect(subject.key).to be_kind_of(OpenSSL::PKey::RSA)
+      expect(subject.crl).to be_kind_of(OpenSSL::X509::CRL)
+    end
+
+    context 'when an ssl asset is missing' do
+      let(:settings) {
+        with_ca_in(Dir.mktmpdir) do |config|
+          return Puppetserver::Ca::Config::Puppet.new(config).load({cacert: '/some/rando/path'})
+        end
+      }
+      it 'does not load ssl assets if they are not found' do
+        expect(subject.cert).to be_nil
+        expect(subject.key).to be_nil
+        expect(subject.crl).to be_nil
+      end
+    end
+
+    context 'with a malformed certificate' do
+      before do
+        File.write(settings[:cacert], 'This_is_not_a_valid_cert')
+      end
+      it 'adds an error to the ca object' do
+        expect(subject.errors).not_to be_empty
+      end
+    end
+  end
 
   describe "#create_master_cert" do
     context "without a csr_attributes file" do
@@ -41,7 +73,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
 
       before(:each) do
         allow(File).to receive(:exist?).and_return(true)
-        allow(File).to receive(:exist?).with('$cadir/serial').and_return(false)
+        allow(File).to receive(:exist?).with(/serial/).and_return(false)
         allow(YAML).to receive(:load_file).and_return(csr_attributes)
       end
 
