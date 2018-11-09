@@ -196,7 +196,7 @@ BANNER
             key, csr = generate_key_csr(certname, settings, digest)
             next false unless csr
 
-            cert = ca.sign_authorized_cert(ca.key, ca.cert, csr, current_alt_names)
+            cert = ca.sign_authorized_cert(csr, current_alt_names)
             next false unless save_file(cert.to_pem, certname, settings[:certdir], "Certificate")
             next false unless save_file(cert.to_pem, certname, settings[:signeddir], "Certificate")
             next false unless save_keys(certname, settings, key)

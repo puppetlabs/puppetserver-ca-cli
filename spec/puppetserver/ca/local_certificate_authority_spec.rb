@@ -54,9 +54,9 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
     context "without a csr_attributes file" do
       it "adds only MA extensions to the csr" do
         root_key, root_cert, root_crl = subject.create_root_cert
-        int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
+        subject.create_intermediate_cert(root_key, root_cert)
 
-        _, cert = subject.create_master_cert(int_key, int_cert)
+        _, cert = subject.create_master_cert
         expect(cert.extensions.count).to eq(8)
       end
     end
@@ -79,9 +79,9 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
 
       it "adds extensions from csr_attributes yaml to the csr" do
         root_key, root_cert, root_crl = subject.create_root_cert
-        int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
+        subject.create_intermediate_cert(root_key, root_cert)
 
-        _, cert = subject.create_master_cert(int_key, int_cert)
+        _, cert = subject.create_master_cert
         expect(cert.extensions.count).to eq(10)
       end
     end
@@ -90,13 +90,13 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
   describe "#sign_authorized_cert" do
     it "has the special auth extension" do
       root_key, root_cert, root_crl = subject.create_root_cert
-      int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
+      subject.create_intermediate_cert(root_key, root_cert)
 
       host = Puppetserver::Ca::Host.new(Puppetserver::Ca::Utils::SigningDigest.new.digest)
       private_key = host.create_private_key(settings[:keylength])
       csr = host.create_csr(name: "foo", key: private_key)
 
-      cert = subject.sign_authorized_cert(int_key, int_cert, csr)
+      cert = subject.sign_authorized_cert(csr)
       auth_ext = cert.extensions.find do |ext|
         ext.oid == "1.3.6.1.4.1.34380.1.3.39"
       end
@@ -105,13 +105,13 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
 
     it "does not add default subject alt names" do
       root_key, root_cert, root_crl = subject.create_root_cert
-      int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
+      subject.create_intermediate_cert(root_key, root_cert)
 
       host = Puppetserver::Ca::Host.new(Puppetserver::Ca::Utils::SigningDigest.new.digest)
       private_key = host.create_private_key(settings[:keylength])
       csr = host.create_csr(name: "foo", key: private_key)
 
-      cert = subject.sign_authorized_cert(int_key, int_cert, csr)
+      cert = subject.sign_authorized_cert(csr)
       san = cert.extensions.find do |ext|
         ext.oid == "subjectAltNames"
       end
@@ -120,13 +120,13 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
 
     it "adds subject alt names if specified" do
       root_key, root_cert, root_crl = subject.create_root_cert
-      int_key, int_cert, int_crl = subject.create_intermediate_cert(root_key, root_cert)
+      subject.create_intermediate_cert(root_key, root_cert)
 
       host = Puppetserver::Ca::Host.new(Puppetserver::Ca::Utils::SigningDigest.new.digest)
       private_key = host.create_private_key(settings[:keylength])
       csr = host.create_csr(name: "foo", key: private_key)
 
-      cert = subject.sign_authorized_cert(int_key, int_cert, csr, "DNS:bar,IP:123.0.0.5")
+      cert = subject.sign_authorized_cert(csr, "DNS:bar,IP:123.0.0.5")
       san = cert.extensions.find do |ext|
         ext.oid == "subjectAltName"
       end
