@@ -1,5 +1,6 @@
 require 'puppetserver/ca/host'
 require 'puppetserver/ca/utils/file_system'
+require 'puppetserver/ca/x509_loader'
 
 require 'openssl'
 
@@ -36,11 +37,35 @@ module Puppetserver
         ["authorityKeyIdentifier", "keyid:always", false]
       ].freeze
 
+      attr_reader :cert, :key, :crl
+
       def initialize(digest, settings)
         @digest = digest
         @host = Host.new(digest)
         @settings = settings
         @errors = []
+
+        if ssl_assets_exist?
+          loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
+          if loader.errors.empty?
+            load_ssl_components(loader)
+          else
+            @errors += loader.errors
+            @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
+          end
+        end
+      end
+
+      def ssl_assets_exist?
+        File.exist?(@settings[:cacert]) &&
+          File.exist?(@settings[:cakey]) &&
+          File.exist?(@settings[:cacrl])
+      end
+
+      def load_ssl_components(loader)
+          @cert = loader.certs.first
+          @key = loader.key
+          @crl = loader.crls.first
       end
 
       def errors
@@ -76,7 +101,7 @@ module Puppetserver
         time.strftime('%Y-%m-%dT%H:%M:%S%Z')
       end
 
-      def create_master_cert(ca_key, ca_cert)
+      def create_master_cert
         master_cert = nil
         master_key = @host.create_private_key(@settings[:keylength],
                                               @settings[:hostprivkey],
@@ -89,37 +114,17 @@ module Puppetserver
             alt_names = @settings[:subject_alt_names]
           end
 
-          master_cert = sign_authorized_cert(ca_key, ca_cert, master_csr, alt_names)
+          master_cert = sign_authorized_cert(master_csr, alt_names)
         end
 
         return master_key, master_cert
       end
 
-      # Used when generating certificates offline.
-      def load_ca
-        signing_cert = nil
-        key = nil
-
-        if File.exist?(@settings[:cacert]) && File.exist?(@settings[:cakey]) && File.exist?(@settings[:cacrl])
-          loader = Puppetserver::Ca::X509Loader.new(@settings[:cacert], @settings[:cakey], @settings[:cacrl])
-          if loader.errors.empty?
-            signing_cert = loader.certs[0]
-            key = loader.key
-          else
-            @errors += loader.errors
-          end
-        else
-          @errors << "CA not initialized. Please set up your CA before attempting to generate certs offline."
-        end
-
-        return signing_cert, key
-      end
-
-      def sign_authorized_cert(int_key, int_cert, csr, alt_names = '')
+      def sign_authorized_cert(csr, alt_names = '')
         cert = OpenSSL::X509::Certificate.new
         cert.public_key = csr.public_key
         cert.subject = csr.subject
-        cert.issuer = int_cert.subject
+        cert.issuer = @cert.subject
         cert.version = 2
         cert.serial = next_serial(@settings[:serial])
         cert.not_before = CERT_VALID_FROM
@@ -127,14 +132,14 @@ module Puppetserver
 
         return unless add_custom_extensions(cert)
 
-        ef = extension_factory_for(int_cert, cert)
+        ef = extension_factory_for(@cert, cert)
         add_authorized_extensions(cert, ef)
 
         if !alt_names.empty?
           add_subject_alt_names_extension(alt_names, cert, ef)
         end
 
-        cert.sign(int_key, @digest)
+        cert.sign(@key, @digest)
 
         cert
       end
@@ -220,12 +225,12 @@ module Puppetserver
       end
 
       def create_intermediate_cert(root_key, root_cert)
-        int_key = @host.create_private_key(@settings[:keylength])
-        int_csr = @host.create_csr(name: @settings[:ca_name], key: int_key)
-        int_cert = sign_intermediate(root_key, root_cert, int_csr)
-        int_crl = create_crl_for(int_cert, int_key)
+        @key = @host.create_private_key(@settings[:keylength])
+        int_csr = @host.create_csr(name: @settings[:ca_name], key: @key)
+        @cert = sign_intermediate(root_key, root_cert, int_csr)
+        @crl = create_crl_for(@cert, @key)
 
-        return int_key, int_cert, int_crl
+        return nil
       end
 
       def sign_intermediate(ca_key, ca_cert, csr)

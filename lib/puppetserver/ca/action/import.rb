@@ -73,7 +73,8 @@ BANNER
 
         def import(loader, settings, signing_digest)
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(signing_digest, settings)
-          master_key, master_cert = ca.create_master_cert(loader.key, loader.certs.first)
+          ca.load_ssl_components(loader)
+          master_key, master_cert = ca.create_master_cert
           return ca.errors if ca.errors.any?
 
           FileSystem.ensure_dirs([settings[:ssldir],

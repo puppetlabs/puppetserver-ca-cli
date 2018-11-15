@@ -183,7 +183,6 @@ BANNER
                                   settings[:publickeydir]])
 
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(digest, settings)
-          ca_cert, ca_key = ca.load_ca
           return false if CliParsing.handle_errors(@logger, ca.errors)
 
           passed = certnames.map do |certname|
@@ -197,7 +196,7 @@ BANNER
             key, csr = generate_key_csr(certname, settings, digest)
             next false unless csr
 
-            cert = ca.sign_authorized_cert(ca_key, ca_cert, csr, current_alt_names)
+            cert = ca.sign_authorized_cert(csr, current_alt_names)
             next false unless save_file(cert.to_pem, certname, settings[:certdir], "Certificate")
             next false unless save_file(cert.to_pem, certname, settings[:signeddir], "Certificate")
             next false unless save_keys(certname, settings, key)

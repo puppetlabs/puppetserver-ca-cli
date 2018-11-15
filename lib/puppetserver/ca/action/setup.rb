@@ -77,8 +77,8 @@ BANNER
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(signing_digest, settings)
 
           root_key, root_cert, root_crl = ca.create_root_cert
-          int_key, int_cert, int_crl = ca.create_intermediate_cert(root_key, root_cert)
-          master_key, master_cert = ca.create_master_cert(int_key, int_cert)
+          ca.create_intermediate_cert(root_key, root_cert)
+          master_key, master_cert = ca.create_master_cert
           return ca.errors if ca.errors.any?
 
           FileSystem.ensure_dirs([settings[:ssldir],
@@ -89,14 +89,14 @@ BANNER
                                   settings[:signeddir]])
 
           public_files = [
-            [settings[:cacert], [int_cert, root_cert]],
-            [settings[:cacrl], [int_crl, root_crl]],
-            [settings[:cadir] + '/infra_crl.pem', [int_crl, root_crl]],
+            [settings[:cacert], [ca.cert, root_cert]],
+            [settings[:cacrl], [ca.crl, root_crl]],
+            [settings[:cadir] + '/infra_crl.pem', [ca.crl, root_crl]],
             [settings[:hostcert], master_cert],
-            [settings[:localcacert], [int_cert, root_cert]],
-            [settings[:hostcrl], [int_crl, root_crl]],
+            [settings[:localcacert], [ca.cert, root_cert]],
+            [settings[:hostcrl], [ca.crl, root_crl]],
             [settings[:hostpubkey], master_key.public_key],
-            [settings[:capub], int_key.public_key],
+            [settings[:capub], ca.key.public_key],
             [settings[:cert_inventory], ca.inventory_entry(master_cert)],
             [settings[:cadir] + '/infra_inventory.txt', ''],
             [settings[:cadir] + '/infra_serials', ''],
@@ -107,7 +107,7 @@ BANNER
           private_files = [
             [settings[:hostprivkey], master_key],
             [settings[:rootkey], root_key],
-            [settings[:cakey], int_key],
+            [settings[:cakey], ca.key],
           ]
 
           files_to_check = public_files + private_files
