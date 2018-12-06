@@ -8,6 +8,7 @@ require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/version'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/utils/cli_parsing'
 
 
@@ -86,7 +87,14 @@ BANNER
           if exit_code
             return exit_code
           else
-            return action.run(input)
+            begin
+              return action.run(input)
+            rescue Puppetserver::Ca::Error => e
+              logger.err "Fatal error when running action '#{action_argument}'"
+              logger.err "  Error: " + e.message
+
+              return 1
+            end
           end
         else
           logger.warn "Unknown action: #{action_argument}"
