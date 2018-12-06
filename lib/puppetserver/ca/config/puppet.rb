@@ -66,8 +66,9 @@ module Puppetserver
           results ||= {}
           results[:main] ||= {}
           results[:master] ||= {}
+          results[:agent] ||= {}
 
-          overrides = results[:main].merge(results[:master])
+          overrides = results[:agent].merge(results[:main]).merge(results[:master])
           overrides.merge!(cli_overrides)
 
           @settings = resolve_settings(overrides).freeze
