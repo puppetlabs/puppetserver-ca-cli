@@ -132,6 +132,7 @@ module Puppetserver
             :ca_ttl => '15y',
             :certificate_revocation => 'true',
             :signeddir => '$cadir/signed',
+            :server_list => '',
           }
 
           # This loops through the base defaults and gives each setting a
@@ -161,6 +162,11 @@ module Puppetserver
           settings[:certificate_revocation] = parse_crl_usage(settings[:certificate_revocation])
           settings[:subject_alt_names] = Puppetserver::Ca::Utils::Config.munge_alt_names(settings[:subject_alt_names])
           settings[:keylength] = settings[:keylength].to_i
+          settings[:server_list] = settings[:server_list].
+                                     split(/\s*,\s*/).
+                                     map {|entry| entry.split(":") }
+
+          update_for_server_list!(settings)
 
           settings.each do |key, value|
             next unless value.is_a? String
@@ -237,6 +243,20 @@ module Puppetserver
             :leaf
           when 'false'
             :ignore
+          end
+        end
+
+        def update_for_server_list!(settings)
+          if settings.dig(:server_list, 0, 0) &&
+              settings[:ca_server] == '$server'
+
+            settings[:ca_server] = settings.dig(:server_list, 0, 0)
+          end
+
+          if settings.dig(:server_list, 0, 1) &&
+              settings[:ca_port] == '$masterport'
+
+            settings[:ca_port] = settings.dig(:server_list, 0, 1)
           end
         end
       end

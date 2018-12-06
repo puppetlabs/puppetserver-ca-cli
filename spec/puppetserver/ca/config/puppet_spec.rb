@@ -2,9 +2,10 @@ require 'spec_helper'
 require 'puppetserver/ca/config/puppet'
 
 RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
+  subject { Puppetserver::Ca::Config::Puppet.new }
+
   it 'parses basic inifile' do
-    conf = Puppetserver::Ca::Config::Puppet.new
-    parsed = conf.parse_text(<<-INI)
+    parsed = subject.parse_text(<<-INI)
     server = certname
 
     [master]
@@ -27,8 +28,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
   end
 
   it 'discards weird file metadata info' do
-    conf = Puppetserver::Ca::Config::Puppet.new
-    parsed = conf.parse_text(<<-INI)
+    parsed = subject.parse_text(<<-INI)
     [ca]
       cadir = /var/www/ca {user = service}
 
@@ -60,6 +60,41 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       expect(conf.settings[:cacert]).to eq('/foo/bar/ca/ca_crt.pem')
       expect(conf.settings[:cacrl]).to eq('/fizz/buzz/crl.pem')
     end
+  end
+
+  it 'correctly reads server_list' do
+    p1 = subject.parse_text(<<-INI)
+    [main]
+      server_list = foo:80,bar,baz:99
+    INI
+    expect(p1[:main]).to include({
+      server_list: 'foo:80,bar,baz:99'
+    })
+
+    s1 = subject.resolve_settings(p1[:main])
+    expect(s1[:server_list]).to eq([
+      ["foo", "80"], ["bar"], ["baz", "99"]
+    ])
+
+    p2 = subject.parse_text(<<-INI)
+      [main]
+        server = foo
+    INI
+    s2 = subject.resolve_settings(p2[:main])
+    expect(s2[:server_list]).to eq([])
+  end
+
+  it 'overrides ca_server and ca_port when defaults and server_list is set' do
+    parsed = subject.parse_text(<<-INI)
+      [main]
+        server_list = ca.example.com:8080
+    INI
+
+    settings = subject.resolve_settings(parsed[:main])
+
+    expect(settings[:server_list]).to eq([["ca.example.com", "8080"]])
+    expect(settings[:ca_server]).to eq("ca.example.com")
+    expect(settings[:ca_port]).to eq('8080')
   end
 
   it 'converts ca_ttl setting correctly into seconds' do
