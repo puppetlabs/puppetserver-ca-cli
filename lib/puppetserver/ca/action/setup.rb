@@ -21,19 +21,19 @@ Usage:
                            [--certname NAME] [--ca-name NAME]
 
 Description:
-Setup a root and intermediate signing CA for Puppet Server
-and store generated CA keys, certs, crls, and associated
-master related files on disk.
+  Setup a root and intermediate signing CA for Puppet Server
+  and store generated CA keys, certs, crls, and associated
+  master related files on disk.
 
-The `--subject-alt-names` flag can be used to add SANs to the
-certificate generated for the Puppet master. Multiple names can be
-listed as a comma separated string. These can be either DNS names or
-IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
-Names with no prefix will be treated as DNS names.
+  The `--subject-alt-names` flag can be used to add SANs to the
+  certificate generated for the Puppet master. Multiple names can be
+  listed as a comma separated string. These can be either DNS names or
+  IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
+  Names with no prefix will be treated as DNS names.
 
-To determine the target location, the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+  To determine the target location, the default puppet.conf
+  is consulted for custom values. If using a custom puppet.conf
+  provide it with the --config flag
 
 Options:
 BANNER

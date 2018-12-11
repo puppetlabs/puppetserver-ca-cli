@@ -21,8 +21,8 @@ Usage:
   puppetserver ca revoke [--config] --certname NAME[,NAME]
 
 Description:
-Given one or more valid certnames, instructs the CA to revoke them over
-HTTPS using the local agent's PKI
+  Given one or more valid certnames, instructs the CA to revoke them over
+  HTTPS using the local agent's PKI
 
 Options:
 BANNER

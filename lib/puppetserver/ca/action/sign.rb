@@ -23,7 +23,8 @@ Usage:
   puppetserver ca sign  --all
 
 Description:
-Given a comma-separated list of valid certnames, instructs the CA to sign each cert.
+  Given a comma-separated list of valid certnames, instructs the CA to sign
+  each cert.
 
 Options:
       BANNER

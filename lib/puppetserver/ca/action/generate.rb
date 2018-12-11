@@ -29,25 +29,25 @@ Usage:
                            [--ca-client]
 
 Description:
-Generates a new certificate signed by the intermediate CA
-and stores generated keys and certs on disk.
+  Generates a new certificate signed by the intermediate CA
+  and stores generated keys and certs on disk.
 
-If the `--ca-client` flag is passed, the cert will be generated
-offline, without using Puppet Server's signing code, and will add
-a special extension authorizing it to talk to the CA API. This can
-be used for regenerating the master's host cert, or for manually
-setting up other nodes to be CA clients. Do not distribute certs
-generated this way to any node that you do not intend to have
-administrative access to the CA (e.g. the ability to sign a cert).
+  If the `--ca-client` flag is passed, the cert will be generated
+  offline, without using Puppet Server's signing code, and will add
+  a special extension authorizing it to talk to the CA API. This can
+  be used for regenerating the master's host cert, or for manually
+  setting up other nodes to be CA clients. Do not distribute certs
+  generated this way to any node that you do not intend to have
+  administrative access to the CA (e.g. the ability to sign a cert).
 
-Since the `--ca-client` causes a cert to be generated offline, it
-should ONLY be used when Puppet Server is NOT running, to avoid
-conflicting with the actions of the CA service. This will be
-mandatory in a future release.
+  Since the `--ca-client` causes a cert to be generated offline, it
+  should ONLY be used when Puppet Server is NOT running, to avoid
+  conflicting with the actions of the CA service. This will be
+  mandatory in a future release.
 
-To determine the target location, the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+  To determine the target location, the default puppet.conf
+  is consulted for custom values. If using a custom puppet.conf
+  provide it with the --config flag
 
 Options:
 BANNER

@@ -23,15 +23,15 @@ Usage:
       --private-key PATH --cert-bundle PATH --crl-chain PATH
 
 Description:
-Given a private key, cert bundle, and a crl chain,
-validate and import to the Puppet Server CA.
+  Given a private key, cert bundle, and a crl chain,
+  validate and import to the Puppet Server CA.
 
-Note that the cert and crl provided for the leaf CA must not
-have already issued or revoked any certificates.
+  Note that the cert and crl provided for the leaf CA must not
+  have already issued or revoked any certificates.
 
-To determine the target location the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+  To determine the target location the default puppet.conf
+  is consulted for custom values. If using a custom puppet.conf
+  provide it with the --config flag
 
 Options:
 BANNER

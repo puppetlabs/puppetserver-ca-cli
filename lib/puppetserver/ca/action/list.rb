@@ -22,7 +22,8 @@ Usage:
   puppetserver ca list [--all]
 
 Description:
-List outstanding certificate requests. If --all is specified, signed and revoked certificates will be listed as well.
+  List outstanding certificate requests. If --all is specified, signed and
+  revoked certificates will be listed as well.
 
 Options:
       BANNER

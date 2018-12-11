@@ -23,10 +23,10 @@ Usage:
   puppetserver ca clean [--config] --certname NAME[,NAME]
 
 Description:
-Given one or more valid certnames, instructs the CA to revoke certificates
-matching the given certnames if they exist, and then remove files pertaining
-to them (keys, cert, and certificate request) over HTTPS using the local
-agent's PKI
+  Given one or more valid certnames, instructs the CA to revoke certificates
+  matching the given certnames if they exist, and then remove files pertaining
+  to them (keys, cert, and certificate request) over HTTPS using the local
+  agent's PKI
 
 Options:
 BANNER
