@@ -1,12 +1,13 @@
-require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/host'
 require 'puppetserver/ca/certificate_authority'
-require 'puppetserver/ca/local_certificate_authority'
-require 'puppetserver/ca/x509_loader'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
+require 'puppetserver/ca/host'
+require 'puppetserver/ca/local_certificate_authority'
+require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/utils/config'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
-require 'puppetserver/ca/utils/config'
+require 'puppetserver/ca/x509_loader'
 
 module Puppetserver
   module Ca
@@ -28,25 +29,25 @@ Usage:
                            [--ca-client]
 
 Description:
-Generates a new certificate signed by the intermediate CA
-and stores generated keys and certs on disk.
+  Generates a new certificate signed by the intermediate CA
+  and stores generated keys and certs on disk.
 
-If the `--ca-client` flag is passed, the cert will be generated
-offline, without using Puppet Server's signing code, and will add
-a special extension authorizing it to talk to the CA API. This can
-be used for regenerating the master's host cert, or for manually
-setting up other nodes to be CA clients. Do not distribute certs
-generated this way to any node that you do not intend to have
-administrative access to the CA (e.g. the ability to sign a cert).
+  If the `--ca-client` flag is passed, the cert will be generated
+  offline, without using Puppet Server's signing code, and will add
+  a special extension authorizing it to talk to the CA API. This can
+  be used for regenerating the master's host cert, or for manually
+  setting up other nodes to be CA clients. Do not distribute certs
+  generated this way to any node that you do not intend to have
+  administrative access to the CA (e.g. the ability to sign a cert).
 
-Since the `--ca-client` causes a cert to be generated offline, it
-should ONLY be used when Puppet Server is NOT running, to avoid
-conflicting with the actions of the CA service. This will be
-mandatory in a future release.
+  Since the `--ca-client` causes a cert to be generated offline, it
+  should ONLY be used when Puppet Server is NOT running, to avoid
+  conflicting with the actions of the CA service. This will be
+  mandatory in a future release.
 
-To determine the target location, the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+  To determine the target location, the default puppet.conf
+  is consulted for custom values. If using a custom puppet.conf
+  provide it with the --config flag
 
 Options:
 BANNER
@@ -106,7 +107,7 @@ BANNER
             end
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
@@ -120,14 +121,14 @@ BANNER
           # Validate config_path provided
           if config_path
             errors = FileSystem.validate_file_paths(config_path)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
           settings_overrides = {}
           puppet = Config::Puppet.new(config_path)
           puppet.load(settings_overrides)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # We don't want generate to respect the alt names setting, since it is usually
           # used to generate certs for other nodes
@@ -135,7 +136,7 @@ BANNER
 
           # Load most secure signing digest we can for csr signing.
           signer = SigningDigest.new
-          return 1 if CliParsing.handle_errors(@logger, signer.errors)
+          return 1 if Errors.handle_with_usage(@logger, signer.errors)
 
           # Generate and save certs and associated keys
           if input['ca-client']
@@ -152,7 +153,7 @@ BANNER
         # Returns true if it receives back a response of "running", and false if
         # no connection can be made, or a different response is received.
         def check_server_online(settings)
-          status_url = HttpClient::URL.new('https', settings[:server], settings[:masterport], 'status', 'v1', 'simple', 'ca')
+          status_url = HttpClient::URL.new('https', settings[:ca_server], settings[:ca_port], 'status', 'v1', 'simple', 'ca')
           begin
             # Generating certs offline is necessary if the master cert has been destroyed
             # or compromised. Since querying the status endpoint does not require a client cert, and
@@ -183,11 +184,11 @@ BANNER
                                   settings[:publickeydir]])
 
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(digest, settings)
-          return false if CliParsing.handle_errors(@logger, ca.errors)
+          return false if Errors.handle_with_usage(@logger, ca.errors)
 
           passed = certnames.map do |certname|
             errors = check_for_existing_ssl_files(certname, settings)
-            next false if CliParsing.handle_errors(@logger, errors)
+            next false if Errors.handle_with_usage(@logger, errors)
 
             current_alt_names = process_alt_names(alt_names, certname)
 
@@ -221,7 +222,7 @@ BANNER
 
           passed = certnames.map do |certname|
             errors = check_for_existing_ssl_files(certname, settings)
-            next false if CliParsing.handle_errors(@logger, errors)
+            next false if Errors.handle_with_usage(@logger, errors)
 
             current_alt_names = process_alt_names(alt_names, certname)
 
@@ -273,7 +274,7 @@ BANNER
                                 key: private_key,
                                 cli_extensions: extensions,
                                 csr_attributes_path: settings[:csr_attributes])
-          return if CliParsing.handle_errors(@logger, host.errors)
+          return if Errors.handle_with_usage(@logger, host.errors)
 
           return private_key, csr
         end

@@ -1,5 +1,7 @@
-require 'openssl'
 require 'net/https'
+require 'openssl'
+
+require 'puppetserver/ca/errors'
 
 module Puppetserver
   module Ca
@@ -31,12 +33,16 @@ module Puppetserver
           end
         end
 
-        def load_cert(cert_path)
-          OpenSSL::X509::Certificate.new(File.read(cert_path))
+        def load_cert(path)
+          load_with_errors(path, 'hostcert') do |content|
+            OpenSSL::X509::Certificate.new(content)
+          end
         end
 
-        def load_key(key_path)
-          OpenSSL::PKey.read(File.read(key_path))
+        def load_key(path)
+          load_with_errors(path, 'hostprivkey') do |content|
+            OpenSSL::PKey.read(content)
+          end
         end
 
         # Takes an instance URL (defined lower in the file), and creates a
@@ -46,13 +52,33 @@ module Puppetserver
         def with_connection(url, &block)
           request = ->(conn) { block.call(Connection.new(conn, url)) }
 
-          Net::HTTP.start(url.host, url.port,
-                          use_ssl: true, cert_store: @store,
-                          cert: @cert, key: @key,
-                          &request)
+          begin
+            Net::HTTP.start(url.host, url.port,
+                            use_ssl: true, cert_store: @store,
+                            cert: @cert, key: @key,
+                            &request)
+          rescue StandardError => e
+            raise ConnectionFailed.new(
+              "Failed connecting to #{url.full_url}\n" +
+              "  Root cause: #{e.message}")
+          end
         end
 
         private
+
+       def load_with_errors(path, setting, &block)
+          begin
+            content = File.read(path)
+            block.call(content)
+          rescue Errno::ENOENT
+            raise FileNotFound.new("Could not find '#{setting}' at '#{path}'")
+          rescue OpenSSL::OpenSSLError => e
+            raise InvalidX509Object.new(
+              "Could not parse '#{setting}' at '#{path}'.\n" +
+              "  OpenSSL returned: #{e.message}")
+          end
+       end
+
         # Helper class that wraps a Net::HTTP connection, a HttpClient::URL
         # and defines methods named after HTTP verbs that are called on the
         # saved connection, returning a Result.

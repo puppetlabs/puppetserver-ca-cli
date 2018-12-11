@@ -1,4 +1,5 @@
 require 'hocon'
+
 require 'puppetserver/ca/utils/config'
 
 module Puppetserver

@@ -50,21 +50,6 @@ module Puppetserver
           errors
         end
 
-        def self.handle_errors(log, errors, usage = nil)
-          unless errors.empty?
-            log.err 'Error:'
-            errors.each {|e| log.err e }
-
-            if usage
-              log.err ''
-              log.err usage
-            end
-
-            return true
-          else
-            return false
-          end
-        end
 
       private
 

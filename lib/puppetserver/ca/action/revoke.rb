@@ -1,9 +1,9 @@
+require 'optparse'
+
+require 'puppetserver/ca/certificate_authority'
+require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/config/puppet'
-require 'puppetserver/ca/certificate_authority'
-
-require 'optparse'
 
 module Puppetserver
   module Ca
@@ -21,8 +21,8 @@ Usage:
   puppetserver ca revoke [--config] --certname NAME[,NAME]
 
 Description:
-Given one or more valid certnames, instructs the CA to revoke them over
-HTTPS using the local agent's PKI
+  Given one or more valid certnames, instructs the CA to revoke them over
+  HTTPS using the local agent's PKI
 
 Options:
 BANNER
@@ -65,7 +65,7 @@ BANNER
             errors << '  At least one certname is required to revoke'
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           # if there is an exit_code then Cli will return it early, so we only
           # return an exit_code if there's an error
@@ -80,11 +80,11 @@ BANNER
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           puppet = Config::Puppet.parse(config)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           result =  revoke_certs(certnames, puppet.settings)
 

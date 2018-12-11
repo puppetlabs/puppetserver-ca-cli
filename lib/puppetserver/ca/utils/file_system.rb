@@ -1,5 +1,5 @@
-require 'fileutils'
 require 'etc'
+require 'fileutils'
 
 module Puppetserver
   module Ca

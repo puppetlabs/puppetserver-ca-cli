@@ -1,5 +1,5 @@
-require 'openssl'
 require 'fileutils'
+require 'openssl'
 require 'yaml'
 
 module Puppetserver

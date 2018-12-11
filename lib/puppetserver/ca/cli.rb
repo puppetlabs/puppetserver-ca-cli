@@ -1,4 +1,5 @@
 require 'optparse'
+
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/import'
@@ -6,9 +7,10 @@ require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/logger'
-require 'puppetserver/ca/version'
 require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/version'
 
 
 module Puppetserver
@@ -86,7 +88,14 @@ BANNER
           if exit_code
             return exit_code
           else
-            return action.run(input)
+            begin
+              return action.run(input)
+            rescue Puppetserver::Ca::Error => e
+              logger.err "Fatal error when running action '#{action_argument}'"
+              logger.err "  Error: " + e.message
+
+              return 1
+            end
           end
         else
           logger.warn "Unknown action: #{action_argument}"

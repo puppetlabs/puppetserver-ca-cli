@@ -1,10 +1,11 @@
-require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/config/puppet'
+require 'optparse'
+
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/certificate_authority'
-
-require 'optparse'
+require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
+require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/utils/file_system'
 
 module Puppetserver
   module Ca
@@ -22,10 +23,10 @@ Usage:
   puppetserver ca clean [--config] --certname NAME[,NAME]
 
 Description:
-Given one or more valid certnames, instructs the CA to revoke certificates
-matching the given certnames if they exist, and then remove files pertaining
-to them (keys, cert, and certificate request) over HTTPS using the local
-agent's PKI
+  Given one or more valid certnames, instructs the CA to revoke certificates
+  matching the given certnames if they exist, and then remove files pertaining
+  to them (keys, cert, and certificate request) over HTTPS using the local
+  agent's PKI
 
 Options:
 BANNER
@@ -68,7 +69,7 @@ BANNER
             errors << '  At least one certname is required to clean'
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
@@ -81,11 +82,11 @@ BANNER
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           puppet = Config::Puppet.parse(config)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           result = clean_certs(certnames, puppet.settings)
           case result

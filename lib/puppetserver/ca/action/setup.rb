@@ -1,9 +1,11 @@
 require 'optparse'
-require 'puppetserver/ca/utils/file_system'
+
+require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/local_certificate_authority'
 require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
-require 'puppetserver/ca/config/puppet'
 
 module Puppetserver
   module Ca
@@ -19,19 +21,19 @@ Usage:
                            [--certname NAME] [--ca-name NAME]
 
 Description:
-Setup a root and intermediate signing CA for Puppet Server
-and store generated CA keys, certs, crls, and associated
-master related files on disk.
+  Setup a root and intermediate signing CA for Puppet Server
+  and store generated CA keys, certs, crls, and associated
+  master related files on disk.
 
-The `--subject-alt-names` flag can be used to add SANs to the
-certificate generated for the Puppet master. Multiple names can be
-listed as a comma separated string. These can be either DNS names or
-IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
-Names with no prefix will be treated as DNS names.
+  The `--subject-alt-names` flag can be used to add SANs to the
+  certificate generated for the Puppet master. Multiple names can be
+  listed as a comma separated string. These can be either DNS names or
+  IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
+  Names with no prefix will be treated as DNS names.
 
-To determine the target location, the default puppet.conf
-is consulted for custom values. If using a custom puppet.conf
-provide it with the --config flag
+  To determine the target location, the default puppet.conf
+  is consulted for custom values. If using a custom puppet.conf
+  provide it with the --config flag
 
 Options:
 BANNER
@@ -45,7 +47,7 @@ BANNER
           config_path = input['config']
           if config_path
             errors = FileSystem.validate_file_paths(config_path)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
@@ -58,16 +60,16 @@ BANNER
 
           puppet = Config::Puppet.new(config_path)
           puppet.load(settings_overrides)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
           signer = SigningDigest.new
-          return 1 if CliParsing.handle_errors(@logger, signer.errors)
+          return 1 if Errors.handle_with_usage(@logger, signer.errors)
 
           # Generate root and intermediate ca and put all the certificates, crls,
           # and keys where they should go.
           errors = generate_pki(puppet.settings, signer.digest)
-          return 1 if CliParsing.handle_errors(@logger, errors)
+          return 1 if Errors.handle_with_usage(@logger, errors)
 
           @logger.inform "Generation succeeded. Find your files in #{puppet.settings[:cadir]}"
           return 0
@@ -144,7 +146,7 @@ ERR
           results = {}
           parser = self.class.parser(results)
           errors = CliParsing.parse_with_errors(parser, cli_args)
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
           exit_code = errors_were_handled ? 1 : nil
           return results, exit_code
         end

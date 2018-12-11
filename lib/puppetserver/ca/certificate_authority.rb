@@ -1,6 +1,6 @@
-require 'puppetserver/ca/utils/http_client'
-
 require 'json'
+
+require 'puppetserver/ca/utils/http_client'
 
 module Puppetserver
   module Ca
