@@ -2,6 +2,7 @@ require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/certificate_authority'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
 require 'optparse'
 require 'json'
 
@@ -51,11 +52,11 @@ Options:
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           puppet = Config::Puppet.parse(config)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           all_certs = get_all_certs(puppet.settings)
           return 1 if all_certs.nil?
@@ -124,7 +125,7 @@ Options:
 
           errors = CliParsing.parse_with_errors(parser, args)
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 

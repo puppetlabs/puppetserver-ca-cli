@@ -65,7 +65,7 @@ BANNER
             errors << '  At least one certname is required to revoke'
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           # if there is an exit_code then Cli will return it early, so we only
           # return an exit_code if there's an error
@@ -80,11 +80,11 @@ BANNER
 
           if config
             errors = FileSystem.validate_file_paths(config)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           puppet = Config::Puppet.parse(config)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           result =  revoke_certs(certnames, puppet.settings)
 

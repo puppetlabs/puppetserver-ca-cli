@@ -5,6 +5,7 @@ require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/local_certificate_authority'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/signing_digest'
+require 'puppetserver/ca/errors'
 
 module Puppetserver
   module Ca
@@ -47,10 +48,10 @@ BANNER
           files = [bundle_path, key_path, chain_path, config_path].compact
 
           errors = FileSystem.validate_file_paths(files)
-          return 1 if CliParsing.handle_errors(@logger, errors)
+          return 1 if Errors.handle_with_usage(@logger, errors)
 
           loader = X509Loader.new(bundle_path, key_path, chain_path)
-          return 1 if CliParsing.handle_errors(@logger, loader.errors)
+          return 1 if Errors.handle_with_usage(@logger, loader.errors)
 
           settings_overrides = {}
           settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
@@ -58,14 +59,14 @@ BANNER
 
           puppet = Config::Puppet.new(config_path)
           puppet.load(settings_overrides)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.
           signer = SigningDigest.new
-          return 1 if CliParsing.handle_errors(@logger, signer.errors)
+          return 1 if Errors.handle_with_usage(@logger, signer.errors)
 
           errors = import(loader, puppet.settings, signer.digest)
-          return 1 if CliParsing.handle_errors(@logger, errors)
+          return 1 if Errors.handle_with_usage(@logger, errors)
 
           @logger.inform "Import succeeded. Find your files in #{puppet.settings[:cadir]}"
           return 0
@@ -152,7 +153,7 @@ ERR
             errors << err
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 

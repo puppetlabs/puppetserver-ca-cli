@@ -7,6 +7,7 @@ require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
 require 'puppetserver/ca/utils/config'
+require 'puppetserver/ca/errors'
 
 module Puppetserver
   module Ca
@@ -106,7 +107,7 @@ BANNER
             end
           end
 
-          errors_were_handled = CliParsing.handle_errors(@logger, errors, parser.help)
+          errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
 
@@ -120,14 +121,14 @@ BANNER
           # Validate config_path provided
           if config_path
             errors = FileSystem.validate_file_paths(config_path)
-            return 1 if CliParsing.handle_errors(@logger, errors)
+            return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
           # Load, resolve, and validate puppet config settings
           settings_overrides = {}
           puppet = Config::Puppet.new(config_path)
           puppet.load(settings_overrides)
-          return 1 if CliParsing.handle_errors(@logger, puppet.errors)
+          return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # We don't want generate to respect the alt names setting, since it is usually
           # used to generate certs for other nodes
@@ -135,7 +136,7 @@ BANNER
 
           # Load most secure signing digest we can for csr signing.
           signer = SigningDigest.new
-          return 1 if CliParsing.handle_errors(@logger, signer.errors)
+          return 1 if Errors.handle_with_usage(@logger, signer.errors)
 
           # Generate and save certs and associated keys
           if input['ca-client']
@@ -183,11 +184,11 @@ BANNER
                                   settings[:publickeydir]])
 
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(digest, settings)
-          return false if CliParsing.handle_errors(@logger, ca.errors)
+          return false if Errors.handle_with_usage(@logger, ca.errors)
 
           passed = certnames.map do |certname|
             errors = check_for_existing_ssl_files(certname, settings)
-            next false if CliParsing.handle_errors(@logger, errors)
+            next false if Errors.handle_with_usage(@logger, errors)
 
             current_alt_names = process_alt_names(alt_names, certname)
 
@@ -221,7 +222,7 @@ BANNER
 
           passed = certnames.map do |certname|
             errors = check_for_existing_ssl_files(certname, settings)
-            next false if CliParsing.handle_errors(@logger, errors)
+            next false if Errors.handle_with_usage(@logger, errors)
 
             current_alt_names = process_alt_names(alt_names, certname)
 
@@ -273,7 +274,7 @@ BANNER
                                 key: private_key,
                                 cli_extensions: extensions,
                                 csr_attributes_path: settings[:csr_attributes])
-          return if CliParsing.handle_errors(@logger, host.errors)
+          return if Errors.handle_with_usage(@logger, host.errors)
 
           return private_key, csr
         end
