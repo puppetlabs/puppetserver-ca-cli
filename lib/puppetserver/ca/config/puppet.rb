@@ -1,6 +1,7 @@
-require 'puppetserver/ca/utils/config'
-require 'securerandom'
 require 'facter'
+require 'securerandom'
+
+require 'puppetserver/ca/utils/config'
 
 module Puppetserver
   module Ca

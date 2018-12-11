@@ -1,5 +1,5 @@
-require 'openssl'
 require 'net/https'
+require 'openssl'
 
 require 'puppetserver/ca/errors'
 

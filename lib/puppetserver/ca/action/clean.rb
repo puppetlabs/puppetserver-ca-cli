@@ -1,11 +1,11 @@
-require 'puppetserver/ca/utils/cli_parsing'
-require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/config/puppet'
+require 'optparse'
+
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/certificate_authority'
+require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/errors'
-
-require 'optparse'
+require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/utils/file_system'
 
 module Puppetserver
   module Ca

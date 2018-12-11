@@ -1,12 +1,12 @@
+require 'net/https'
+require 'openssl'
+require 'optparse'
+
+require 'puppetserver/ca/certificate_authority'
+require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/config/puppet'
-require 'puppetserver/ca/certificate_authority'
-require 'puppetserver/ca/errors'
-
-require 'optparse'
-require 'openssl'
-require 'net/https'
 
 module Puppetserver
   module Ca

@@ -1,11 +1,12 @@
 require 'optparse'
-require 'puppetserver/ca/utils/file_system'
-require 'puppetserver/ca/x509_loader'
+
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/local_certificate_authority'
 require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
-require 'puppetserver/ca/errors'
+require 'puppetserver/ca/x509_loader'
 
 module Puppetserver
   module Ca

@@ -1,4 +1,5 @@
 require 'optparse'
+
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/import'
@@ -6,10 +7,10 @@ require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
-require 'puppetserver/ca/logger'
-require 'puppetserver/ca/version'
 require 'puppetserver/ca/errors'
+require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/cli_parsing'
+require 'puppetserver/ca/version'
 
 
 module Puppetserver
