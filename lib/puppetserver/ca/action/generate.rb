@@ -153,7 +153,7 @@ BANNER
         # Returns true if it receives back a response of "running", and false if
         # no connection can be made, or a different response is received.
         def check_server_online(settings)
-          status_url = HttpClient::URL.new('https', settings[:server], settings[:masterport], 'status', 'v1', 'simple', 'ca')
+          status_url = HttpClient::URL.new('https', settings[:ca_server], settings[:ca_port], 'status', 'v1', 'simple', 'ca')
           begin
             # Generating certs offline is necessary if the master cert has been destroyed
             # or compromised. Since querying the status endpoint does not require a client cert, and
