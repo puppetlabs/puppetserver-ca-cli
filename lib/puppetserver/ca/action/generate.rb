@@ -168,9 +168,12 @@ BANNER
               end
             end
             true
-          rescue Errno::ECONNREFUSED => e
-            # Couldn't make a connection
-            false
+          rescue Puppetserver::Ca::ConnectionFailed => e
+            if e.wrapped.is_a? Errno::ECONNREFUSED
+              return false
+            else
+              raise e
+            end
           end
         end
 
