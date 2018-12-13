@@ -58,11 +58,9 @@ module Puppetserver
                             cert: @cert, key: @key,
                             &request)
           rescue StandardError => e
-            ex = ConnectionFailed.new(
-              "Failed connecting to #{url.full_url}\n" +
-              "  Root cause: #{e.message}")
-            ex.wrap(e)
-            raise ex
+            raise ConnectionFailed.create(e,
+                    "Failed connecting to #{url.full_url}\n" +
+                    "  Root cause: #{e.message}")
           end
         end
 
@@ -73,15 +71,13 @@ module Puppetserver
             content = File.read(path)
             block.call(content)
           rescue Errno::ENOENT => e
-            ex = FileNotFound.new("Could not find '#{setting}' at '#{path}'")
-            ex.wrap(e)
-            raise ex
+            raise FileNotFound.create(e,
+                    "Could not find '#{setting}' at '#{path}'")
+
           rescue OpenSSL::OpenSSLError => e
-            ex = InvalidX509Object.new(
-              "Could not parse '#{setting}' at '#{path}'.\n" +
-              "  OpenSSL returned: #{e.message}")
-            ex.wrap(e)
-            raise ex
+            raise InvalidX509Object.create(e,
+                    "Could not parse '#{setting}' at '#{path}'.\n" +
+                    "  OpenSSL returned: #{e.message}")
           end
        end
 

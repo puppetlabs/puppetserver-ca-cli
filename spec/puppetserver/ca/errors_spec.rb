@@ -8,8 +8,8 @@ require 'puppetserver/ca/logger'
 
 RSpec.describe Puppetserver::Ca::Error do
   it 'can wrap an exception' do
-    ex = Puppetserver::Ca::Error.new('wrapper exception')
     orig = StandardError.new('wrapped exception')
+    ex = Puppetserver::Ca::Error.create(orig, 'wrapper exception')
     expect {
       ex.wrap(orig)
       expect(ex.wrapped).to be(orig)

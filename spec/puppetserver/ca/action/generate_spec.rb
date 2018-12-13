@@ -317,22 +317,24 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     end
 
     it 'returns false if nothing is listening on the port' do
-      orig = Errno::ECONNREFUSED.new
-      raised = Puppetserver::Ca::ConnectionFailed.new('uncaught exception')
-      raised.wrap(orig)
       allow(Puppetserver::Ca::Utils::HttpClient).
-        to receive(:new).and_raise(raised)
+        to receive(:new).
+        and_raise(
+          Puppetserver::Ca::ConnectionFailed.create(
+            Errno::ECONNREFUSED.new,
+            'uncaught exception'))
 
       settings = {ca_server: 'foo.com', ca_port: 8080}
       expect(subject.check_server_online(settings)).to be false
     end
 
     it 'dies if there are other issues with the connection' do
-      orig = StandardError.new
-      raised = Puppetserver::Ca::ConnectionFailed.new('uncaught exception')
-      raised.wrap(orig)
       allow(Puppetserver::Ca::Utils::HttpClient).
-        to receive(:new).and_raise(raised)
+        to receive(:new).
+        and_raise(
+          Puppetserver::Ca::ConnectionFailed.create(
+            StandardError.new,
+            'uncaught exception'))
 
       settings = {ca_server: 'foo.com', ca_port: 8080}
       expect{ subject.check_server_online(settings) }.

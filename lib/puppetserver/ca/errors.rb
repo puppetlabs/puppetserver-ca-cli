@@ -1,6 +1,13 @@
 module Puppetserver
   module Ca
     class Error < StandardError
+      def self.create(ex, msg)
+        created = new(msg)
+        created.wrap(ex)
+
+        created
+      end
+
       attr_reader :wrapped
 
       def wrap(ex)
