@@ -75,8 +75,8 @@ BANNER
               parsed['subject-alt-names'] = sans
             end
             opts.on('--ca-client',
-                    'Whether this cert will be used to request CA actions.\
-                    Causes the cert to be generated offline.') do |ca_client|
+                    'Whether this cert will be used to request CA actions.',
+                    'Causes the cert to be generated offline.') do |ca_client|
               parsed['ca-client'] = true
             end
           end
