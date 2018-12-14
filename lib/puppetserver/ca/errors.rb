@@ -1,6 +1,20 @@
 module Puppetserver
   module Ca
-    class Error < StandardError; end
+    class Error < StandardError
+      def self.create(ex, msg)
+        created = new(msg)
+        created.wrap(ex)
+
+        created
+      end
+
+      attr_reader :wrapped
+
+      def wrap(ex)
+        @wrapped = ex
+      end
+    end
+
     class FileNotFound < Error; end
     class InvalidX509Object < Error; end
     class ConnectionFailed < Error; end

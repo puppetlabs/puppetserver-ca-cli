@@ -1,7 +1,24 @@
 require 'spec_helper'
 
-RSpec.describe Puppetserver::Ca::Errors do
+require 'puppetserver/ca/errors'
+require 'puppetserver/ca/logger'
 
+# NOTE: There's two top level describes here, one for custom error
+# functionality and one for the Errors help module.
+
+RSpec.describe Puppetserver::Ca::Error do
+  it 'can wrap an exception' do
+    orig = StandardError.new('wrapped exception')
+    ex = Puppetserver::Ca::Error.create(orig, 'wrapper exception')
+    expect {
+      ex.wrap(orig)
+      expect(ex.wrapped).to be(orig)
+    }.not_to raise_error
+  end
+
+end
+
+RSpec.describe Puppetserver::Ca::Errors do
   describe 'handle with usage' do
     let(:stdout) { StringIO.new }
     let(:stderr) { StringIO.new }

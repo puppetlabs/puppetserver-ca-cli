@@ -5,6 +5,7 @@ require 'utils/http'
 require 'tmpdir'
 
 require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/errors'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/http_client'
 
@@ -313,6 +314,31 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
         to receive(:with_connection).and_yield(connection)
       allow_any_instance_of(Puppetserver::Ca::Utils::HttpClient).
         to receive(:make_store)
+    end
+
+    it 'returns false if nothing is listening on the port' do
+      allow(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:new).
+        and_raise(
+          Puppetserver::Ca::ConnectionFailed.create(
+            Errno::ECONNREFUSED.new,
+            'uncaught exception'))
+
+      settings = {ca_server: 'foo.com', ca_port: 8080}
+      expect(subject.check_server_online(settings)).to be false
+    end
+
+    it 'dies if there are other issues with the connection' do
+      allow(Puppetserver::Ca::Utils::HttpClient).
+        to receive(:new).
+        and_raise(
+          Puppetserver::Ca::ConnectionFailed.create(
+            StandardError.new,
+            'uncaught exception'))
+
+      settings = {ca_server: 'foo.com', ca_port: 8080}
+      expect{ subject.check_server_online(settings) }.
+        to raise_error(Puppetserver::Ca::ConnectionFailed)
     end
 
     it "refuses to generate a cert if the server is running" do

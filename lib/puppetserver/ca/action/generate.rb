@@ -75,8 +75,8 @@ BANNER
               parsed['subject-alt-names'] = sans
             end
             opts.on('--ca-client',
-                    'Whether this cert will be used to request CA actions.\
-                    Causes the cert to be generated offline.') do |ca_client|
+                    'Whether this cert will be used to request CA actions.',
+                    'Causes the cert to be generated offline.') do |ca_client|
               parsed['ca-client'] = true
             end
           end
@@ -168,9 +168,12 @@ BANNER
               end
             end
             true
-          rescue Errno::ECONNREFUSED => e
-            # Couldn't make a connection
-            false
+          rescue Puppetserver::Ca::ConnectionFailed => e
+            if e.wrapped.is_a? Errno::ECONNREFUSED
+              return false
+            else
+              raise e
+            end
           end
         end
 
