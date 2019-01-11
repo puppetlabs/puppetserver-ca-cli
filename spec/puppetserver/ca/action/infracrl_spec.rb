@@ -24,7 +24,12 @@ RSpec.describe Puppetserver::Ca::Action::InfraCRL do
 
   it 'does not print the help output if called correctly' do
     Dir.mktmpdir do |tmpdir|
-      with_temp_dirs tmpdir do |conf|
+      with_ca_in tmpdir do |conf, ca_dir|
+        inventory = File.join(ca_dir, 'infra_inventory.txt')
+        File.open(inventory, 'w') do |f|
+          f.puts ''
+        end
+
         exit_code = subject.run({ 'config' => conf })
         puts stderr.string
         expect(stderr.string).to be_empty

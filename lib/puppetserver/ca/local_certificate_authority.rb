@@ -37,7 +37,7 @@ module Puppetserver
         ["authorityKeyIdentifier", "keyid:always", false]
       ].freeze
 
-      attr_reader :cert, :key, :crl
+      attr_reader :cert, :cert_bundle, :key, :crl, :crl_chain
 
       def initialize(digest, settings)
         @digest = digest
@@ -63,9 +63,11 @@ module Puppetserver
       end
 
       def load_ssl_components(loader)
-          @cert = loader.certs.first
-          @key = loader.key
-          @crl = loader.crls.first
+        @cert_bundle = loader.certs
+        @cert = loader.certs.first
+        @key = loader.key
+        @crl_chain = loader.crls
+        @crl = loader.crls.first
       end
 
       def errors

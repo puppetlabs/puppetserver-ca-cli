@@ -4,6 +4,8 @@ require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/errors'
 require 'puppetserver/ca/utils/file_system'
+require 'puppetserver/ca/utils/signing_digest'
+require 'puppetserver/ca/local_certificate_authority'
 
 module Puppetserver
   module Ca
@@ -45,9 +47,45 @@ BANNER
 
           puppet = Config::Puppet.new(config_path)
           puppet.load
+          settings = puppet.settings
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
+          inventory_file = File.join(settings[:cadir], 'infra_inventory.txt')
+          if !File.exist?(inventory_file)
+            @logger.err "Please create an inventory file at '#{inventory_file}' with
+              the certnames of your infrastructure nodes before proceeding with
+              infra CRL setup!"
+            return 1
+          end
+
+          # This can be left blank, puppetserver will populate it with the serials for
+          # the certnames in the inventory file when the server starts
+          FileSystem.write_file(File.join(settings[:cadir], 'infra_serials'), '', 0644)
+
+          errors = create_infra_crl_chain(settings)
+          return 1 if Errors.handle_with_usage(@logger, errors)
+
+          @logger.inform "Infra CRL files created."
           return 0
+        end
+
+        def create_infra_crl_chain(settings)
+          # Load most secure signing digest we can for cers/crl/csr signing.
+          signer = SigningDigest.new
+          return signer.errors if signer.errors.any?
+
+          ca = LocalCertificateAuthority.new(signer.digest, settings)
+          infra_crl = ca.create_crl_for(ca.cert, ca.key)
+          return ca.errors if ca.errors.any?
+
+          # Drop the full leaf CRL from the chain
+          crl_chain = ca.crl_chain.drop(1)
+          # Add the new clean CRL, that will be populated with infra nodes only
+          # as they are revoked
+          crl_chain.unshift(infra_crl)
+          FileSystem.write_file(File.join(settings[:cadir], 'infra_crl.pem'), crl_chain, 0644)
+
+          []
         end
 
         def parse(cli_args)
