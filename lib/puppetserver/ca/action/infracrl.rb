@@ -1,11 +1,11 @@
 require 'optparse'
 
-require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/errors'
+require 'puppetserver/ca/local_certificate_authority'
+require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
-require 'puppetserver/ca/local_certificate_authority'
 
 module Puppetserver
   module Ca
@@ -52,21 +52,38 @@ BANNER
 
           inventory_file = File.join(settings[:cadir], 'infra_inventory.txt')
           if !File.exist?(inventory_file)
-            @logger.err "Please create an inventory file at '#{inventory_file}' with
-              the certnames of your infrastructure nodes before proceeding with
-              infra CRL setup!"
+            @logger.err <<-ERR
+Please create an inventory file at '#{inventory_file}' with the certnames of your
+infrastructure nodes before proceeding with infra CRL setup!"
+ERR
             return 1
           end
 
-          # This can be left blank, puppetserver will populate it with the serials for
-          # the certnames in the inventory file when the server starts
-          FileSystem.write_file(File.join(settings[:cadir], 'infra_serials'), '', 0644)
+          serial_file = File.join(settings[:cadir], 'infra_serials')
+          infra_crl = File.join(settings[:cadir], 'infra_crl.pem')
+
+          file_errors = check_for_existing_infra_files([serial_file, infra_crl])
+          return 1 if Errors.handle_with_usage(@logger, file_errors)
+
+          FileSystem.write_file(serial_file, '', 0644)
 
           errors = create_infra_crl_chain(settings)
           return 1 if Errors.handle_with_usage(@logger, errors)
 
           @logger.inform "Infra CRL files created."
           return 0
+        end
+
+        def check_for_existing_infra_files(files)
+          file_errors = FileSystem.check_for_existing_files(files)
+          if !file_errors.empty?
+            notice = <<-MSG
+If you would really like to reinitialize your infrastructure CRL, please delete
+the existing files and run this command again.
+MSG
+            file_errors << notice
+          end
+          return file_errors
         end
 
         def create_infra_crl_chain(settings)
