@@ -10,25 +10,27 @@ require 'puppetserver/ca/utils/signing_digest'
 module Puppetserver
   module Ca
     module Action
-      class InfraCRL
+      class Enable
         include Puppetserver::Ca::Utils
 
         SUMMARY = "Setup infrastructure CRL based on a node inventory."
         BANNER = <<-BANNER
 Usage:
-  puppetserver ca infracrl [--help]
-  puppetserver ca infracrl [--config PATH]
+  puppetserver ca enable [--help]
+  puppetserver ca enable [--config PATH] [--infracrl]
 
 Description:
-  Creates auxiliary files needed to use the infrastructure-only CRL.
-  Assumes the existence of an `infra_inventory.txt` file in the CA
-  directory listing the certnames of the infrastructure nodes in the
-  Puppet installation. Generates the `infra_serials` file and the empty
-  CRL to be populated with revoked infrastructure nodes.
+  Performs actions necessary to enable certain CA modes.
 
-  To determine the target location, the default puppet.conf
-  is consulted for custom values. If using a custom puppet.conf
-  provide it with the --config flag
+  The default puppet.conf is queried for configuration If using a custom
+  puppet.conf, provide it with the --config flag.
+
+  --infracrl
+    Creates auxiliary files necessary to use the infrastructure-only CRL.
+    Assumes the existence of an `infra_inventory.txt` file in the CA
+    directory listing the certnames of the infrastructure nodes in the
+    Puppet installation. Generates the `infra_serials` file and the empty
+    CRL to be populated with revoked infrastructure nodes.
 
 Options:
 BANNER
@@ -50,36 +52,45 @@ BANNER
           settings = puppet.settings
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
+          if input['infracrl']
+            errors = enable_infra_crl(settings)
+            return 1 if Errors.handle_with_usage(@logger, errors)
+          end
+
+          return 0
+        end
+
+        def enable_infra_crl(settings)
           inventory_file = File.join(settings[:cadir], 'infra_inventory.txt')
           if !File.exist?(inventory_file)
-            @logger.err <<-ERR
-Please create an inventory file at '#{inventory_file}' with the certnames of your
-infrastructure nodes before proceeding with infra CRL setup!"
+            error = <<-ERR
+  Please create an inventory file at '#{inventory_file}' with the certnames of your
+  infrastructure nodes before proceeding with infra CRL setup!"
 ERR
-            return 1
+            return [error]
           end
 
           serial_file = File.join(settings[:cadir], 'infra_serials')
           infra_crl = File.join(settings[:cadir], 'infra_crl.pem')
 
           file_errors = check_for_existing_infra_files([serial_file, infra_crl])
-          return 1 if Errors.handle_with_usage(@logger, file_errors)
+          return file_errors if !file_errors.empty?
 
           FileSystem.write_file(serial_file, '', 0644)
 
           errors = create_infra_crl_chain(settings)
-          return 1 if Errors.handle_with_usage(@logger, errors)
+          return errors if !errors.empty?
 
           @logger.inform "Infra CRL files created."
-          return 0
+          return []
         end
 
         def check_for_existing_infra_files(files)
           file_errors = FileSystem.check_for_existing_files(files)
           if !file_errors.empty?
             notice = <<-MSG
-If you would really like to reinitialize your infrastructure CRL, please delete
-the existing files and run this command again.
+  If you would really like to reinitialize your infrastructure CRL, please delete
+  the existing files and run this command again.
 MSG
             file_errors << notice
           end
@@ -117,11 +128,14 @@ MSG
         def self.parser(parsed = {})
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--help', 'Display this setup specific help output') do |help|
+            opts.on('--help', 'Display this `enable` specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
               parsed['config'] = conf
+            end
+            opts.on('--infracrl', "Create auxiliary files for the infrastructure-only CRL.") do |infracrl|
+              parsed['infracrl'] = true
             end
           end
         end

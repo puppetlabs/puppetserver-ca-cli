@@ -3,7 +3,7 @@ require 'optparse'
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/import'
-require 'puppetserver/ca/action/infracrl'
+require 'puppetserver/ca/action/enable'
 require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/setup'
@@ -27,7 +27,7 @@ BANNER
       INIT_ACTIONS = {
         'import'   => Action::Import,
         'setup'    => Action::Setup,
-        'infracrl' => Action::InfraCRL,
+        'enable' => Action::Enable,
       }
 
       MAINT_ACTIONS = {
