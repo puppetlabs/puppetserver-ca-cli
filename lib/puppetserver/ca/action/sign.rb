@@ -38,7 +38,7 @@ Options:
             opts.on('--config CONF', 'Custom path to Puppet\'s config file') do |conf|
               parsed['config'] = conf
             end
-            opts.on('--help', 'Display this command specific help output') do |help|
+            opts.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--all', 'Operate on all certnames') do |a|

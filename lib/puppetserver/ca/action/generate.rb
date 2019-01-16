@@ -45,10 +45,6 @@ Description:
   conflicting with the actions of the CA service. This will be
   mandatory in a future release.
 
-  To determine the target location, the default puppet.conf
-  is consulted for custom values. If using a custom puppet.conf
-  provide it with the --config flag
-
 Options:
 BANNER
         def initialize(logger)
@@ -64,7 +60,7 @@ BANNER
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
-            opts.on('--help', 'Display this generate specific help output') do |help|
+            opts.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|

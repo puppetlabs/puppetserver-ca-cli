@@ -29,10 +29,6 @@ Description:
   Note that the cert and crl provided for the leaf CA must not
   have already issued or revoked any certificates.
 
-  To determine the target location the default puppet.conf
-  is consulted for custom values. If using a custom puppet.conf
-  provide it with the --config flag
-
 Options:
 BANNER
 
@@ -166,7 +162,7 @@ ERR
           parsed['subject-alt-names'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--help', 'Display this import specific help output') do |help|
+            opts.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|
