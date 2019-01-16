@@ -42,7 +42,7 @@ BANNER
             o.on('--config CONF', 'Custom path to puppet.conf') do |conf|
               parsed['config'] = conf
             end
-            o.on('--help', 'Display this clean specific help output') do |help|
+            o.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
           end

@@ -162,7 +162,7 @@ ERR
           parsed['subject-alt-names'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
-            opts.on('--help', 'Display this import specific help output') do |help|
+            opts.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|

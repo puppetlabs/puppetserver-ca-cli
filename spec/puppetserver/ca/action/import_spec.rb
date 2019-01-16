@@ -15,7 +15,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
   let(:usage) do
-    /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
+    /.*Usage:.* puppetserver ca import.*Display this command-specific help output.*/m
   end
 
   subject { Puppetserver::Ca::Action::Import.new(logger) }

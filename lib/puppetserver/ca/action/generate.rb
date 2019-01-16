@@ -60,7 +60,7 @@ BANNER
                  'One or more comma separated certnames') do |certs|
               parsed['certnames'] += certs
             end
-            opts.on('--help', 'Display this generate specific help output') do |help|
+            opts.on('--help', 'Display this command-specific help output') do |help|
               parsed['help'] = true
             end
             opts.on('--config CONF', 'Path to puppet.conf') do |conf|

@@ -13,31 +13,37 @@ RSpec.describe Puppetserver::Ca::Cli do
   describe 'the clean action' do
     include_examples 'basic cli args',
       'clean',
-      /.*Usage:.* puppetserver ca clean.*Display this clean specific help output.*/m
+      /.*Usage:.* puppetserver ca clean.*Display this command-specific help output.*/m
+  end
+
+  describe 'the enable action' do
+    include_examples 'basic cli args',
+      'enable',
+      /.*Usage:.* puppetserver ca enable.*Display this command-specific help output.*/m
   end
 
   describe 'the generate action' do
     include_examples 'basic cli args',
       'generate',
-      /.*Usage:.* puppetserver ca generate.*Display this generate specific help output.*/m
+      /.*Usage:.* puppetserver ca generate.*Display this command-specific help output.*/m
   end
 
   describe 'the setup action' do
     include_examples 'basic cli args',
       'setup',
-      /.*Usage:.* puppetserver ca setup.*Display this setup specific help output.*/m
+      /.*Usage:.* puppetserver ca setup.*Display this command-specific help output.*/m
   end
 
   describe 'the import action' do
     include_examples 'basic cli args',
       'import',
-      /.*Usage:.* puppetserver ca import.*Display this import specific help output.*/m
+      /.*Usage:.* puppetserver ca import.*Display this command-specific help output.*/m
   end
 
   describe 'the list action' do
     include_examples 'basic cli args',
       'list',
-       /.*Usage:.* puppetserver ca list.* Display this command specific help output/m
+       /.*Usage:.* puppetserver ca list.* Display this command-specific help output/m
   end
 
   describe 'the revoke action' do
@@ -49,6 +55,6 @@ RSpec.describe Puppetserver::Ca::Cli do
   describe 'the sign action' do
     include_examples 'basic cli args',
       'sign',
-      /.*Usage.* puppetserver ca sign.*Display this command specific help output.*/m
+      /.*Usage.* puppetserver ca sign.*Display this command-specific help output.*/m
   end
 end

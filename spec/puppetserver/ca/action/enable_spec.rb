@@ -11,7 +11,7 @@ RSpec.describe Puppetserver::Ca::Action::Enable do
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
-  let(:usage) { /.*Usage:.* puppetserver ca enable.*Display this `enable` specific help output.*/m }
+  let(:usage) { /.*Usage:.* puppetserver ca enable.*Display this command-specific help output.*/m }
 
   subject { Puppetserver::Ca::Action::Enable.new(logger) }
 
