@@ -17,13 +17,10 @@ module Puppetserver
         BANNER = <<-BANNER
 Usage:
   puppetserver ca enable [--help]
-  puppetserver ca enable [--config PATH] [--infracrl]
+  puppetserver ca enable [--infracrl]
 
 Description:
   Performs actions necessary to enable certain CA modes.
-
-  The default puppet.conf is queried for configuration If using a custom
-  puppet.conf, provide it with the --config flag.
 
   --infracrl
     Creates auxiliary files necessary to use the infrastructure-only CRL.

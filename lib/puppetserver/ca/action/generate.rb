@@ -45,10 +45,6 @@ Description:
   conflicting with the actions of the CA service. This will be
   mandatory in a future release.
 
-  To determine the target location, the default puppet.conf
-  is consulted for custom values. If using a custom puppet.conf
-  provide it with the --config flag
-
 Options:
 BANNER
         def initialize(logger)

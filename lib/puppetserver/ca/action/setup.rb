@@ -31,10 +31,6 @@ Description:
   IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
   Names with no prefix will be treated as DNS names.
 
-  To determine the target location, the default puppet.conf
-  is consulted for custom values. If using a custom puppet.conf
-  provide it with the --config flag
-
 Options:
 BANNER
 
