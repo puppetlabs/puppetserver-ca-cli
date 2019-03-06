@@ -26,8 +26,8 @@ Description:
     Creates auxiliary files necessary to use the infrastructure-only CRL.
     Assumes the existence of an `infra_inventory.txt` file in the CA
     directory listing the certnames of the infrastructure nodes in the
-    Puppet installation. Generates the `infra_serials` file and the empty
-    CRL to be populated with revoked infrastructure nodes.
+    Puppet installation. Generates the the empty CRL to be populated with
+    revoked infrastructure nodes.
 
 Options:
 BANNER
@@ -67,13 +67,10 @@ ERR
             return [error]
           end
 
-          serial_file = File.join(settings[:cadir], 'infra_serials')
           infra_crl = File.join(settings[:cadir], 'infra_crl.pem')
 
-          file_errors = check_for_existing_infra_files([serial_file, infra_crl])
+          file_errors = check_for_existing_infra_files(infra_crl)
           return file_errors if !file_errors.empty?
-
-          FileSystem.write_file(serial_file, '', 0644)
 
           errors = create_infra_crl_chain(settings)
           return errors if !errors.empty?
