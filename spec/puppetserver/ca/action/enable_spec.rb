@@ -51,11 +51,10 @@ RSpec.describe Puppetserver::Ca::Action::Enable do
       end
     end
 
-    it 'generates auxiliary infra CRL files' do
+    it 'generates infra CRL' do
       Dir.mktmpdir do |tmpdir|
         with_ca_in tmpdir do |conf, ca_dir|
           inventory = File.join(ca_dir, 'infra_inventory.txt')
-          serials = File.join(ca_dir, 'infra_serials')
           infra_crl = File.join(ca_dir, 'infra_crl.pem')
 
           File.open(inventory, 'w') do |f|
@@ -63,7 +62,6 @@ RSpec.describe Puppetserver::Ca::Action::Enable do
           end
           exit_code = subject.run({ 'config'   => conf,
                                     'infracrl' => true })
-          expect(File.exist?(serials)).to be true
           expect(File.exist?(infra_crl)).to be true
         end
       end
@@ -73,7 +71,6 @@ RSpec.describe Puppetserver::Ca::Action::Enable do
       Dir.mktmpdir do |tmpdir|
         with_ca_in tmpdir do |conf, ca_dir|
           inventory = File.join(ca_dir, 'infra_inventory.txt')
-          serials = File.join(ca_dir, 'infra_serials')
           infra_crl = File.join(ca_dir, 'infra_crl.pem')
 
           File.open(inventory, 'w') do |f|
@@ -81,7 +78,6 @@ RSpec.describe Puppetserver::Ca::Action::Enable do
           end
           exit_code = subject.run({ 'config'   => conf,
                                     'infracrl' => true })
-          expect(File.exist?(serials)).to be true
           expect(File.exist?(infra_crl)).to be true
           expect(exit_code).to eq(0)
 
