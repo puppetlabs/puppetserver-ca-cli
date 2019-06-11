@@ -64,10 +64,10 @@ module Puppetserver
 
       def load_ssl_components(loader)
         @cert_bundle = loader.certs
-        @cert = loader.certs.first
         @key = loader.key
+        @cert = loader.cert
         @crl_chain = loader.crls
-        @crl = loader.crls.first
+        @crl = loader.crl
       end
 
       def errors

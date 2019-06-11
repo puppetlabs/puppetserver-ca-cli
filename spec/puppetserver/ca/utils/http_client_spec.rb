@@ -31,25 +31,25 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
     setup_action = Puppetserver::Ca::Action::Setup.new(logger)
 
-      signer = Puppetserver::Ca::Utils::SigningDigest.new
-      setup_action.generate_pki(settings, signer.digest)
+    signer = Puppetserver::Ca::Utils::SigningDigest.new
+    setup_action.generate_pki(settings, signer.digest)
 
-      hostkey = OpenSSL::PKey::RSA.new(512)
-      cakey_content = OpenSSL::PKey.read(File.read(settings[:cakey]))
-      cacert_content = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
-      hostcert_content = create_cert(hostkey, 'foobar', cakey_content, cacert_content)
-      File.write("#{tmpdir}/hostcert.pem", hostcert_content)
-      File.write("#{tmpdir}/hostkey.pem", hostkey)
+    loader = Puppetserver::Ca::X509Loader.new(settings[:cacert], settings[:cakey], settings[:cacrl])
+    cakey = loader.key
+    cacert = loader.cert
 
-      FileUtils.cp(settings[:cacert], settings[:localcacert])
-      FileUtils.cp(settings[:cacrl], settings[:hostcrl])
+    hostkey = OpenSSL::PKey::RSA.new(512)
+    hostcert = create_cert(hostkey, 'foobar', cakey, cacert)
+    File.write("#{tmpdir}/hostcert.pem", hostcert)
+    File.write("#{tmpdir}/hostkey.pem", hostkey)
 
-      client = Puppetserver::Ca::Utils::HttpClient.new(settings)
-      store = client.store
-      hostcert = OpenSSL::X509::Certificate.new(File.read(settings[:hostcert]))
-      cacert = OpenSSL::X509::Certificate.new(File.read(settings[:cacert]))
+    FileUtils.cp(settings[:cacert], settings[:localcacert])
+    FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      expect(store.verify(hostcert)).to be(true)
-      expect(store.verify(cacert)).to be(true)
+    client = Puppetserver::Ca::Utils::HttpClient.new(settings)
+    store = client.store
+
+    expect(store.verify(hostcert)).to be(true)
+    expect(store.verify(cacert)).to be(true)
   end
 end

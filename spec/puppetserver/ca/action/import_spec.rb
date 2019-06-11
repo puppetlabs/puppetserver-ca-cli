@@ -133,7 +133,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain })
-          expect(stderr.string).to include('Private key and certificate do not match')
+          expect(stderr.string).to include('Could not find certificate matching private key')
         end
       end
     end
@@ -184,7 +184,7 @@ RSpec.describe Puppetserver::Ca::Action::Import do
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
                                     'crl-chain' => chain })
-          expect(stderr.string).to include('Leaf CRL was not issued by leaf certificate')
+          expect(stderr.string).to include('Could not find CRL issued by CA certificate')
         end
       end
     end
