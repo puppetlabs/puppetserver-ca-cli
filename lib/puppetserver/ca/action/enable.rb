@@ -97,8 +97,9 @@ MSG
           return signer.errors if signer.errors.any?
 
           ca = LocalCertificateAuthority.new(signer.digest, settings)
-          infra_crl = ca.create_crl_for(ca.cert, ca.key)
           return ca.errors if ca.errors.any?
+
+          infra_crl = ca.create_crl_for(ca.cert, ca.key)
 
           # Drop the full leaf CRL from the chain
           crl_chain = ca.crl_chain.drop(1)
