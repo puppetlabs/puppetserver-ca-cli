@@ -2,6 +2,7 @@ require 'optparse'
 
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/action/generate'
+require 'puppetserver/ca/action/generate_csr'
 require 'puppetserver/ca/action/import'
 require 'puppetserver/ca/action/enable'
 require 'puppetserver/ca/action/list'
@@ -28,6 +29,7 @@ BANNER
         'import'   => Action::Import,
         'setup'    => Action::Setup,
         'enable' => Action::Enable,
+        'generate-csr' => Action::GenerateCsr,
       }
 
       MAINT_ACTIONS = {

@@ -133,4 +133,14 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       expect(san.value).to eq("DNS:bar, IP Address:123.0.0.5")
     end
   end
+
+  describe "#create_intermediate_csr" do
+    it "returns a private key and csr" do
+      key, csr = subject.create_intermediate_csr
+      expected_name = OpenSSL::X509::Name.new([["CN", settings[:ca_name]]])
+      expect(key).to be_kind_of(OpenSSL::PKey::RSA)
+      expect(csr).to be_kind_of(OpenSSL::X509::Request)
+      expect(csr.subject).to eq(expected_name)
+    end
+  end
 end

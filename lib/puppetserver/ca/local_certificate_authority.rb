@@ -235,6 +235,13 @@ module Puppetserver
         return nil
       end
 
+      def create_intermediate_csr
+        key = @host.create_private_key(@settings[:keylength])
+        csr = @host.create_csr(name: @settings[:ca_name], key: key)
+
+        return [key, csr]
+      end
+
       def sign_intermediate(ca_key, ca_cert, csr)
         cert = OpenSSL::X509::Certificate.new
 
