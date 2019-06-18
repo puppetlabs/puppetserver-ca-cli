@@ -180,16 +180,16 @@ module Utils
       leaf_cert = create_cert(leaf_key, 'bar', root_key, root_cert)
 
       File.open(bundle_file, 'w') do |f|
-        f.puts leaf_cert.to_pem
         f.puts root_cert.to_pem
+        f.puts leaf_cert.to_pem
       end
 
       root_crl = create_crl(root_cert, root_key)
       leaf_crl = create_crl(leaf_cert, leaf_key)
 
       File.open(chain_file, 'w') do |f|
-        f.puts leaf_crl.to_pem
         f.puts root_crl.to_pem
+        f.puts leaf_crl.to_pem
       end
 
 

@@ -5,7 +5,7 @@ module Puppetserver
     # Load, validate, and store x509 objects needed by the Puppet Server CA.
     class X509Loader
 
-      attr_reader :errors, :certs, :key, :crls
+      attr_reader :errors, :certs, :cert, :key, :crls, :crl
 
       def initialize(bundle_path, key_path, chain_path)
         @errors = []
@@ -13,23 +13,53 @@ module Puppetserver
         @certs = load_certs(bundle_path)
         @key = load_key(key_path)
         @crls = load_crls(chain_path)
+        @cert = find_signing_cert
+        @crl = find_leaf_crl
 
         validate(@certs, @key, @crls)
+      end
+
+      def find_signing_cert
+        return if @key.nil? || @certs.empty?
+
+        signing_cert = @certs.find do |cert|
+          cert.check_private_key(@key)
+        end
+
+        if signing_cert.nil?
+          @errors << "Could not find certificate matching private key"
+        end
+
+        signing_cert
+      end
+
+      def find_leaf_crl
+        return if @crls.empty? || @cert.nil?
+
+        leaf_crl = @crls.find do |crl|
+          crl.issuer == @cert.subject
+        end
+
+        if leaf_crl.nil?
+          @errors << 'Could not find CRL issued by CA certificate'
+        end
+
+        leaf_crl
       end
 
       # Only do as much validation as is possible, assume whoever tried to
       # load the objects wrote errors about any invalid ones, but that bundle
       # and chain may be empty arrays and pkey may be nil.
       def validate(bundle, pkey, chain)
-        if !chain.empty? && !bundle.empty?
-          validate_crl_and_cert(chain.first, bundle.first)
+        if !@crl.nil? && !@cert.nil?
+          validate_crl_and_cert(@crl, @cert)
         end
 
-        if pkey && !bundle.empty?
-          validate_cert_and_key(pkey, bundle.first)
+        if pkey && !@cert.nil?
+          validate_cert_and_key(pkey, @cert)
         end
 
-        unless bundle.empty?
+        unless bundle.empty? || @cert.nil?
           validate_full_chain(bundle, chain)
         end
       end
@@ -112,7 +142,7 @@ module Puppetserver
       #   - If provided, no CAs within the chain of trust have been revoked
       # However this does allow for:
       #   - Additional, ignored, certs and CRLs in the bundle/chain
-      #   - certs and CRLs in any order (as long as the leaf cert is first)
+      #   - certs and CRLs in any order
       def validate_full_chain(certs, crls)
         store = OpenSSL::X509::Store.new
         certs.each {|cert| store.add_cert(cert) }
@@ -121,7 +151,7 @@ module Puppetserver
           crls.each {|crl| store.add_crl(crl) }
         end
 
-        unless store.verify(certs.first)
+        unless store.verify(@cert)
           @errors << 'Leaf certificate could not be validated'
           @errors << "Validating cert store returned: #{store.error} - #{store.error_string}"
         end
