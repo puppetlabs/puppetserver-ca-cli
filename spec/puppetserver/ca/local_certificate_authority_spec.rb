@@ -142,5 +142,20 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       expect(csr).to be_kind_of(OpenSSL::X509::Request)
       expect(csr.subject).to eq(expected_name)
     end
+
+    it "returns a csr with the correct extensions" do
+      key, csr = subject.create_intermediate_csr
+
+      expected_reqs = [
+        ["basicConstraints", "CA:TRUE", true],
+        ["keyUsage", "keyCertSign, cRLSign", true],
+        ["subjectKeyIdentifier", "hash", false],
+        ["nsComment", "Puppet Server Internal Certificate", false],
+        ["authorityKeyIdentifier", "keyid:always", false]
+      ].sort
+      actual_reqs = Utils::SSL::CA.get_csr_extension_reqs(csr).sort
+
+      expect(actual_reqs).to eq(expected_reqs)
+    end
   end
 end

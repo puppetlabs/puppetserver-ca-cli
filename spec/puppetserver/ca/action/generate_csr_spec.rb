@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/ssl'
+require 'utils/ssl/ca'
 
 require 'tmpdir'
 
@@ -25,24 +26,22 @@ RSpec.describe Puppetserver::Ca::Action::GenerateCsr do
       end
     end
 
-    describe 'flags' do
-      it 'takes a single CA name' do
-        Dir.mktmpdir do |tmpdir|
-          result, maybe_code = subject.parse(['--ca-name', 'foo.example.com',
-                                              '--output-dir', tmpdir])
-          expect(maybe_code).to eq(nil)
-          expect(result['ca-name']).to eq('foo.example.com')
-        end
+    it 'takes a single CA name' do
+      Dir.mktmpdir do |tmpdir|
+        result, maybe_code = subject.parse(['--ca-name', 'foo.example.com',
+                                            '--output-dir', tmpdir])
+        expect(maybe_code).to eq(nil)
+        expect(result['ca-name']).to eq('foo.example.com')
       end
+    end
 
-      it 'takes a custom puppet.conf location' do
-        Dir.mktmpdir do |tmpdir|
-          result, maybe_code = subject.parse(['--ca-name', 'foo',
-                                              '--config', '/dev/tcp/example.com',
-                                              '--output-dir', tmpdir])
-          expect(maybe_code).to be(nil)
-          expect(result['config']).to eq('/dev/tcp/example.com')
-        end
+    it 'takes a custom puppet.conf location' do
+      Dir.mktmpdir do |tmpdir|
+        result, maybe_code = subject.parse(['--ca-name', 'foo',
+                                            '--config', '/dev/tcp/example.com',
+                                            '--output-dir', tmpdir])
+        expect(maybe_code).to be(nil)
+        expect(result['config']).to eq('/dev/tcp/example.com')
       end
     end
   end
@@ -92,6 +91,49 @@ RSpec.describe Puppetserver::Ca::Action::GenerateCsr do
             expect(csr).to be_kind_of(OpenSSL::X509::Request)
             expect(key).to be_kind_of(OpenSSL::PKey::RSA)
             expect(csr.subject).to eq(expected_name)
+          end
+        end
+      end
+    end
+    it 'creates a CSR that can be signed' do
+      Dir.mktmpdir do |output_tmpdir|
+        Dir.mktmpdir do |puppet_tmpdir|
+          with_temp_dirs puppet_tmpdir do |config|
+            subject.run({'ca-name' => 'foo.example.com',
+                         'config' => config,
+                         'output-dir' => output_tmpdir})
+            expect(File).to exist(File.join(output_tmpdir, 'ca.csr'))
+            csr = OpenSSL::X509::Request.new(File.read(File.join(output_tmpdir, 'ca.csr')))
+            expect(csr).not_to be_nil
+            ca = Utils::SSL::CA.new()
+            cert = ca.sign_csr(csr)
+            expect(cert).not_to be_nil
+            expect(cert).to be_kind_of(OpenSSL::X509::Certificate)
+          end
+        end
+      end
+    end
+    it 'creates a CSR with the expected extensions' do
+      Dir.mktmpdir do |output_tmpdir|
+        Dir.mktmpdir do |puppet_tmpdir|
+          with_temp_dirs puppet_tmpdir do |config|
+            subject.run({'ca-name' => 'foo.example.com',
+                         'config' => config,
+                         'output-dir' => output_tmpdir})
+            expect(File).to exist(File.join(output_tmpdir, 'ca.csr'))
+            csr = OpenSSL::X509::Request.new(File.read(File.join(output_tmpdir, 'ca.csr')))
+            expect(csr).not_to be_nil
+            ca = Utils::SSL::CA.new()
+            cert = ca.sign_csr(csr)
+            expect(cert).not_to be_nil
+            expect(cert).to be_kind_of(OpenSSL::X509::Certificate)
+
+            extensions = cert.extensions.map {|ext| [ext.oid, ext.value, ext.critical?]}.sort
+            expect(extensions[0]).to include("authorityKeyIdentifier", false)
+            expect(extensions[1]).to eq(["basicConstraints", "CA:TRUE", true])
+            expect(extensions[2]).to eq(["keyUsage", "Certificate Sign, CRL Sign", true])
+            expect(extensions[3]).to eq(["nsComment", "Puppet Server Internal Certificate", false])
+            expect(extensions[4]).to include("subjectKeyIdentifier", false)
           end
         end
       end

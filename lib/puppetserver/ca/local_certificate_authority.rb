@@ -236,8 +236,13 @@ module Puppetserver
       end
 
       def create_intermediate_csr
+        extensions = CA_EXTENSIONS.map do |ext|
+          OpenSSL::X509::Extension.new(*ext)
+        end
         key = @host.create_private_key(@settings[:keylength])
-        csr = @host.create_csr(name: @settings[:ca_name], key: key)
+        csr = @host.create_csr(name: @settings[:ca_name],
+                               key: key,
+                               cli_extensions: extensions)
 
         return [key, csr]
       end
