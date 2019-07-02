@@ -106,7 +106,7 @@ RSpec.describe Puppetserver::Ca::Action::GenerateCsr do
             csr = OpenSSL::X509::Request.new(File.read(File.join(output_tmpdir, 'ca.csr')))
             expect(csr).not_to be_nil
             ca = Utils::SSL::CA.new()
-            cert = ca.sign_csr(csr)
+            cert = ca.sign(csr)
             expect(cert).not_to be_nil
             expect(cert).to be_kind_of(OpenSSL::X509::Certificate)
           end
@@ -124,7 +124,7 @@ RSpec.describe Puppetserver::Ca::Action::GenerateCsr do
             csr = OpenSSL::X509::Request.new(File.read(File.join(output_tmpdir, 'ca.csr')))
             expect(csr).not_to be_nil
             ca = Utils::SSL::CA.new()
-            cert = ca.sign_csr(csr)
+            cert = ca.sign(csr)
             expect(cert).not_to be_nil
             expect(cert).to be_kind_of(OpenSSL::X509::Certificate)
 

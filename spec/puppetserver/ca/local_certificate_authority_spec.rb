@@ -153,7 +153,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
         ["nsComment", "Puppet Server Internal Certificate", false],
         ["authorityKeyIdentifier", "keyid:always", false]
       ].sort
-      actual_reqs = Utils::SSL::CA.get_csr_extension_reqs(csr).sort
+      actual_reqs = get_csr_extension_reqs(csr).sort
 
       expect(actual_reqs).to eq(expected_reqs)
     end
