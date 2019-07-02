@@ -20,9 +20,9 @@ Usage:
   puppetserver ca generate-csr --output-dir PATH [--config PATH] [--ca-name NAME]
 
 Description:
-  Setup a root and intermediate signing CA for Puppet Server
-  and store generated CA keys, certs, crls, and associated
-  master related files on disk.
+  Generate a CSR that can be signed as part of an external PKI infrastructure
+  and then can be imported into Puppet Server to use as an intermediate
+  signing CA.
 
 Options:
         BANNER
@@ -41,7 +41,7 @@ Options:
 
           # Load, resolve, and validate puppet config settings
           settings_overrides = {}
-          settings_overrides[:ca_name] = input['ca-name'] unless input['ca-name'].empty?
+          settings_overrides[:ca_name] = input['ca-name'] if input.key?('ca-name')
 
           puppet = Config::Puppet.new(config_path)
           puppet.load(settings_overrides)
@@ -66,7 +66,7 @@ Options:
 
         def write_generated_files(key, csr, dir)
           FileSystem.write_file(File.join(dir, 'ca.key'), key.to_s, 0640)
-          FileSystem.write_file(File.join(dir, 'ca.csr'), csr.to_s, 0640)
+          FileSystem.write_file(File.join(dir, 'ca.csr'), csr.to_s, 0644)
         end
 
         def check_for_existing_ssl_files(dir)
@@ -98,7 +98,6 @@ Options:
         end
 
         def self.parser(parsed = {})
-          parsed['ca-name'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
             opts.on('--help', 'Display this command-specific help output') do |help|
