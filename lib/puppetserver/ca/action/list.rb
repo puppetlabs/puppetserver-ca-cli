@@ -20,6 +20,7 @@ Usage:
   puppetserver ca list [--help]
   puppetserver ca list [--config]
   puppetserver ca list [--all]
+  puppetserver ca list --certname NAME[,NAME]
 
 Description:
   List outstanding certificate requests. If --all is specified, signed and
@@ -46,11 +47,21 @@ Options:
             opts.on('--all', 'List all certificates') do |a|
               parsed['all'] = true
             end
+            opts.on('--certname NAME[,NAME]', Array, 'List the specified cert(s)') do |cert|
+              parsed['certname'] = cert
+            end
           end
         end
 
         def run(input)
           config = input['config']
+          certnames = input['certname'] || []
+          all = input['all']
+
+          if all && certnames.any?
+            Errors.handle_with_usage(@logger, ['Cannot combine use of --all and --certname'])
+            return 1
+          end
 
           if config
             errors = FileSystem.validate_file_paths(config)
@@ -60,16 +71,24 @@ Options:
           puppet = Config::Puppet.parse(config)
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
-          all_certs = get_all_certs(puppet.settings)
-          return 1 if all_certs.nil?
+          filter_names = certnames.any? \
+            ? lambda { |x| certnames.include?(x['name']) }
+            : lambda { |x| true }
 
+          all_certs = get_all_certs(puppet.settings).select { |cert| filter_names.call(cert) }
           requested, signed, revoked = separate_certs(all_certs)
-          input['all'] ? output_certs_by_state(requested, signed, revoked) : output_certs_by_state(requested)
+          missing = certnames - all_certs.map { |cert| cert['name'] }
 
-          return 0
+          (all || certnames.any?) \
+            ? output_certs_by_state(requested, signed, revoked, missing)
+            : output_certs_by_state(requested)
+
+          return missing.any? \
+            ? 1
+            : 0
         end
 
-        def output_certs_by_state(requested, signed = [], revoked = [])
+        def output_certs_by_state(requested, signed = [], revoked = [], missing = [])
           if revoked.empty? && signed.empty? && requested.empty?
             @logger.inform "No certificates to list"
             return
@@ -88,6 +107,13 @@ Options:
           unless revoked.empty?
             @logger.inform "Revoked Certificates:"
             output_certs(revoked)
+          end
+
+          unless missing.empty?
+            @logger.inform "Missing Certificates:"
+            missing.each do |name|
+              @logger.inform "    #{name}"
+            end
           end
         end
 
@@ -118,7 +144,7 @@ Options:
 
         def get_all_certs(settings)
           result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses
-          JSON.parse(result.body) if result
+          result ? JSON.parse(result.body) : []
         end
 
         def parse(args)

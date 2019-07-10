@@ -39,5 +39,22 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
       expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
       expect(out.string).to match(/Revoked Certificates:.*foobar.*\(SHA256\).*onetwo.*alt names:.*"DNS:foobar", "DNS:barfoo".*/m)
     end
+
+    it 'logs requested certs with --certs flag' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo','baz']})
+      expect(exit_code).to eq(0)
+      expect(out.string).to match(/Requested Certificates:.*baz.*\(SHA256\).*two.*alt names:.*"DNS:baz", "DNS:bar".*/m)
+      expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
+      expect(out.string).to_not match(/Revoked Certificates:.*foobar.*\(SHA256\).*onetwo.*alt names:.*"DNS:foobar", "DNS:barfoo".*/m)
+    end
+
+    it 'errors when requested certs are missing with --certs flag' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo','fake']})
+      expect(exit_code).to eq(1)
+      expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
+      expect(out.string).to match(/Missing Certificates:.*fake.*/m)
+    end
   end
 end
