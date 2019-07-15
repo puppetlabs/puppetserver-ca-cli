@@ -89,7 +89,7 @@ Options:
         end
 
         def output_certs_by_state(requested, signed = [], revoked = [], missing = [])
-          if revoked.empty? && signed.empty? && requested.empty?
+          if revoked.empty? && signed.empty? && requested.empty? && missing.empty?
             @logger.inform "No certificates to list"
             return
           end

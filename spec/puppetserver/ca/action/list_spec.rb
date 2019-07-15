@@ -49,7 +49,14 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
       expect(out.string).to_not match(/Revoked Certificates:.*foobar.*\(SHA256\).*onetwo.*alt names:.*"DNS:foobar", "DNS:barfoo".*/m)
     end
 
-    it 'errors when requested certs are missing with --certs flag' do
+    it 'logs a non-existent cert as missing when requested with --certs flag' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['fake']})
+      expect(exit_code).to eq(1)
+      expect(out.string).to match(/Missing Certificates:.*fake.*/m)
+    end
+
+    it 'errors when any requested certs are missing with --certs flag' do
       allow(action).to receive(:get_all_certs).and_return(result)
       exit_code = action.run({'certname' => ['foo','fake']})
       expect(exit_code).to eq(1)
