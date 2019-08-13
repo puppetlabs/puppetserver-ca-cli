@@ -71,7 +71,7 @@ BANNER
 
         def import(loader, settings, signing_digest)
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(signing_digest, settings)
-          ca.load_ssl_components(loader)
+          ca.initialize_ssl_components(loader)
           master_key, master_cert = ca.create_master_cert
           return ca.errors if ca.errors.any?
 

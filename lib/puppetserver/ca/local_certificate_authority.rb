@@ -70,6 +70,35 @@ module Puppetserver
         @crl = loader.crl
       end
 
+      # Initialize SSL state
+      #
+      # This method is similar to {#load_ssl_components}, but has extra
+      # logic for initializing components that may not be present when
+      # the CA is set up for the first time. For example, SSL components
+      # provided by an external CA will often not include a pre-generated
+      # leaf CRL.
+      #
+      # @note Check {#errors} after calling this method for issues that
+      #   may have occurred during initialization.
+      #
+      # @param loader [Puppetserver::Ca::X509Loader]
+      # @return [void]
+      def initialize_ssl_components(loader)
+        @cert_bundle = loader.certs
+        @key = loader.key
+        @cert = loader.cert
+
+        if loader.crl.nil?
+          loader.crl = create_crl_for(@cert, @key)
+
+          loader.validate_full_chain(@cert_bundle, loader.crls)
+          @errors += loader.errors
+        end
+
+        @crl_chain = loader.crls
+        @crl = loader.crl
+      end
+
       def errors
         @errors += @host.errors
       end

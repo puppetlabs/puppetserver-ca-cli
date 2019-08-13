@@ -167,24 +167,51 @@ RSpec.describe Puppetserver::Ca::Action::Import do
       end
     end
 
-    it 'validates the leaf crl and leaf cert match' do
+    it 'generates a leaf crl if none is provided' do
       Dir.mktmpdir do |tmpdir|
         with_files_in tmpdir do |bundle, key, chain, conf|
-          crls = File.read(chain).scan(/----BEGIN X509 CRL----.*?----END X509 CRL----/m)
+          loader = Puppetserver::Ca::X509Loader.new(bundle, key, chain)
 
-          baz_key = OpenSSL::PKey::RSA.new(512)
-          baz_cert = create_cert(baz_key, 'baz')
-          baz_crl = create_crl(baz_cert, baz_key)
-
+          crls_without_leaf = loader.crls.reject {|c| c.issuer == loader.cert.subject }
           File.open(chain, 'w') do |f|
-            f.puts baz_crl.to_pem
-            f.puts crls[1..-1]
+            crls_without_leaf.each {|c| f.puts(c.to_pem) }
           end
 
           exit_code = subject.run({ 'cert-bundle' => bundle,
                                     'private-key'=> key,
-                                    'crl-chain' => chain })
-          expect(stderr.string).to include('Could not find CRL issued by CA certificate')
+                                    'crl-chain' => chain,
+                                    'config' => conf,
+                                    'certname' => '',
+                                    'subject-alt-names' => '' })
+
+          expect(exit_code).to be 0
+
+          new_crls = File.read(File.join(tmpdir, 'ca', 'ca_crl.pem')).scan(/-----BEGIN X509 CRL-----.*?-----END X509 CRL-----/m)
+          new_crls.map! {|s| OpenSSL::X509::CRL.new(s) }
+
+          expect(new_crls.any? {|c| c.issuer == loader.cert.subject }).to be true
+        end
+      end
+    end
+
+    it 'validates the root crl is present after generating a leaf crl' do
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          baz_key = OpenSSL::PKey::RSA.new(512)
+          baz_cert = create_cert(baz_key, 'baz')
+          baz_crl = create_crl(baz_cert, baz_key)
+
+          File.open(chain, 'w') { |f| f.puts(baz_crl.to_pem) }
+
+          exit_code = subject.run({ 'cert-bundle' => bundle,
+                                    'private-key'=> key,
+                                    'crl-chain' => chain,
+                                    'config' => conf,
+                                    'certname' => '',
+                                    'subject-alt-names' => '' })
+
+          expect(exit_code).to be 1
+          expect(stderr.string).to include('unable to get certificate CRL')
         end
       end
     end
