@@ -93,7 +93,7 @@ module Puppetserver
 
       def next_serial(serial_file)
         if File.exist?(serial_file)
-          File.read(serial_file).to_i
+          File.read(serial_file).to_i(16)
         else
           1
         end
@@ -259,7 +259,7 @@ module Puppetserver
       end
 
       def update_serial_file(serial)
-        Puppetserver::Ca::Utils::FileSystem.write_file(@settings[:serial], serial, 0644)
+        Puppetserver::Ca::Utils::FileSystem.write_file(@settings[:serial], serial.to_s(16), 0644)
       end
     end
   end

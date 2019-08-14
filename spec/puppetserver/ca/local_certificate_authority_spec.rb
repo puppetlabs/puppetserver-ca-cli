@@ -133,4 +133,17 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       expect(san.value).to eq("DNS:bar, IP Address:123.0.0.5")
     end
   end
+  context "hex serial file" do
+    before do
+      File.write(settings[:serial], '01C')
+      allow(File).to receive(:exist?).and_return(true)
+    end
+    it "converts the hex serial to integer on read" do
+      expect(subject.next_serial(settings[:serial])).to eq(28)
+    end
+    it "converts the hex serial to integer on write" do
+      subject.update_serial_file(28)
+      expect(File.read(settings[:serial])).to match(/1c/i)
+    end
+  end
 end
