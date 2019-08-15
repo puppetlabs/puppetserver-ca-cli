@@ -33,15 +33,15 @@ module Puppetserver
         signing_cert
       end
 
+      # Find a CRL in the chain issued by the signing cert
+      #
+      # @return [OpenSSL::X509::CRL] If a CRL is found.
+      # @return [nil] If no CRL is found.
       def find_leaf_crl
         return if @crls.empty? || @cert.nil?
 
         leaf_crl = @crls.find do |crl|
           crl.issuer == @cert.subject
-        end
-
-        if leaf_crl.nil?
-          @errors << 'Could not find CRL issued by CA certificate'
         end
 
         leaf_crl
@@ -59,7 +59,7 @@ module Puppetserver
           validate_cert_and_key(pkey, @cert)
         end
 
-        unless bundle.empty? || @cert.nil?
+        unless bundle.empty? || @cert.nil? || @crl.nil?
           validate_full_chain(bundle, chain)
         end
       end
@@ -122,6 +122,15 @@ module Puppetserver
         end
 
         return crls
+      end
+
+      # Replace the CRL for the signing cert of this loader
+      #
+      # @param new_crl [OpenSSL::X509::CRL]
+      # @return [void]
+      def crl=(new_crl)
+        @crl = new_crl
+        @crls = [new_crl] + @crls.reject {|c| c.issuer == new_crl.issuer }
       end
 
       def validate_cert_and_key(key, cert)
