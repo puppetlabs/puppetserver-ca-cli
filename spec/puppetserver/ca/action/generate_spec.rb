@@ -37,6 +37,13 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       expect(maybe_code).to be(nil)
       expect(result['config']).to eq('/dev/tcp/example.com')
     end
+
+    it 'takes an optional ttl value' do
+      result, maybe_code = subject.parse(['--certname', 'foo.example.com',
+                                          '--ttl', '1y'])
+      expect(maybe_code).to be(nil)
+      expect(result['ttl']).to eq('1y')
+    end
   end
 
   describe 'validation' do
@@ -69,6 +76,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
   describe 'downloading' do
     let(:success) { Utils::Http::Result.new('204', '') }
     let(:success_with_content) { Utils::Http::Result.new('200', 'some cert') }
+    let(:not_found) { Utils::Http::Result.new('404', 'Not Found') }
     let(:connection) { double }
 
     before do
@@ -97,8 +105,54 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
     end
 
+    it 'converts the ttl value of 1y to seconds in the request to sign the certificate' do
+      allow(connection).to receive(:put).and_return(success)
+      expect(connection).to receive(:put).with(/31536000/, any_args).and_return(success).once
+      expect(connection).to receive(:get).and_return(not_found).ordered
+      expect(connection).to receive(:get).and_return(success_with_content).ordered
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          code = subject.run({'certnames' => ['foo'],
+            'config' => config,
+            'subject-alt-names' => '',
+            'ttl' => '1y'})
+          expect(code).to eq(0)
+        end
+      end
+    end
+
+    it 'converts the ttl value without units as seconds in the request to sign the certificate' do
+      allow(connection).to receive(:put).and_return(success)
+      expect(connection).to receive(:put).with(/7200/, any_args).and_return(success).once
+      expect(connection).to receive(:get).and_return(not_found).ordered
+      expect(connection).to receive(:get).and_return(success_with_content).ordered
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          code = subject.run({'certnames' => ['foo'],
+            'config' => config,
+            'subject-alt-names' => '',
+            'ttl' => '7200'})
+          expect(code).to eq(0)
+        end
+      end
+    end
+
+    it 'errors if there is an invalid ttl' do
+      allow(connection).to receive(:put).and_return(success).once
+      allow(connection).to receive(:get).and_return(not_found)
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          code = subject.run({'certnames' => ['foo'],
+            'config' => config,
+            'subject-alt-names' => '',
+            'ttl' => '1yy'})
+          expect(stderr.string).to match(/Error.* invalid ttl value/m)
+          expect(code).to eq(1)
+        end
+      end
+    end
+
     it 'logs an error if any could not be downloaded' do
-      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
       # Look for each cert twice, before and after signing
       allow(connection).to receive(:get).and_return(not_found, not_found,
@@ -117,7 +171,6 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
 
     it 'prints an error if an unknown error occurs' do
       error = Utils::Http::Result.new('500', 'Internal Server Error')
-      not_found = Utils::Http::Result.new('404', 'Not Found')
       allow(connection).to receive(:put).and_return(success)
       # Look for each cert twice, before and after signing
       allow(connection).to receive(:get).and_return(error, error,

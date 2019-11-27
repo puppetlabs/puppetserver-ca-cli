@@ -32,6 +32,9 @@ Options:
         def self.parser(parsed = {})
           OptionParser.new do |opts|
             opts.banner = BANNER
+            opts.on('--ttl TTL', 'The time-to-live for each cert signed') do |ttl|
+              parsed['ttl'] = ttl
+            end
             opts.on('--certname NAME[,NAME]', Array, 'the name(s) of the cert(s) to be signed') do |cert|
               parsed['certname'] = cert
             end
@@ -72,7 +75,7 @@ Options:
             requested_certnames = input['certname']
           end
 
-          success = ca.sign_certs(requested_certnames)
+          success = ca.sign_certs(requested_certnames, input['ttl'])
           return success ? 0 : 1
         end
 

@@ -50,6 +50,12 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
       expect(results['certname']).to eq(['foo','bar','baz'])
       expect(exit_code).to eq(nil)
     end
+
+    it 'works with a single cert and ttl' do
+      results, exit_code = action.parse(['--certname', 'foo', '--ttl', 'ttl-value'])
+      expect(results['ttl']).to eq('ttl-value')
+      expect(exit_code).to eq(nil)
+    end
   end
 
   describe 'error handling' do
@@ -77,6 +83,20 @@ RSpec.describe 'Puppetserver::Ca::SignAction' do
       exit_code = action.run({'certname' => ['foo']})
       expect(exit_code).to eq(0)
       expect(out.string).to include('signed certificate request for foo')
+    end
+
+    it 'logs and exits with zero with successful PUT with a custom ttl' do
+      allow(connection).to receive(:put).with(/3600/, any_args).and_return(success)
+      exit_code = action.run({'certname' => ['foo'], 'ttl' => '1h'})
+      expect(exit_code).to eq(0)
+      expect(out.string).to include('signed certificate request for foo')
+    end
+
+    it 'fails when an invalid ttl is specified' do
+      exit_code = action.run({'certname' => ['foo'], 'ttl' => '1x'})
+      expect(exit_code).to eq(1)
+      expect(err.string).to match(/Error.* invalid ttl value/m)
+      expect(connection).to_not receive(:put)
     end
 
     it 'logs and exits with zero with successful GET and PUT' do

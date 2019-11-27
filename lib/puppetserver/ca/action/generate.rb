@@ -75,6 +75,9 @@ BANNER
                     'Causes the cert to be generated offline.') do |ca_client|
               parsed['ca-client'] = true
             end
+            opts.on('--ttl TTL', 'The time-to-live for each cert generated and signed') do |ttl|
+              parsed['ttl'] = ttl
+            end
           end
         end
 
@@ -140,7 +143,7 @@ BANNER
             return 1 if check_server_online(puppet.settings)
             all_passed = generate_authorized_certs(certnames, alt_names, puppet.settings, signer.digest)
           else
-            all_passed = generate_certs(certnames, alt_names, puppet.settings, signer.digest)
+            all_passed = generate_certs(certnames, alt_names, puppet.settings, signer.digest, input['ttl'])
           end
           return all_passed ? 0 : 1
         end
@@ -209,8 +212,10 @@ BANNER
         # Generate csrs and keys, then submit them to CA, request for the CA to sign
         # them, download the signed certificates from the CA, and finally save
         # the signed certs and associated keys. Returns true if all certs were
-        # successfully created and saved.
-        def generate_certs(certnames, alt_names, settings, digest)
+        # successfully created and saved. Takes a ttl to use if certificates
+        # are signed by this CLI, not autosigned by the CA. if ttl is nil, uses
+        # the CA's settings.
+        def generate_certs(certnames, alt_names, settings, digest, ttl)
           # Make sure we have all the directories where we will be writing files
           FileSystem.ensure_dirs([settings[:ssldir],
                                   settings[:certdir],
@@ -228,15 +233,24 @@ BANNER
             next false unless submit_csr(certname, ca, settings, digest, current_alt_names)
 
             # Check if the CA autosigned the cert
-            if download_cert(ca, certname, settings)
-              @logger.inform "Certificate for #{certname} was autosigned."
-              true
-            else
-              next false unless ca.sign_certs([certname])
-              download_cert(ca, certname, settings)
-            end
+            next acquire_signed_cert(ca, certname, settings, ttl)
           end
           passed.all?
+        end
+
+        # Try to download a signed certificate; sign the cert with the given ttl if it needs
+        # signing before download.
+        def acquire_signed_cert(ca, certname, settings, ttl)
+          if download_cert(ca, certname, settings)
+            @logger.inform "Certificate for #{certname} was autosigned."
+            if ttl
+              @logger.warn "ttl was specified, but the CA autosigned the CSR. Unable to specify #{ttl} for #{certname}"
+            end
+            true
+          else
+            false unless ca.sign_certs([certname], ttl)
+            download_cert(ca, certname, settings)
+          end
         end
 
         def submit_csr(certname, ca, settings, digest, alt_names)
