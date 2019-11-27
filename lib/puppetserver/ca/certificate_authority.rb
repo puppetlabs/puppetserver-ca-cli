@@ -8,6 +8,16 @@ module Puppetserver
 
       include Puppetserver::Ca::Utils
 
+      # Taken from puppet/lib/settings/duration_settings.rb
+      UNITMAP = {
+        # 365 days isn't technically a year, but is sufficient for most purposes
+        "y" => 365 * 24 * 60 * 60,
+        "d" => 24 * 60 * 60,
+        "h" => 60 * 60,
+        "m" => 60,
+        "s" => 1
+      }
+
       REVOKE_BODY = JSON.dump({ desired_state: 'revoked' })
       SIGN_BODY =   JSON.dump({ desired_state: 'signed' })
 
@@ -35,11 +45,40 @@ module Puppetserver
         HttpClient::URL.new('https', @ca_server, @ca_port, 'puppet-ca', 'v1', resource_type, certname)
       end
 
-      def sign_certs(certnames)
-        results = put(certnames,
-                      resource_type: 'certificate_status',
-                      body: SIGN_BODY,
-                      type: :sign)
+      def process_ttl_input(ttl)
+        match = /^(\d+)(s|m|h|d|y)?$/.match(ttl)
+        if match
+          if match[2]
+            match[1].to_i * UNITMAP[match[2]].to_i
+          else
+            ttl
+          end
+        else
+          @logger.err "Error:"
+          @logger.err " '#{ttl}' is an invalid ttl value"
+          @logger.err "Value should match regex \"^(\d+)(s|m|h|d|y)?$\""
+          nil
+        end
+      end
+
+      def sign_certs(certnames, ttl=nil)
+        results = []
+        if ttl
+          lifetime = process_ttl_input(ttl)
+          return false if lifetime.nil?
+          body = JSON.dump({ desired_state: 'signed',
+                             cert_ttl: lifetime})
+          results = put(certnames,
+            resource_type: 'certificate_status',
+            body: body,
+            type: :sign)
+        else
+          results = put(certnames,
+                        resource_type: 'certificate_status',
+                        body: SIGN_BODY,
+                        type: :sign)
+        end
+
 
         results.all? { |result| result == :success }
       end
