@@ -125,12 +125,15 @@ Options:
           end
 
           certs.each do |cert|
-            # In newer versions of the CA api we return subjcet_alt_names
+            # In newer versions of the CA api we return subject_alt_names
             # in addition to dns_alt_names, this field includes DNS alt
             # names but also IP alt names.
             alt_names = cert["subject_alt_names"] || cert["dns_alt_names"]
+            auth_exts = cert["authorization_extensions"]
+            auth_exts_string = auth_exts.map { |ext, value| "#{ext}: #{value}" }.join(', ') unless auth_exts.nil? || auth_exts.empty?
             @logger.inform "    #{cert["name"]}".ljust(padded + 6) + " (SHA256) " + " #{cert["fingerprints"]["SHA256"]}" +
-                               (alt_names.empty? ? "" : "\talt names: #{alt_names}")
+                           (alt_names.empty? ? "" : "\talt names: #{alt_names}") +
+                           (auth_exts_string ? "\tauthorization extensions: [#{auth_exts_string}]" : '')
             end
         end
 
