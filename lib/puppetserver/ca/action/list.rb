@@ -118,23 +118,41 @@ Options:
         end
 
         def output_certs(certs)
-          padded = 0
-          certs.each do |cert|
-            cert_size = cert["name"].size
-            padded = cert_size if cert_size > padded
-          end
+          cert_column_width = certs.map { |c| c['name'].size }.max
 
           certs.each do |cert|
-            # In newer versions of the CA api we return subject_alt_names
-            # in addition to dns_alt_names, this field includes DNS alt
-            # names but also IP alt names.
-            alt_names = cert["subject_alt_names"] || cert["dns_alt_names"]
-            auth_exts = cert["authorization_extensions"]
-            auth_exts_string = auth_exts.map { |ext, value| "#{ext}: #{value}" }.join(', ') unless auth_exts.nil? || auth_exts.empty?
-            @logger.inform "    #{cert["name"]}".ljust(padded + 6) + " (SHA256) " + " #{cert["fingerprints"]["SHA256"]}" +
-                           (alt_names.empty? ? "" : "\talt names: #{alt_names}") +
-                           (auth_exts_string ? "\tauthorization extensions: [#{auth_exts_string}]" : '')
-            end
+            @logger.inform(format_cert(cert, cert_column_width))
+          end
+        end
+
+        def format_cert(cert, cert_column_width)
+          [
+            format_cert_and_sha(cert, cert_column_width),
+            format_alt_names(cert),
+            format_authorization_extensions(cert)
+          ].compact.join("\t")
+        end
+
+        def format_cert_and_sha(cert, cert_column_width)
+          justified_certname = cert['name'].ljust(cert_column_width + 6)
+          sha = cert['fingerprints']['SHA256']
+          "    #{justified_certname} (SHA256)  #{sha}"
+        end
+
+        def format_alt_names(cert)
+          # In newer versions of the CA api we return subject_alt_names
+          # in addition to dns_alt_names, this field includes DNS alt
+          # names but also IP alt names.
+          alt_names = cert['subject_alt_names'] || cert['dns_alt_names']
+          "alt names: #{alt_names}" unless alt_names.empty?
+        end
+
+        def format_authorization_extensions(cert)
+          auth_exts = cert['authorization_extensions']
+          return nil if auth_exts.nil? || auth_exts.empty?
+
+          values = auth_exts.map { |ext, value| "#{ext}: #{value}" }.join(', ')
+          "authorization extensions: [#{values}]"
         end
 
         def separate_certs(all_certs)
