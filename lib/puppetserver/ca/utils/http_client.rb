@@ -159,6 +159,36 @@ module Puppetserver
 
           store
         end
+
+        # Queries the simple status endpoint for the status of the CA service.
+        # Returns true if it receives back a response of "running", and false if
+        # no connection can be made, or a different response is received.
+        def self.check_server_online(settings, logger)
+          status_url = URL.new('https', settings[:ca_server], settings[:ca_port], 'status', 'v1', 'simple', 'ca')
+          begin
+            # Generating certs offline is necessary if the master cert has been destroyed
+            # or compromised. Since querying the status endpoint does not require a client cert, and
+            # we commonly won't have one, don't require one for creating the connection.
+            # Additionally, we want to ensure the server is stopped before migrating the CA dir to
+            # avoid issues with writing to the CA dir and moving it.
+            self.new(settings, with_client_cert: false).with_connection(status_url) do |conn|
+              result = conn.get
+              if result.body == "running"
+                logger.err "CA service is running. Please stop it before attempting to run this command."
+                true
+              else
+                false
+              end
+            true
+          rescue Puppetserver::Ca::ConnectionFailed => e
+            if e.wrapped.is_a? Errno::ECONNREFUSED
+              return false
+            else
+              raise e
+            end
+          end
+        end
+
       end
     end
   end

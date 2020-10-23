@@ -12,6 +12,7 @@ require 'puppetserver/ca/utils/http_client'
 RSpec.describe Puppetserver::Ca::Action::Generate do
   include Utils::SSL
 
+  let(:httpclient) { Puppetserver::Ca::Utils::HttpClient }
   let(:stdout) { StringIO.new }
   let(:stderr) { StringIO.new }
   let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
@@ -378,7 +379,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
             'uncaught exception'))
 
       settings = {ca_server: 'foo.com', ca_port: 8080}
-      expect(subject.check_server_online(settings)).to be false
+      expect(httpclient.check_server_online(settings, logger)).to be false
     end
 
     it 'dies if there are other issues with the connection' do
@@ -390,7 +391,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
             'uncaught exception'))
 
       settings = {ca_server: 'foo.com', ca_port: 8080}
-      expect{ subject.check_server_online(settings) }.
+      expect{ httpclient.check_server_online(settings, logger) }.
         to raise_error(Puppetserver::Ca::ConnectionFailed)
     end
 
@@ -413,7 +414,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
           allow(subject).to receive(:generate_authorized_certs) { true }
-          allow(subject).to receive(:check_server_online).and_return(false)
+          allow(httpclient).to receive(:check_server_online).and_return(false)
           expect(subject).to receive(:generate_certs).never
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
@@ -428,7 +429,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it "adds the auth extension to the cert" do
       Dir.mktmpdir do |tmpdir|
         with_ca_in(tmpdir) do |config, ca_dir|
-          allow(subject).to receive(:check_server_online).and_return(false)
+          allow(httpclient).to receive(:check_server_online).and_return(false)
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
                               'subject-alt-names' => '',
@@ -447,7 +448,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
     it "updates the serial file" do
       Dir.mktmpdir do |tmpdir|
         with_ca_in(tmpdir) do |config, ca_dir|
-          allow(subject).to receive(:check_server_online).and_return(false)
+          allow(httpclient).to receive(:check_server_online).and_return(false)
           code = subject.run({'certnames' => ['foo'],
                               'config' => config,
                               'subject-alt-names' => '',
