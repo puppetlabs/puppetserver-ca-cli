@@ -179,7 +179,7 @@ module Puppetserver
               else
                 false
               end
-            true
+            end
           rescue Puppetserver::Ca::ConnectionFailed => e
             if e.wrapped.is_a? Errno::ECONNREFUSED
               return false
