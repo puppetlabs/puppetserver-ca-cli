@@ -14,6 +14,7 @@ require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/version'
 
 
+# Random comment to test CI
 module Puppetserver
   module Ca
     class Cli
