@@ -8,6 +8,7 @@ require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
+require 'puppetserver/ca/action/migrate'
 require 'puppetserver/ca/errors'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/utils/cli_parsing'
@@ -28,6 +29,7 @@ BANNER
         'import'   => Action::Import,
         'setup'    => Action::Setup,
         'enable' => Action::Enable,
+        'migrate' => Action::Migrate,
       }
 
       MAINT_ACTIONS = {
