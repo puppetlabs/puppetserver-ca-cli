@@ -35,7 +35,7 @@ RSpec.describe Puppetserver::Ca::Action::Migrate do
   describe '#run' do
     let(:filesystem) { Puppetserver::Ca::Utils::FileSystem }
     let(:httpclient) { Puppetserver::Ca::Utils::HttpClient }
-    let(:config) { Puppetserver::Ca::Config::Puppet.new.load }
+    let(:config) { Puppetserver::Ca::Config::Puppet.new.load({}, logger) }
 
     it 'exits with 1 when the server is found running' do
       allow(httpclient).to receive(:check_server_online).and_return(true)

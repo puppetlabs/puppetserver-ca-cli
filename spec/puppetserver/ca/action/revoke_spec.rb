@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/http'
+require 'utils/helpers'
 
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/logger'
@@ -69,7 +70,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
       code = subject.run({'certnames' => ['foo']})
       expect(code).to eq(0)
       expect(stdout.string.chomp).to eq('Revoked certificate for foo')
-      expect(stderr.string).to be_empty
+      expect(Utils::Helpers.remove_cadir_deprecation(stderr)).to be_empty
     end
 
     it 'logs an error and returns 1 if any could not be revoked' do

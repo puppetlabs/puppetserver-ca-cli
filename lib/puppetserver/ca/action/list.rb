@@ -68,7 +68,7 @@ Options:
             return 1 if Errors.handle_with_usage(@logger, errors)
           end
 
-          puppet = Config::Puppet.parse(config)
+          puppet = Config::Puppet.parse(config, @logger)
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           filter_names = certnames.any? \

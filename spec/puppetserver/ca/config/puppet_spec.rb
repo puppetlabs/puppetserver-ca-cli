@@ -1,8 +1,15 @@
 require 'spec_helper'
+require 'utils/ssl'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/logger'
+require 'stringio'
+require 'fileutils'
 
 RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
   subject { Puppetserver::Ca::Config::Puppet.new }
+  let(:stdout) { StringIO.new }
+  let(:stderr) { StringIO.new }
+  let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
 
   it 'parses basic inifile' do
     parsed = subject.parse_text(<<-INI)
@@ -66,10 +73,10 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
+      conf.load({}, logger)
 
       expect(conf.errors).to be_empty
-      expect(conf.settings[:cacert]).to eq('/foo/bar/ca/ca_crt.pem')
+      expect(conf.settings[:localcacert]).to eq('/foo/bar/certs/ca.pem')
       expect(conf.settings[:cacrl]).to eq('/fizz/buzz/crl.pem')
       expect(conf.settings[:hostpubkey]).to eq('/agent/pubkeys/fooberry.pem')
     end
@@ -84,7 +91,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       server_list: 'foo:80,bar,baz:99'
     })
 
-    s1 = subject.resolve_settings(p1[:main])
+    s1 = subject.resolve_settings(p1[:main], logger)
     expect(s1[:server_list]).to eq([
       ["foo", "80"], ["bar"], ["baz", "99"]
     ])
@@ -93,7 +100,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       [main]
         server = foo
     INI
-    s2 = subject.resolve_settings(p2[:main])
+    s2 = subject.resolve_settings(p2[:main], logger)
     expect(s2[:server_list]).to eq([])
   end
 
@@ -106,7 +113,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         server = foo-master
     INI
 
-    settings = subject.resolve_settings(parsed[:main].merge(parsed[:master]))
+    settings = subject.resolve_settings(parsed[:main].merge(parsed[:master]), logger)
 
     expect(settings[:server_list]).to eq([["ca.example.com", "8080"]])
     expect(settings[:ca_server]).to eq("ca.example.com")
@@ -134,7 +141,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
+      conf.load({}, logger)
 
       expect(conf.errors).to be_empty
       expect(conf.settings[:certname]).to eq('master-certname')
@@ -154,7 +161,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
+      conf.load({}, logger)
 
       expect(conf.errors).to be_empty
       expect(conf.settings[:ca_ttl]).to eq(157680000)
@@ -176,7 +183,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         end
 
         conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-        conf.load
+        conf.load({}, logger)
 
         expect(conf.errors).to be_empty
         expect(conf.settings[:subject_alt_names]).
@@ -197,7 +204,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         end
 
         conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-        conf.load
+        conf.load({}, logger)
 
         expect(conf.errors).to be_empty
         expect(conf.settings[:subject_alt_names]).
@@ -217,10 +224,99 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load
+      conf.load({}, logger)
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')
-      expect(conf.settings[:cacert]).to eq('$vardir/ssl/ca/ca_crt.pem')
+      expect(conf.settings[:localcacert]).to eq('$vardir/ssl/certs/ca.pem')
+    end
+  end
+
+  it 'warns if the cadir is set to a custom location within the ssldir' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      ssldir = File.join(tmpdir, 'ssl')
+      cadir = File.join(ssldir, 'ca')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [main]
+            ssldir = #{ssldir}
+
+          [master]
+            cadir = #{cadir}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load({}, logger)
+
+      expect(settings[:cadir]).to eq(cadir)
+      expect(stderr.string.each_line.first).
+        to match(/migrate out from the puppet confdir to the \/etc\/puppetlabs\/puppetserver\/ca/)
+    end
+  end
+
+  it 'warns if the cadir already exists within the ssldir' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      ssldir = File.join(tmpdir, 'ssl')
+      cadir = File.join(ssldir, 'ca')
+      FileUtils.mkdir_p cadir
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [main]
+            ssldir = #{ssldir}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load({}, logger)
+
+      expect(settings[:cadir]).to eq(cadir)
+      expect(stderr.string.each_line.first).
+        to match(/migrate out from the puppet confdir to the \/etc\/puppetlabs\/puppetserver\/ca/)
+    end
+  end
+
+  it 'does not warn if configured for a cadir outside of the ssldir' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      ssldir = File.join(tmpdir, 'ssl')
+      cadir = File.join(tmpdir, 'ca')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [main]
+            ssldir = #{ssldir}
+
+          [master]
+            cadir = #{cadir}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load({}, logger)
+
+      expect(settings[:cadir]).to eq(cadir)
+      expect(stderr.string).to be_empty
+    end
+  end
+
+  it 'does not warn and returns the correct directory by default w/o existing directories or config' do
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      confdir = File.join(tmpdir, 'puppet_confdir')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [main]
+            confdir = #{confdir}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load({}, logger)
+
+      expect(settings[:ssldir]).to eq(File.join(confdir, 'ssl'))
+      expect(settings[:cadir]).to eq(File.join(tmpdir, 'puppetserver', 'ca'))
+      expect(stderr.string).to be_empty
     end
   end
 end

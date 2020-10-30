@@ -4,6 +4,7 @@ require "bundler/setup"
 Bundler.require(:default)
 
 require "puppetserver/ca"
+require 'tmpdir'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
