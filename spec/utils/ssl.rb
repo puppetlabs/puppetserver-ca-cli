@@ -1,5 +1,6 @@
 require 'openssl'
 require 'fileutils'
+require 'puppetserver/ca/utils/config'
 
 module Utils
   module SSL
@@ -109,6 +110,56 @@ module Utils
         [master]
           cadir = #{ca_dir}
           ssldir = #{ssl_dir}
+          keylength = 512
+        CONF
+      end
+
+      not_before = Time.now - 1
+
+      root_key = OpenSSL::PKey::RSA.new(512)
+      root_cert = create_cert(root_key, 'foo')
+
+      leaf_key = OpenSSL::PKey::RSA.new(512)
+      File.open(key_file, 'w') do |f|
+        f.puts leaf_key.to_pem
+      end
+
+      leaf_cert = create_cert(leaf_key, 'bar', root_key, root_cert)
+
+      File.open(bundle_file, 'w') do |f|
+        f.puts leaf_cert.to_pem
+        f.puts root_cert.to_pem
+      end
+
+      root_crl = create_crl(root_cert, root_key)
+      leaf_crl = create_crl(leaf_cert, leaf_key)
+
+      File.open(chain_file, 'w') do |f|
+        f.puts leaf_crl.to_pem
+        f.puts root_crl.to_pem
+      end
+
+
+      block.call(bundle_file, key_file, chain_file, config_file)
+    end
+
+    def with_files_in_default_dirs(tmpdir, &block)
+      fixtures_dir = File.join(tmpdir, 'fixtures')
+      confdir = File.join(tmpdir, 'puppet')
+
+      FileUtils.mkdir_p fixtures_dir
+      FileUtils.mkdir_p Puppetserver::Ca::Utils::Config.default_ssldir(confdir)
+      FileUtils.mkdir_p Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
+
+      bundle_file = File.join(fixtures_dir, 'bundle.pem')
+      key_file = File.join(fixtures_dir, 'key.pem')
+      chain_file = File.join(fixtures_dir, 'chain.pem')
+      config_file = File.join(fixtures_dir, 'puppet.conf')
+
+      File.open(config_file, 'w') do |f|
+        f.puts <<-CONF
+        [master]
+          confdir = #{confdir}
           keylength = 512
         CONF
       end

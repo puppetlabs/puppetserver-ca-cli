@@ -3,6 +3,7 @@ require 'optparse'
 require 'puppetserver/ca/config/puppet'
 require 'puppetserver/ca/errors'
 require 'puppetserver/ca/local_certificate_authority'
+require 'puppetserver/ca/utils/config'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/signing_digest'
@@ -134,6 +135,8 @@ ERR
           private_files.each do |location, content|
             FileSystem.write_file(location, content, 0640)
           end
+
+          Puppetserver::Ca::Utils::Config.symlink_to_old_cadir(settings[:cadir], settings[:confdir])
 
           return []
         end

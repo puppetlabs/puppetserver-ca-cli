@@ -1,4 +1,5 @@
 require 'puppetserver/ca/action/import'
+require 'puppetserver/ca/utils/config'
 require 'utils/ssl'
 
 def mode(file)
@@ -23,7 +24,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
 
   it 'creates all files with correct permissions' do
     Dir.mktmpdir do |tmpdir|
-      with_files_in tmpdir do |bundle, key, chain, conf|
+      with_files_in_default_dirs tmpdir do |bundle, key, chain, conf|
         setup = action_class.new(logger)
         config = default_config(conf, bundle, key, chain)
 
@@ -31,30 +32,42 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
 
         expect(exit_code).to eq(0)
 
-        files = [['ca', 'ca_crt.pem', '644'],
-                 ['ca', 'ca_crl.pem', '644'],
-                 ['ca', 'ca_key.pem', '640'],
-                 ['ca', 'ca_pub.pem', '644'],
-                 ['ca', 'infra_crl.pem', '644'],
-                 ['ca', 'inventory.txt', '644'],
-                 ['ca', 'infra_inventory.txt', '644'],
-                 ['ca', 'serial', '644'],
-                 ['ca', 'infra_serials', '644'],
-                 ['ssl', 'certs', 'foocert.pem', '644'],
-                 ['ssl', 'private_keys', 'foocert.pem', '640'],
-                 ['ssl', 'public_keys', 'foocert.pem', '644']]
+        ca_files = [['ca', 'ca_crt.pem', '644'],
+                    ['ca', 'ca_crl.pem', '644'],
+                    ['ca', 'ca_key.pem', '640'],
+                    ['ca', 'ca_pub.pem', '644'],
+                    ['ca', 'infra_crl.pem', '644'],
+                    ['ca', 'inventory.txt', '644'],
+                    ['ca', 'infra_inventory.txt', '644'],
+                    ['ca', 'serial', '644'],
+                    ['ca', 'infra_serials', '644']]
+        ssl_files = [['ssl', 'certs', 'foocert.pem', '644'],
+                     ['ssl', 'private_keys', 'foocert.pem', '640'],
+                     ['ssl', 'public_keys', 'foocert.pem', '644']]
 
-
-        files.each do |args|
+        confdir = File.join(tmpdir, 'puppet')
+        ca_files.each do |args|
           perms = args.pop
-          file = File.join(tmpdir, *args)
-          expect(File.exist?(file)).to be(true), "#{file} does not exit"
+          file = File.join(Puppetserver::Ca::Utils::Config.puppetserver_confdir(confdir), *args)
+          expect(File.exist?(file)).to be(true), "#{file} does not exist"
+          expect(mode(file)).to eq(perms)
+        end
+        ssl_files.each do |args|
+          perms = args.pop
+          file = File.join(confdir, *args)
+          expect(File.exist?(file)).to be(true), "#{file} does not exist"
           expect(mode(file)).to eq(perms)
         end
 
+        old_cadir = Puppetserver::Ca::Utils::Config.old_default_cadir(confdir)
+        new_cadir = Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
+
+        expect(File.symlink?(old_cadir)).to be(true), "#{old_cadir} is not a symlink"
+        expect(File.readlink(old_cadir)).to eq(new_cadir)
+
         unless importing
-          file = File.join(tmpdir, 'ca', 'root_key.pem')
-          expect(File.exist?(file)).to be true
+          file = File.join(new_cadir, 'root_key.pem')
+          expect(File.exist?(file)).to be(true), "#{file} does not exist"
           expect(mode(file)).to eq('640')
         end
       end

@@ -40,10 +40,6 @@ module Puppetserver
           @errors = []
         end
 
-        def running_as_root?
-          @as_root ||= Puppetserver::Ca::Utils::Config.running_as_root?
-        end
-
         # Return the correct confdir. We check for being root on *nix,
         # else the user path. We do not include a check for running
         # as Adminstrator since non-development scenarios for Puppet Server
@@ -51,12 +47,7 @@ module Puppetserver
         # Note that Puppet Server runs as the [pe-]puppet user but to
         # start/stop it you must be root.
         def user_specific_puppet_confdir
-          @user_specific_puppet_confdir ||=
-            if running_as_root?
-              '/etc/puppetlabs/puppet'
-            else
-              "#{ENV['HOME']}/.puppetlabs/etc/puppet"
-            end
+          @user_specific_puppet_confdir ||= Puppetserver::Ca::Utils::Config.puppet_confdir
         end
 
         def user_specific_puppet_config
@@ -65,12 +56,7 @@ module Puppetserver
 
         # The same comments regarding the Puppet confdir apply here.
         def user_specific_puppetserver_confdir
-          @user_specific_puppetserver_confdir ||=
-            if running_as_root?
-              '/etc/puppetlabs/puppetserver'
-            else
-              "#{ENV['HOME']}/.puppetlabs/etc/puppetserver"
-            end
+          @user_specific_puppetserver_confdir ||= Puppetserver::Ca::Utils::Config.puppetserver_confdir
         end
 
         def load(cli_overrides = {}, logger)
@@ -246,8 +232,8 @@ module Puppetserver
             configured_cadir
 
           else
-            old_cadir = File.join(ssldir, 'ca')
-            new_cadir = File.join(File.dirname(confdir), 'puppetserver', 'ca')
+            old_cadir = Puppetserver::Ca::Utils::Config.old_default_cadir(confdir)
+            new_cadir = Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
             if File.exist?(old_cadir) && !File.symlink?(old_cadir)
               logger.warn(warning % {ssldir: ssldir})
               old_cadir
