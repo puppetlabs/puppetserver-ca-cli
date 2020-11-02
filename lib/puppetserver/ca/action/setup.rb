@@ -55,7 +55,7 @@ BANNER
           settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
 
           puppet = Config::Puppet.new(config_path)
-          puppet.load(settings_overrides)
+          puppet.load(settings_overrides, @logger)
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # Load most secure signing digest we can for cers/crl/csr signing.

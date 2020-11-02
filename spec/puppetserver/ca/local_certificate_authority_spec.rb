@@ -1,16 +1,22 @@
 require 'puppetserver/ca/local_certificate_authority'
+
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/logger'
+require 'puppetserver/ca/utils/signing_digest'
 
 require 'utils/ssl'
-require 'puppetserver/ca/utils/signing_digest'
+require 'stringio'
 
 RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
   include Utils::SSL
 
   let(:tmpdir) { Dir.mktmpdir }
+  let(:stdout) { StringIO.new }
+  let(:stderr) { StringIO.new }
+  let(:logger) { Puppetserver::Ca::Logger.new(:info, stdout, stderr) }
   let(:settings) {
     with_ca_in(tmpdir) do |config, confdir|
-      return Puppetserver::Ca::Config::Puppet.new(config).load({confdir: confdir })
+      return Puppetserver::Ca::Config::Puppet.new(config).load({confdir: confdir }, logger)
     end
   }
 
@@ -30,7 +36,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
     context 'when an ssl asset is missing' do
       let(:settings) {
         with_ca_in(Dir.mktmpdir) do |config|
-          return Puppetserver::Ca::Config::Puppet.new(config).load({cacert: '/some/rando/path'})
+          return Puppetserver::Ca::Config::Puppet.new(config).load({cacert: '/some/rando/path'}, logger)
         end
       }
       it 'does not load ssl assets if they are not found' do

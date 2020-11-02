@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'utils/http'
+require 'utils/helpers'
 
 require 'puppetserver/ca/action/clean'
 require 'puppetserver/ca/logger'
@@ -73,7 +74,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       expect(code).to eq(0)
       expect(stdout.string).to match(/Revoked.*foo/)
       expect(stdout.string).to include('Cleaned files related to foo')
-      expect(stderr.string).to be_empty
+      expect(Utils::Helpers.remove_cadir_deprecation(stderr)).to be_empty
     end
 
     it 'logs success and returns zero if cleaned but already revoked' do
@@ -83,7 +84,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       code = subject.run({'certnames' => ['foo']})
       expect(code).to eq(0)
       expect(stdout.string).to include('Cleaned files related to foo')
-      expect(stderr.string).to be_empty
+      expect(Utils::Helpers.remove_cadir_deprecation(stderr)).to be_empty
     end
 
     it 'fails and does not attempt to clean if revocation fails' do
@@ -116,7 +117,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
       expect(code).to eq(24)
       expect(stdout.string).to include('Cleaned files related to bar')
       expect(stdout.string).to include('Cleaned files related to foo')
-      expect(stderr.string).to be_empty
+      expect(Utils::Helpers.remove_cadir_deprecation(stderr)).to be_empty
     end
 
     it 'logs returns 1 if some were unsigned and not found' do

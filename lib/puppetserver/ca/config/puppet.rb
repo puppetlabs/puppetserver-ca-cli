@@ -23,9 +23,9 @@ module Puppetserver
         # A regex describing valid formats with groups for capturing the value and units
         TTL_FORMAT = /^(\d+)(y|d|h|m|s)?$/
 
-        def self.parse(config_path)
+        def self.parse(config_path, logger)
           instance = new(config_path)
-          instance.load
+          instance.load({}, logger)
 
           return instance
         end
@@ -34,10 +34,14 @@ module Puppetserver
 
         def initialize(supplied_config_path = nil)
           @using_default_location = !supplied_config_path
-          @config_path = supplied_config_path || user_specific_conf_file
+          @config_path = supplied_config_path || user_specific_puppet_config
 
           @settings = nil
           @errors = []
+        end
+
+        def running_as_root?
+          @as_root ||= Puppetserver::Ca::Utils::Config.running_as_root?
         end
 
         # Return the correct confdir. We check for being root on *nix,
@@ -46,20 +50,30 @@ module Puppetserver
         # on Windows are unsupported.
         # Note that Puppet Server runs as the [pe-]puppet user but to
         # start/stop it you must be root.
-        def user_specific_conf_dir
-          @user_specific_conf_dir ||=
-            if Puppetserver::Ca::Utils::Config.running_as_root?
+        def user_specific_puppet_confdir
+          @user_specific_puppet_confdir ||=
+            if running_as_root?
               '/etc/puppetlabs/puppet'
             else
               "#{ENV['HOME']}/.puppetlabs/etc/puppet"
             end
         end
 
-        def user_specific_conf_file
-          user_specific_conf_dir + '/puppet.conf'
+        def user_specific_puppet_config
+          user_specific_puppet_confdir + '/puppet.conf'
         end
 
-        def load(cli_overrides = {})
+        # The same comments regarding the Puppet confdir apply here.
+        def user_specific_puppetserver_confdir
+          @user_specific_puppetserver_confdir ||=
+            if running_as_root?
+              '/etc/puppetlabs/puppetserver'
+            else
+              "#{ENV['HOME']}/.puppetlabs/etc/puppetserver"
+            end
+        end
+
+        def load(cli_overrides = {}, logger)
           if explicitly_given_config_file_or_default_config_exists?
             results = parse_text(File.read(@config_path))
           end
@@ -72,7 +86,7 @@ module Puppetserver
           overrides = results[:agent].merge(results[:main]).merge(results[:master])
           overrides.merge!(cli_overrides)
 
-          @settings = resolve_settings(overrides).freeze
+          @settings = resolve_settings(overrides, logger).freeze
         end
 
         def default_certname
@@ -89,7 +103,7 @@ module Puppetserver
 
         # Resolve settings from default values, with any overrides for the
         # specific settings or their dependent settings (ssldir, cadir) taken into account.
-        def resolve_settings(overrides = {})
+        def resolve_settings(overrides = {}, logger)
           unresolved_setting = /\$[a-z_]+/
 
           # Returning the key for unknown keys (rather than nil) is required to
@@ -101,9 +115,8 @@ module Puppetserver
           # These need to be evaluated before we can construct their dependent
           # defaults below
           base_defaults = [
-            [:confdir, user_specific_conf_dir],
+            [:confdir, user_specific_puppet_confdir],
             [:ssldir,'$confdir/ssl'],
-            [:cadir, '$ssldir/ca'],
             [:certdir, '$ssldir/certs'],
             [:certname, default_certname],
             [:server, 'puppet'],
@@ -147,6 +160,13 @@ module Puppetserver
             subbed_value = setting_value.sub(unresolved_setting, substitutions)
             settings[setting_name] = substitutions[substitution_name] = subbed_value
           end
+
+          cadir = find_cadir(overrides.fetch(:cadir, false),
+                             settings[:confdir],
+                             settings[:ssldir],
+                             logger)
+          settings[:cadir] = substitutions['$cadir'] = cadir
+
 
           dependent_defaults.each do |setting_name, default_value|
             setting_value = overrides.fetch(setting_name, default_value)
@@ -209,6 +229,33 @@ module Puppetserver
         end
 
        private
+
+
+        def find_cadir(configured_cadir, confdir, ssldir, logger)
+          warning = 'The cadir is currently configured to be inside the ' +
+            '%{ssldir} directory. This config setting and the directory ' +
+            'location will not be used in a future version of puppet. ' +
+            'Please run the puppetserver ca tool to migrate out from the ' +
+            'puppet confdir to the /etc/puppetlabs/puppetserver/ca directory. ' +
+            'Use `puppetserver ca migrate --help` for more info.'
+
+          if configured_cadir
+            if configured_cadir.start_with?(ssldir)
+              logger.warn(warning % {ssldir: ssldir})
+            end
+            configured_cadir
+
+          else
+            old_cadir = File.join(ssldir, 'ca')
+            new_cadir = File.join(File.dirname(confdir), 'puppetserver', 'ca')
+            if File.exist?(old_cadir) && !File.symlink?(old_cadir)
+              logger.warn(warning % {ssldir: ssldir})
+              old_cadir
+            else
+              new_cadir
+            end
+          end
+        end
 
         def explicitly_given_config_file_or_default_config_exists?
           !@using_default_location || File.exist?(@config_path)
