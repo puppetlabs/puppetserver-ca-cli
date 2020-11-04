@@ -73,8 +73,26 @@ interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
-To release a new version, update the version number in `version.rb`, and then
-speak with Release Engineering.
+### Testing
+To test your changes on a VM:
+1. Build the gem with your changes: `gem build puppetserver-ca.gemspec`
+1. Copy the gem to your VM: `scp puppetserver-ca-<version>.gem <your-vm>:.`
+1. Install puppetserver (FOSS) by installing the relevant release package and then installing the puppetserver package. For example:
+    ```
+    $ wget http://nightlies.puppet.com/yum/puppet6-nightly-release-el-7.noarch.rpm
+    $ rpm -i puppet6-nightly-release-el-7.noarch.rpm
+    $ yum update
+    $ yum install -y puppetserver
+    ```
+1. Restart your shell so that puppet's bin dir is on your $PATH: `exec bash`
+1. Install the gem into puppet's gem directory using puppet's gem command:
+    ```
+    $ /opt/puppetlabs/puppet/bin/gem install --install-dir "/opt/puppetlabs/puppet/lib/ruby/vendor_gems" puppetserver-ca-<version>.gem
+    ```
+1. To confirm that installation was successful, run `puppetserver ca --help`
+
+### Releasing
+To release a new version, run the [release pipeline](https://jenkins-master-prod-1.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_1.x/), which will bump the version, tag, build, and release the gem.
 
 
 ## Contributing & Support
