@@ -54,11 +54,6 @@ module Puppetserver
           user_specific_puppet_confdir + '/puppet.conf'
         end
 
-        # The same comments regarding the Puppet confdir apply here.
-        def user_specific_puppetserver_confdir
-          @user_specific_puppetserver_confdir ||= Puppetserver::Ca::Utils::Config.puppetserver_confdir
-        end
-
         def load(cli_overrides = {}, logger)
           if explicitly_given_config_file_or_default_config_exists?
             results = parse_text(File.read(@config_path))
