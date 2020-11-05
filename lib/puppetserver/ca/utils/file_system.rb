@@ -50,6 +50,11 @@ module Puppetserver
           errors
         end
 
+        def self.forcibly_symlink(source, link_target)
+          FileUtils.remove_dir(link_target, true)
+          FileUtils.symlink(source, link_target)
+        end
+
         def initialize
           @user, @group = find_user_and_group
         end

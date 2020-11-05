@@ -264,6 +264,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       File.open puppet_conf, 'w' do |f|
         f.puts(<<-INI)
           [main]
+            confdir = #{tmpdir}
             ssldir = #{ssldir}
         INI
       end
