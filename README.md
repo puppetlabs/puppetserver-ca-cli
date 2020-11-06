@@ -79,8 +79,8 @@ To test your changes on a VM:
 1. Copy the gem to your VM: `scp puppetserver-ca-<version>.gem <your-vm>:.`
 1. Install puppetserver (FOSS) by installing the relevant release package and then installing the puppetserver package. For example:
     ```
-    $ wget http://nightlies.puppet.com/yum/puppet6-nightly-release-el-7.noarch.rpm
-    $ rpm -i puppet6-nightly-release-el-7.noarch.rpm
+    $ wget http://nightlies.puppet.com/yum/puppet-nightly-release-el-7.noarch.rpm
+    $ rpm -i puppet-nightly-release-el-7.noarch.rpm
     $ yum update
     $ yum install -y puppetserver
     ```
