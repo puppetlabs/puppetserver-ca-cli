@@ -18,11 +18,11 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
     logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
 
     with_ca_in(tmpdir) do |config, confdir|
-      settings = Puppetserver::Ca::Config::Puppet.new(config).load({
+      settings = Puppetserver::Ca::Config::Puppet.new(config).load(cli_overrides: {
         :hostcert    => "#{tmpdir}/hostcert.pem",
         :hostprivkey => "#{tmpdir}/hostkey.pem",
         :confdir     => confdir
-      }, logger)
+      }, logger: logger)
 
       setup_action = Puppetserver::Ca::Action::Setup.new(logger)
 
