@@ -29,7 +29,7 @@ BANNER
         def run(input)
           config_path = input['config']
           puppet = Config::Puppet.new(config_path)
-          puppet.load({}, @logger)
+          puppet.load(logger: @logger, ca_dir_warn: false)
           return 1 if HttpClient.check_server_online(puppet.settings, @logger)
 
           errors = FileSystem.check_for_existing_files(PUPPETSERVER_CA_DIR)

@@ -25,7 +25,7 @@ module Puppetserver
 
         def self.parse(config_path, logger)
           instance = new(config_path)
-          instance.load({}, logger)
+          instance.load(logger: logger)
 
           return instance
         end
@@ -54,7 +54,7 @@ module Puppetserver
           user_specific_puppet_confdir + '/puppet.conf'
         end
 
-        def load(cli_overrides = {}, logger)
+        def load(cli_overrides: {}, logger:, ca_dir_warn: true)
           if explicitly_given_config_file_or_default_config_exists?
             results = parse_text(File.read(@config_path))
           end
@@ -67,7 +67,7 @@ module Puppetserver
           overrides = results[:agent].merge(results[:main]).merge(results[:master])
           overrides.merge!(cli_overrides)
 
-          @settings = resolve_settings(overrides, logger).freeze
+          @settings = resolve_settings(overrides, logger, ca_dir_warn: ca_dir_warn).freeze
         end
 
         def default_certname
@@ -84,7 +84,7 @@ module Puppetserver
 
         # Resolve settings from default values, with any overrides for the
         # specific settings or their dependent settings (ssldir, cadir) taken into account.
-        def resolve_settings(overrides = {}, logger)
+        def resolve_settings(overrides = {}, logger, ca_dir_warn: true)
           unresolved_setting = /\$[a-z_]+/
 
           # Returning the key for unknown keys (rather than nil) is required to
@@ -145,7 +145,8 @@ module Puppetserver
           cadir = find_cadir(overrides.fetch(:cadir, false),
                              settings[:confdir],
                              settings[:ssldir],
-                             logger)
+                             logger,
+                             ca_dir_warn)
           settings[:cadir] = substitutions['$cadir'] = cadir
 
 
@@ -212,7 +213,7 @@ module Puppetserver
        private
 
 
-        def find_cadir(configured_cadir, confdir, ssldir, logger)
+        def find_cadir(configured_cadir, confdir, ssldir, logger, ca_dir_warn)
           warning = 'The cadir is currently configured to be inside the ' +
             '%{ssldir} directory. This config setting and the directory ' +
             'location will not be used in a future version of puppet. ' +
@@ -221,7 +222,7 @@ module Puppetserver
             'Use `puppetserver ca migrate --help` for more info.'
 
           if configured_cadir
-            if configured_cadir.start_with?(ssldir)
+            if ca_dir_warn && configured_cadir.start_with?(ssldir)
               logger.warn(warning % {ssldir: ssldir})
             end
             configured_cadir
@@ -230,7 +231,7 @@ module Puppetserver
             old_cadir = Puppetserver::Ca::Utils::Config.old_default_cadir(confdir)
             new_cadir = Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
             if File.exist?(old_cadir) && !File.symlink?(old_cadir)
-              logger.warn(warning % {ssldir: ssldir})
+              logger.warn(warning % {ssldir: ssldir}) if ca_dir_warn
               old_cadir
             else
               new_cadir

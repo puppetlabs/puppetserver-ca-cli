@@ -126,7 +126,7 @@ BANNER
           # Load, resolve, and validate puppet config settings
           settings_overrides = {}
           puppet = Config::Puppet.new(config_path)
-          puppet.load(settings_overrides, @logger)
+          puppet.load(cli_overrides: settings_overrides, logger: @logger)
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           # We don't want generate to respect the alt names setting, since it is usually

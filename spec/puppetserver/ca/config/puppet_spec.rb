@@ -73,7 +73,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load({}, logger)
+      conf.load(logger: logger)
 
       expect(conf.errors).to be_empty
       expect(conf.settings[:localcacert]).to eq('/foo/bar/certs/ca.pem')
@@ -141,7 +141,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load({}, logger)
+      conf.load(logger: logger)
 
       expect(conf.errors).to be_empty
       expect(conf.settings[:certname]).to eq('master-certname')
@@ -161,7 +161,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load({}, logger)
+      conf.load(logger: logger)
 
       expect(conf.errors).to be_empty
       expect(conf.settings[:ca_ttl]).to eq(157680000)
@@ -183,7 +183,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         end
 
         conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-        conf.load({}, logger)
+        conf.load(logger: logger)
 
         expect(conf.errors).to be_empty
         expect(conf.settings[:subject_alt_names]).
@@ -204,7 +204,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
         end
 
         conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-        conf.load({}, logger)
+        conf.load(logger: logger)
 
         expect(conf.errors).to be_empty
         expect(conf.settings[:subject_alt_names]).
@@ -224,7 +224,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      conf.load({}, logger)
+      conf.load(logger: logger)
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')
       expect(conf.settings[:localcacert]).to eq('$vardir/ssl/certs/ca.pem')
@@ -247,7 +247,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      settings = conf.load({}, logger)
+      settings = conf.load(logger: logger)
 
       expect(settings[:cadir]).to eq(cadir)
       expect(stderr.string.each_line.first).
@@ -270,7 +270,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      settings = conf.load({}, logger)
+      settings = conf.load(logger: logger)
 
       expect(settings[:cadir]).to eq(cadir)
       expect(stderr.string.each_line.first).
@@ -294,7 +294,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      settings = conf.load({}, logger)
+      settings = conf.load(logger: logger)
 
       expect(settings[:cadir]).to eq(cadir)
       expect(stderr.string).to be_empty
@@ -313,7 +313,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
 
       conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
-      settings = conf.load({}, logger)
+      settings = conf.load(logger: logger)
 
       expect(settings[:ssldir]).to eq(File.join(confdir, 'ssl'))
       expect(settings[:cadir]).to eq(File.join(tmpdir, 'puppetserver', 'ca'))

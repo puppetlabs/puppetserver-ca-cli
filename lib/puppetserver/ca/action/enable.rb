@@ -45,7 +45,7 @@ BANNER
           end
 
           puppet = Config::Puppet.new(config_path)
-          puppet.load({}, @logger)
+          puppet.load(logger: @logger)
           settings = puppet.settings
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
