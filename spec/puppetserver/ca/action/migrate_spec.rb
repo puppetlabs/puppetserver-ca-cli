@@ -1,6 +1,7 @@
 require 'puppetserver/ca/action/migrate'
 require 'puppetserver/ca/logger'
 require 'puppetserver/ca/config/puppet'
+require 'puppetserver/ca/utils/config'
 
 RSpec.describe Puppetserver::Ca::Action::Migrate do
 
@@ -36,6 +37,7 @@ RSpec.describe Puppetserver::Ca::Action::Migrate do
     let(:filesystem) { Puppetserver::Ca::Utils::FileSystem }
     let(:httpclient) { Puppetserver::Ca::Utils::HttpClient }
     let(:config) { Puppetserver::Ca::Config::Puppet.new.load(logger: logger) }
+    let(:new_cadir) { Puppetserver::Ca::Utils::Config.new_default_cadir }
 
     it 'exits with 1 when the server is found running' do
       allow(httpclient).to receive(:check_server_online).and_return(true)
@@ -45,14 +47,14 @@ RSpec.describe Puppetserver::Ca::Action::Migrate do
     it 'exits with 1 when the puppetserver/ca dir is found' do
       allow(httpclient).to receive(:check_server_online).and_return(false)
       allow(filesystem).to receive(:check_for_existing_files).
-                             with('/etc/puppetlabs/puppetserver/ca').and_return(['/path/'])
+        with(new_cadir).and_return(['/path/'])
       expect(subject.run(config)).to eq(1)
     end
 
     it 'exits with 1 when no CA dir is found' do
       allow(httpclient).to receive(:check_server_online).and_return(false)
       allow(filesystem).to receive(:check_for_existing_files).
-                             with('/etc/puppetlabs/puppetserver/ca').and_return([])
+                             with(new_cadir).and_return([])
       allow(filesystem).to receive(:check_for_existing_files).
                              with(config[:cadir]).and_return([])
       expect(subject.run(config)).to eq(1)
@@ -60,8 +62,8 @@ RSpec.describe Puppetserver::Ca::Action::Migrate do
 
     it 'calls #migrate when the system is considered ready' do
       allow(httpclient).to receive(:check_server_online).and_return(false)
-      allow(filesystem).to receive(:check_for_existing_files).
-                             with('/etc/puppetlabs/puppetserver/ca').and_return([])
+      expect(filesystem).to receive(:check_for_existing_files).
+                             with(new_cadir).and_return([])
       allow(filesystem).to receive(:check_for_existing_files).
                              with(config[:cadir]).and_return(['/path/to/cadir'])
       expect(subject).to receive(:migrate).and_return(nil)
