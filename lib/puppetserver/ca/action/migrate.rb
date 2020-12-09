@@ -66,7 +66,7 @@ SUCCESS_MESSAGE
 
         def migrate(old_cadir, new_cadir=PUPPETSERVER_CA_DIR)
           FileUtils.mv(old_cadir, new_cadir)
-          FileUtils.symlink(new_cadir, old_cadir)
+          FileSystem.forcibly_symlink(new_cadir, old_cadir)
         end
 
         def parse(args)
