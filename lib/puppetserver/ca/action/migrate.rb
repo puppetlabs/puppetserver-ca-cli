@@ -66,6 +66,14 @@ SUCCESS_MESSAGE
         def migrate(old_cadir, new_cadir=PUPPETSERVER_CA_DIR)
           FileUtils.mv(old_cadir, new_cadir)
           FileUtils.symlink(new_cadir, old_cadir)
+          # Ensure the symlink has the same ownership as the actual cadir.
+          # This requires using `FileUtils.chown` rather than `File.chown`, as
+          # the latter will update the ownership of the target rather than the
+          # link itself.
+          # Symlink permissions are ignored in favor of the target's permissions,
+          # so we don't have to change those.
+          cadir = File.stat(new_cadir)
+          FileUtils.chown(cadir.uid, cadir.gid, old_cadir)
         end
 
         def parse(args)

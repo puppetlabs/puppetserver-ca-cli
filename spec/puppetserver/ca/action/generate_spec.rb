@@ -405,7 +405,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
                               'subject-alt-names' => '',
                               'ca-client' => true})
           expect(code).to eq(1)
-          expect(stderr.string).to include("CA service is running")
+          expect(stderr.string).to include("server service is running")
         end
       end
     end
