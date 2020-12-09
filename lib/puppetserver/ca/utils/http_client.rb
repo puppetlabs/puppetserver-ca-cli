@@ -174,7 +174,7 @@ module Puppetserver
             self.new(settings, with_client_cert: false).with_connection(status_url) do |conn|
               result = conn.get
               if result.body == "running"
-                logger.err "CA service is running. Please stop it before attempting to run this command."
+                logger.err "Puppetserver service is running. Please stop it before attempting to run this command."
                 true
               else
                 false

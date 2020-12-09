@@ -61,10 +61,13 @@ module Puppetserver
 
           results ||= {}
           results[:main] ||= {}
+          # The [master] config section is deprecated
+          # We now favor [server], but support both for backwards compatibility
           results[:master] ||= {}
+          results[:server] ||= {}
           results[:agent] ||= {}
 
-          overrides = results[:agent].merge(results[:main]).merge(results[:master])
+          overrides = results[:agent].merge(results[:main]).merge(results[:master]).merge(results[:server])
           overrides.merge!(cli_overrides)
 
           @settings = resolve_settings(overrides, logger, ca_dir_warn: ca_dir_warn).freeze
