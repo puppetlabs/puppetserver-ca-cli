@@ -296,7 +296,9 @@ BANNER
         end
 
         def process_alt_names(alt_names, certname)
-          return '' if alt_names.empty?
+          # It is recommended (and sometimes enforced) to always include
+          # the certname as a SAN, see RFC 2818 https://tools.ietf.org/html/rfc2818#section-3.1.
+          return "DNS:#{certname}" if alt_names.empty?
 
           current_alt_names = alt_names.dup
           # When validating the cert, OpenSSL will ignore the CN field if

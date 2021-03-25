@@ -426,6 +426,44 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
     end
 
+    it 'always supplies the certname as a SAN' do
+      Dir.mktmpdir do |tmpdir|
+        with_ca_in(tmpdir) do |config, ca_dir|
+          allow(httpclient).to receive(:check_server_online).and_return(false)
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => '',
+                              'ca-client' => true})
+          expect(stderr.string).to be_empty
+          expect(code).to eq(0)
+          cert = OpenSSL::X509::Certificate.new(File.read(File.join(ca_dir, "signed", "foo.pem")))
+          auth_ext = cert.extensions.find do |ext|
+            ext.oid == "subjectAltName"
+          end
+          expect(auth_ext.value).to eq("DNS:foo")
+        end
+      end
+    end
+
+    it 'adds the certname to supplied SANs' do
+      Dir.mktmpdir do |tmpdir|
+        with_ca_in(tmpdir) do |config, ca_dir|
+          allow(httpclient).to receive(:check_server_online).and_return(false)
+          code = subject.run({'certnames' => ['foo'],
+                              'config' => config,
+                              'subject-alt-names' => 'DNS:carrot',
+                              'ca-client' => true})
+          expect(stderr.string).to be_empty
+          expect(code).to eq(0)
+          cert = OpenSSL::X509::Certificate.new(File.read(File.join(ca_dir, "signed", "foo.pem")))
+          auth_ext = cert.extensions.find do |ext|
+            ext.oid == "subjectAltName"
+          end
+          expect(auth_ext.value).to eq("DNS:carrot, DNS:foo")
+        end
+      end
+    end
+
     it "adds the auth extension to the cert" do
       Dir.mktmpdir do |tmpdir|
         with_ca_in(tmpdir) do |config, ca_dir|
