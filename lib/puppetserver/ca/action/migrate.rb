@@ -18,8 +18,9 @@ Usage:
 
 Description:
   Migrate an existing CA directory to #{PUPPETSERVER_CA_DIR}. This is for
-  upgrading from Puppet Platform 6.x to Puppet 7. Use the currently configured
-  puppet.conf file in your installation, or supply one using the `--config` flag.
+  upgrading from Puppet Platform 6.x to Puppet 7. Uses the default puppet.conf
+  in your installation, or use a different config by supplying the `--config` flag.
+
 Options:
 BANNER
 
