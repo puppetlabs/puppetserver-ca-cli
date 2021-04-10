@@ -105,7 +105,6 @@ module Puppetserver
           base_defaults = [
             [:confdir, user_specific_conf_dir],
             [:ssldir,'$confdir/ssl'],
-            [:cadir, '$ssldir/ca'],
             [:certdir, '$ssldir/certs'],
             [:certname, default_certname],
             [:server, 'puppet'],
@@ -149,6 +148,10 @@ module Puppetserver
             subbed_value = setting_value.sub(unresolved_setting, substitutions)
             settings[setting_name] = substitutions[substitution_name] = subbed_value
           end
+
+          cadir = find_cadir(overrides.fetch(:cadir, false),
+                             settings[:confdir])
+          settings[:cadir] = substitutions['$cadir'] = cadir
 
           dependent_defaults.each do |setting_name, default_value|
             setting_value = overrides.fetch(setting_name, default_value)
@@ -211,6 +214,21 @@ module Puppetserver
         end
 
        private
+
+        def find_cadir(configured_cadir, confdir)
+          if configured_cadir
+            configured_cadir
+          else
+            old_cadir = Puppetserver::Ca::Utils::Config.old_default_cadir(confdir)
+            new_cadir = Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
+
+            if File.exist?("#{new_cadir}/ca_crt.pem")
+              new_cadir
+            else
+              old_cadir
+            end
+          end
+        end
 
         def explicitly_given_config_file_or_default_config_exists?
           !@using_default_location || File.exist?(@config_path)
