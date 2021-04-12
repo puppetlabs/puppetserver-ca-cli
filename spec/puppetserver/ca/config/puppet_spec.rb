@@ -1,4 +1,6 @@
 require 'spec_helper'
+require 'tmpdir'
+
 require 'puppetserver/ca/config/puppet'
 
 RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
@@ -69,7 +71,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       conf.load
 
       expect(conf.errors).to be_empty
-      expect(conf.settings[:cacert]).to eq('/foo/bar/ca/ca_crt.pem')
+      expect(conf.settings[:localcacert]).to eq('/foo/bar/certs/ca.pem')
       expect(conf.settings[:cacrl]).to eq('/fizz/buzz/crl.pem')
       expect(conf.settings[:hostpubkey]).to eq('/agent/pubkeys/fooberry.pem')
     end
@@ -220,7 +222,7 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       conf.load
 
       expect(conf.errors.first).to include('$vardir in $vardir/ssl')
-      expect(conf.settings[:cacert]).to eq('$vardir/ssl/ca/ca_crt.pem')
+      expect(conf.settings[:localcacert]).to eq('$vardir/ssl/certs/ca.pem')
     end
   end
 
@@ -239,6 +241,76 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
 
       conf = Puppetserver::Ca::Config::Puppet.new
       expect(conf.default_certname).to eq("foo")
+    end
+  end
+
+  context 'finding the cadir' do
+    it 'returns the location in the ssldir if unset and new dir does not exist' do
+      Dir.mktmpdir do |tmpdir|
+        puppet_conf = File.join(tmpdir, 'puppet.conf')
+        confdir = File.join(tmpdir, 'puppet_confdir')
+        File.open puppet_conf, 'w' do |f|
+          f.puts(<<-INI)
+            [main]
+              confdir = #{confdir}
+          INI
+        end
+
+        expect(File).to receive(:exist?)
+          .with("#{File.dirname(confdir)}/puppetserver/ca/ca_crt.pem")
+          .and_return(false)
+
+        conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+        settings = conf.load
+
+        expect(settings[:ssldir]).to eq(File.join(confdir, 'ssl'))
+        expect(settings[:cadir]).to eq(File.join(confdir, 'ssl/ca'))
+      end
+    end
+
+    it 'returns the location in puppetserver confdir if unset and it exists' do
+      Dir.mktmpdir do |tmpdir|
+        puppet_conf = File.join(tmpdir, 'puppet.conf')
+        confdir = File.join(tmpdir, 'puppet_confdir')
+        parent_confdir = File.dirname(confdir)
+        File.open puppet_conf, 'w' do |f|
+          f.puts(<<-INI)
+            [main]
+              confdir = #{confdir}
+          INI
+        end
+
+        expect(File).to receive(:exist?)
+          .with("#{parent_confdir}/puppetserver/ca/ca_crt.pem")
+          .and_return(true)
+
+        conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+        settings = conf.load
+
+        expect(settings[:ssldir]).to eq(File.join(confdir, 'ssl'))
+        expect(settings[:cadir]).to eq(File.join(parent_confdir, 'puppetserver/ca'))
+      end
+    end
+
+    it 'returns the configured value if set' do
+      Dir.mktmpdir do |tmpdir|
+        puppet_conf = File.join(tmpdir, 'puppet.conf')
+        confdir = File.join(tmpdir, 'puppet_confdir')
+
+        File.open puppet_conf, 'w' do |f|
+          f.puts(<<-INI)
+            [main]
+              confdir = #{confdir}
+              cadir = /my/fun/cadir
+          INI
+        end
+
+        conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+        settings = conf.load
+
+        expect(settings[:ssldir]).to eq(File.join(confdir, 'ssl'))
+        expect(settings[:cadir]).to eq('/my/fun/cadir')
+      end
     end
   end
 end

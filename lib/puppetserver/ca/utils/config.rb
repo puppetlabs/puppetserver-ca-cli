@@ -19,6 +19,25 @@ module Puppetserver
           end.sort.uniq.join(", ")
         end
 
+        def self.puppet_confdir
+          if running_as_root?
+            '/etc/puppetlabs/puppet'
+          else
+            "#{ENV['HOME']}/.puppetlabs/etc/puppet"
+          end
+        end
+
+        def self.puppetserver_confdir(puppet_confdir)
+          File.join(File.dirname(puppet_confdir), 'puppetserver')
+        end
+
+        def self.old_default_cadir(confdir = puppet_confdir)
+          File.join(confdir, 'ssl', 'ca')
+        end
+
+        def self.new_default_cadir(confdir = puppet_confdir)
+          File.join(puppetserver_confdir(confdir), 'ca')
+        end
       end
     end
   end
