@@ -18,7 +18,7 @@ module Puppetserver
 
         # Only allow printing ascii characters, excluding /
         VALID_CERTNAME = /\A[ -.0-~]+\Z/
-        CERTNAME_BLACKLIST = %w{--all --config}
+        CERTNAME_BLOCKLIST = %w{--all --config}
 
         SUMMARY = "Generate a new certificate signed by the CA"
         BANNER = <<-BANNER
@@ -91,7 +91,7 @@ BANNER
             errors << '    At least one certname is required to generate'
           else
             results['certnames'].each do |certname|
-              if CERTNAME_BLACKLIST.include?(certname)
+              if CERTNAME_BLOCKLIST.include?(certname)
                 errors << "    Cannot manage cert named `#{certname}` from " +
                           "the CLI, if needed use the HTTP API directly"
               end
