@@ -74,6 +74,9 @@ module Puppetserver
 
           overrides = results[:agent].merge(results[:main]).merge(results[:master]).merge(results[:server])
           overrides.merge!(cli_overrides)
+          if overrides[:masterport]
+            overrides[:serverport] ||= overrides.delete(:masterport)
+          end
 
           @settings = resolve_settings(overrides).freeze
         end
@@ -108,7 +111,7 @@ module Puppetserver
             [:certdir, '$ssldir/certs'],
             [:certname, default_certname],
             [:server, 'puppet'],
-            [:masterport, '8140'],
+            [:serverport, '8140'],
             [:privatekeydir, '$ssldir/private_keys'],
             [:publickeydir, '$ssldir/public_keys'],
           ]
@@ -126,7 +129,7 @@ module Puppetserver
             :serial => '$cadir/serial',
             :cert_inventory => '$cadir/inventory.txt',
             :ca_server => '$server',
-            :ca_port => '$masterport',
+            :ca_port => '$serverport',
             :localcacert => '$certdir/ca.pem',
             :hostcrl => '$ssldir/crl.pem',
             :hostcert => '$certdir/$certname.pem',
@@ -276,7 +279,7 @@ module Puppetserver
           end
 
           if settings.dig(:server_list, 0, 1) &&
-              settings[:ca_port] == '$masterport'
+              settings[:ca_port] == '$serverport'
 
             settings[:ca_port] = settings.dig(:server_list, 0, 1)
           end
