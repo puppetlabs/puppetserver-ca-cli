@@ -12,7 +12,7 @@ module Puppetserver
 
         include Puppetserver::Ca::Utils
 
-        CERTNAME_BLACKLIST = %w{--all --config}
+        CERTNAME_BLOCKLIST = %w{--all --config}
 
         SUMMARY = 'Revoke certificate(s)'
         BANNER = <<-BANNER
@@ -55,7 +55,7 @@ BANNER
           errors = CliParsing.parse_with_errors(parser, args)
 
           results['certnames'].each do |certname|
-            if CERTNAME_BLACKLIST.include?(certname)
+            if CERTNAME_BLOCKLIST.include?(certname)
               errors << "    Cannot manage cert named `#{certname}` from " +
                         "the CLI, if needed use the HTTP API directly"
             end

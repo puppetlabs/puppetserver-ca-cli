@@ -61,7 +61,7 @@ puppetserver ca --help
 ```
 
 This code in this project is licensed under the Apache Software License v2,
-please see the included [License](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/LICENSE.md)
+please see the included [License](https://github.com/puppetlabs/puppetserver-ca-cli/blob/main/LICENSE.md)
 for more details.
 
 
@@ -105,9 +105,9 @@ Freenode, or the Puppet Community Slack channel.
 
 Contributions are welcome at https://github.com/puppetlabs/puppetserver-ca-cli/pulls.
 Contributors should both be sure to read the
-[contributing document](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/CONTRIBUTING.md)
+[contributing document](https://github.com/puppetlabs/puppetserver-ca-cli/blob/main/CONTRIBUTING.md)
 and sign the [contributor license agreement](https://cla.puppet.com/).
 
 Everyone interacting with the project’s codebase, issue tracker, etc is expected
 to follow the
-[code of conduct](https://github.com/puppetlabs/puppetserver-ca-cli/blob/master/CODE_OF_CONDUCT.md).
+[code of conduct](https://github.com/puppetlabs/puppetserver-ca-cli/blob/main/CODE_OF_CONDUCT.md).
