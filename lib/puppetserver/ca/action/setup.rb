@@ -24,10 +24,10 @@ Usage:
 Description:
   Setup a root and intermediate signing CA for Puppet Server
   and store generated CA keys, certs, crls, and associated
-  master related files on disk.
+  server related files on disk.
 
   The `--subject-alt-names` flag can be used to add SANs to the
-  certificate generated for the Puppet master. Multiple names can be
+  certificate generated for the Puppet server. Multiple names can be
   listed as a comma separated string. These can be either DNS names or
   IP addresses, differentiated by prefixes: `DNS:foo.bar.com,IP:123.456.789`.
   Names with no prefix will be treated as DNS names.
@@ -77,7 +77,7 @@ BANNER
 
           root_key, root_cert, root_crl = ca.create_root_cert
           ca.create_intermediate_cert(root_key, root_cert)
-          master_key, master_cert = ca.create_master_cert
+          server_key, server_cert = ca.create_server_cert
           return ca.errors if ca.errors.any?
 
           FileSystem.ensure_dirs([settings[:ssldir],
@@ -91,28 +91,28 @@ BANNER
             [settings[:cacert], [ca.cert, root_cert]],
             [settings[:cacrl], [ca.crl, root_crl]],
             [settings[:cadir] + '/infra_crl.pem', [ca.crl, root_crl]],
-            [settings[:hostcert], master_cert],
+            [settings[:hostcert], server_cert],
             [settings[:localcacert], [ca.cert, root_cert]],
             [settings[:hostcrl], [ca.crl, root_crl]],
-            [settings[:hostpubkey], master_key.public_key],
+            [settings[:hostpubkey], server_key.public_key],
             [settings[:capub], ca.key.public_key],
-            [settings[:cert_inventory], ca.inventory_entry(master_cert)],
+            [settings[:cert_inventory], ca.inventory_entry(server_cert)],
             [settings[:cadir] + '/infra_inventory.txt', ''],
             [settings[:cadir] + '/infra_serials', ''],
             [settings[:serial], "002"],
-            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert],
+            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), server_cert],
           ]
 
           private_files = [
-            [settings[:hostprivkey], master_key],
+            [settings[:hostprivkey], server_key],
             [settings[:rootkey], root_key],
             [settings[:cakey], ca.key],
           ]
 
           files_to_check = public_files + private_files
-          # We don't want to error if master's keys exist. Certain workflows
+          # We don't want to error if server's keys exist. Certain workflows
           # allow the agent to have already be installed with keys and then
-          # upgraded to be a master. The host class will honor keys, if both
+          # upgraded to be a server. The host class will honor keys, if both
           # public and private exist, and error if only one exists - as is
           # previous behavior.
           files_to_check = files_to_check.map(&:first) - [settings[:hostpubkey], settings[:hostprivkey]]
@@ -163,7 +163,7 @@ ERR
               parsed['config'] = conf
             end
             opts.on('--subject-alt-names NAME[,NAME]',
-                    'Subject alternative names for the master cert') do |sans|
+                    'Subject alternative names for the server cert') do |sans|
               parsed['subject-alt-names'] = sans
             end
             opts.on('--ca-name NAME',
@@ -171,7 +171,7 @@ ERR
               parsed['ca-name'] = name
             end
             opts.on('--certname NAME',
-                    'Common name to use for the master cert') do |name|
+                    'Common name to use for the server cert') do |name|
               parsed['certname'] = name
             end
           end

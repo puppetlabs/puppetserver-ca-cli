@@ -20,7 +20,7 @@ module Puppetserver
 
       CLI_AUTH_EXT_OID = "1.3.6.1.4.1.34380.1.3.39"
 
-      MASTER_EXTENSIONS = [
+      SERVER_EXTENSIONS = [
         ["basicConstraints", "CA:FALSE", true],
         ["nsComment", "Puppet Server Internal Certificate", false],
         ["authorityKeyIdentifier", "keyid:always", false],
@@ -132,23 +132,23 @@ module Puppetserver
         time.strftime('%Y-%m-%dT%H:%M:%S%Z')
       end
 
-      def create_master_cert
-        master_cert = nil
-        master_key = @host.create_private_key(@settings[:keylength],
+      def create_server_cert
+        server_cert = nil
+        server_key = @host.create_private_key(@settings[:keylength],
                                               @settings[:hostprivkey],
                                               @settings[:hostpubkey])
-        if master_key
-          master_csr = @host.create_csr(name: @settings[:certname], key: master_key)
+        if server_key
+          server_csr = @host.create_csr(name: @settings[:certname], key: server_key)
           if @settings[:subject_alt_names].empty?
             alt_names = "DNS:puppet, DNS:#{@settings[:certname]}"
           else
             alt_names = @settings[:subject_alt_names]
           end
 
-          master_cert = sign_authorized_cert(master_csr, alt_names)
+          server_cert = sign_authorized_cert(server_csr, alt_names)
         end
 
-        return master_key, master_cert
+        return server_key, server_cert
       end
 
       def sign_authorized_cert(csr, alt_names = '')
@@ -176,7 +176,7 @@ module Puppetserver
       end
 
       def add_authorized_extensions(cert, ef)
-        MASTER_EXTENSIONS.each do |ext|
+        SERVER_EXTENSIONS.each do |ext|
           extension = ef.create_extension(*ext)
           cert.add_extension(extension)
         end

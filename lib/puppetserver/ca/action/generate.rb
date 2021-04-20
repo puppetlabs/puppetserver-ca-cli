@@ -35,7 +35,7 @@ Description:
   If the `--ca-client` flag is passed, the cert will be generated
   offline, without using Puppet Server's signing code, and will add
   a special extension authorizing it to talk to the CA API. This can
-  be used for regenerating the master's host cert, or for manually
+  be used for regenerating the server's host cert, or for manually
   setting up other nodes to be CA clients. Do not distribute certs
   generated this way to any node that you do not intend to have
   administrative access to the CA (e.g. the ability to sign a cert).

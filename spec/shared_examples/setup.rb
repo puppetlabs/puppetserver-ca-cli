@@ -96,7 +96,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
     end
   end
 
-  it 'adds default subject alt names to the master cert' do
+  it 'adds default subject alt names to the server cert' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
         config = default_config(conf, bundle, key, chain)
@@ -104,10 +104,10 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
 
         expect(exit_code).to eq(0)
 
-        master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
-        expect(File.exist?(master_cert_file)).to be true
-        master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-        alt_names = master_cert.extensions.find do |ext|
+        server_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
+        expect(File.exist?(server_cert_file)).to be true
+        server_cert = OpenSSL::X509::Certificate.new(File.read(server_cert_file))
+        alt_names = server_cert.extensions.find do |ext|
           ext.to_s =~ /subjectAltName/
         end
 
@@ -116,7 +116,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
     end
   end
 
-  it 'adds custom subject alt names to the master cert' do
+  it 'adds custom subject alt names to the server cert' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
         config = default_config(conf, bundle, key, chain)
@@ -124,10 +124,10 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
 
         expect(exit_code).to eq(0)
 
-        master_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
-        expect(File.exist?(master_cert_file)).to be true
-        master_cert = OpenSSL::X509::Certificate.new(File.read(master_cert_file))
-        alt_names = master_cert.extensions.find do |ext|
+        server_cert_file = File.join(tmpdir, 'ssl', 'certs', 'foocert.pem')
+        expect(File.exist?(server_cert_file)).to be true
+        server_cert = OpenSSL::X509::Certificate.new(File.read(server_cert_file))
+        alt_names = server_cert.extensions.find do |ext|
           ext.to_s =~ /subjectAltName/
         end
 
@@ -150,7 +150,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
     end
   end
 
-  it 'honors existing master key pair when generating masters cert' do
+  it 'honors existing server key pair when generating servers cert' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
         private_path = File.join(tmpdir, 'ssl', 'private_keys', 'foocert.pem')
@@ -180,7 +180,7 @@ RSpec.shared_examples 'properly sets up ca and ssl dir' do |action_class|
     end
   end
 
-  it 'fails if only one of masters public, private keys are present' do
+  it 'fails if only one of servers public, private keys are present' do
     Dir.mktmpdir do |tmpdir|
       with_files_in tmpdir do |bundle, key, chain, conf|
         pkey = OpenSSL::PKey::RSA.new(512)
