@@ -166,7 +166,7 @@ module Puppetserver
         def self.check_server_online(settings, logger)
           status_url = URL.new('https', settings[:ca_server], settings[:ca_port], 'status', 'v1', 'simple', 'ca')
           begin
-            # Generating certs offline is necessary if the master cert has been destroyed
+            # Generating certs offline is necessary if the server cert has been destroyed
             # or compromised. Since querying the status endpoint does not require a client cert, and
             # we commonly won't have one, don't require one for creating the connection.
             # Additionally, we want to ensure the server is stopped before migrating the CA dir to

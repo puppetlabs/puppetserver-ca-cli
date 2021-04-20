@@ -58,10 +58,10 @@ module Puppetserver
         @errors = []
       end
 
-      # If both the private and public keys exist for a master then we want
+      # If both the private and public keys exist for a server then we want
       # to honor them here, if only one key exists we want to surface an error,
       # and if neither exist we generate a new key. This logic is necessary for
-      # proper bootstrapping for certain master workflows.
+      # proper bootstrapping for certain server workflows.
       def create_private_key(keylength, private_path = '', public_path = '')
         if File.exists?(private_path) && File.exists?(public_path)
           return OpenSSL::PKey.read(File.read(private_path))

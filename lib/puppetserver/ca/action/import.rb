@@ -14,7 +14,7 @@ module Puppetserver
       class Import
         include Puppetserver::Ca::Utils
 
-        SUMMARY = "Import an external CA chain and generate master PKI"
+        SUMMARY = "Import an external CA chain and generate server PKI"
         BANNER = <<-BANNER
 Usage:
   puppetserver ca import [--help]
@@ -72,7 +72,7 @@ BANNER
         def import(loader, settings, signing_digest)
           ca = Puppetserver::Ca::LocalCertificateAuthority.new(signing_digest, settings)
           ca.initialize_ssl_components(loader)
-          master_key, master_cert = ca.create_master_cert
+          server_key, server_cert = ca.create_server_cert
           return ca.errors if ca.errors.any?
 
           FileSystem.ensure_dirs([settings[:ssldir],
@@ -88,25 +88,25 @@ BANNER
             [settings[:cadir] + '/infra_crl.pem', loader.crls],
             [settings[:localcacert], loader.certs],
             [settings[:hostcrl], loader.crls],
-            [settings[:hostpubkey], master_key.public_key],
-            [settings[:hostcert], master_cert],
-            [settings[:cert_inventory], ca.inventory_entry(master_cert)],
+            [settings[:hostpubkey], server_key.public_key],
+            [settings[:hostcert], server_cert],
+            [settings[:cert_inventory], ca.inventory_entry(server_cert)],
             [settings[:capub], loader.key.public_key],
             [settings[:cadir] + '/infra_inventory.txt', ''],
             [settings[:cadir] + '/infra_serials', ''],
             [settings[:serial], "002"],
-            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), master_cert]
+            [File.join(settings[:signeddir], "#{settings[:certname]}.pem"), server_cert]
           ]
 
           private_files = [
-            [settings[:hostprivkey], master_key],
+            [settings[:hostprivkey], server_key],
             [settings[:cakey], loader.key],
           ]
 
           files_to_check = public_files + private_files
-          # We don't want to error if master's keys exist. Certain workflows
+          # We don't want to error if server's keys exist. Certain workflows
           # allow the agent to have already be installed with keys and then
-          # upgraded to be a master. The host class will honor keys, if both
+          # upgraded to be a server. The host class will honor keys, if both
           # public and private exist, and error if only one exists - as is
           # previous behavior.
           files_to_check = files_to_check.map(&:first) - [settings[:hostpubkey], settings[:hostprivkey]]
@@ -178,11 +178,11 @@ ERR
               parsed['crl-chain'] = chain
             end
             opts.on('--certname NAME',
-                    'Common name to use for the master cert') do |name|
+                    'Common name to use for the server cert') do |name|
               parsed['certname'] = name
             end
             opts.on('--subject-alt-names NAME[,NAME]',
-                    'Subject alternative names for the master cert') do |sans|
+                    'Subject alternative names for the server cert') do |sans|
               parsed['subject-alt-names'] = sans
             end
           end
