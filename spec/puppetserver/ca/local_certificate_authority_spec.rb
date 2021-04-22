@@ -50,13 +50,13 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
     end
   end
 
-  describe "#create_master_cert" do
+  describe "#create_server_cert" do
     context "without a csr_attributes file" do
       it "adds only MA extensions to the csr" do
         root_key, root_cert, root_crl = subject.create_root_cert
         subject.create_intermediate_cert(root_key, root_cert)
 
-        _, cert = subject.create_master_cert
+        _, cert = subject.create_server_cert
         expect(cert.extensions.count).to eq(8)
       end
     end
@@ -81,7 +81,7 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
         root_key, root_cert, root_crl = subject.create_root_cert
         subject.create_intermediate_cert(root_key, root_cert)
 
-        _, cert = subject.create_master_cert
+        _, cert = subject.create_server_cert
         expect(cert.extensions.count).to eq(10)
       end
     end

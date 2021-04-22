@@ -18,7 +18,7 @@ module Puppetserver
 
         # Only allow printing ascii characters, excluding /
         VALID_CERTNAME = /\A[ -.0-~]+\Z/
-        CERTNAME_BLACKLIST = %w{--all --config}
+        CERTNAME_BLOCKLIST = %w{--all --config}
 
         SUMMARY = "Generate a new certificate signed by the CA"
         BANNER = <<-BANNER
@@ -35,7 +35,7 @@ Description:
   If the `--ca-client` flag is passed, the cert will be generated
   offline, without using Puppet Server's signing code, and will add
   a special extension authorizing it to talk to the CA API. This can
-  be used for regenerating the master's host cert, or for manually
+  be used for regenerating the server's host cert, or for manually
   setting up other nodes to be CA clients. Do not distribute certs
   generated this way to any node that you do not intend to have
   administrative access to the CA (e.g. the ability to sign a cert).
@@ -91,7 +91,7 @@ BANNER
             errors << '    At least one certname is required to generate'
           else
             results['certnames'].each do |certname|
-              if CERTNAME_BLACKLIST.include?(certname)
+              if CERTNAME_BLOCKLIST.include?(certname)
                 errors << "    Cannot manage cert named `#{certname}` from " +
                           "the CLI, if needed use the HTTP API directly"
               end

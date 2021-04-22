@@ -313,4 +313,39 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
       end
     end
   end
+
+  it 'loads masterport correctly' do
+    masterport = 1234
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [server]
+            masterport = #{masterport}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load
+
+      expect(settings[:ca_port]).to eq("#{masterport}")
+    end
+  end
+  it 'loads serverport correctly' do
+    serverport = 1234
+    Dir.mktmpdir do |tmpdir|
+      puppet_conf = File.join(tmpdir, 'puppet.conf')
+      File.open puppet_conf, 'w' do |f|
+        f.puts(<<-INI)
+          [server]
+            serverport = #{serverport}
+        INI
+      end
+
+      conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+      settings = conf.load
+
+      expect(settings[:ca_port]).to eq("#{serverport}")
+    end
+  end
 end
