@@ -13,6 +13,10 @@ module Puppetserver
         @err = err
       end
 
+      def level
+        @level
+      end
+
       def debug(text)
         if @level >= LEVELS[:debug]
           @out.puts(text)
