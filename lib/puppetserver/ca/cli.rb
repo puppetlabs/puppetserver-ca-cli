@@ -64,8 +64,10 @@ BANNER
 
 
       def self.run(cli_args = ARGV, out = STDOUT, err = STDERR)
-        logger = Puppetserver::Ca::Logger.new(:info, out, err)
         parser, general_options, unparsed = parse_general_inputs(cli_args)
+        level = general_options.delete('verbose') ? :debug : :info
+
+        logger = Puppetserver::Ca::Logger.new(level, out, err)
 
         if general_options['version']
           logger.inform Puppetserver::Ca::VERSION
@@ -120,6 +122,9 @@ BANNER
           end
           opts.on('--version', 'Display the version') do |v|
             parsed['version'] = true
+          end
+          opts.on('--verbose', 'Display low-level information') do |verbose|
+            parsed['verbose'] = true
           end
 
           opts.separator ACTION_OPTIONS
