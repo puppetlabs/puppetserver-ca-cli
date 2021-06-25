@@ -96,23 +96,24 @@ module Puppetserver
             url = url_overide || @url
             headers = DEFAULT_HEADERS.merge(headers)
 
+            @logger.debug("Making a GET request at #{url}")
+
             request = Net::HTTP::Get.new(url.to_uri, headers)
             result = @conn.request(request)
-            
-            @logger.debug("Making a get request at url #{url}")
-
             Result.new(result.code, result.body)
+
           end
 
           def put(body, url_override = nil, headers = {})
             url = url_override || @url
             headers = DEFAULT_HEADERS.merge(headers)
 
+            @logger.debug("Making a PUT request at #{url}")
+
             request = Net::HTTP::Put.new(url.to_uri, headers)
             request.body = body
             result = @conn.request(request)
 
-            @logger.debug("Making a put request at url #{url}")
 
             Result.new(result.code, result.body)
           end
@@ -121,9 +122,9 @@ module Puppetserver
             url = url_override || @url
             headers = DEFAULT_HEADERS.merge(headers)
 
-            result = @conn.request(Net::HTTP::Delete.new(url.to_uri, headers))
+            @logger.debug("Making a DELETE request at #{url}")
 
-            @logger.debug("Making a delete request at url #{url}")
+            result = @conn.request(Net::HTTP::Delete.new(url.to_uri, headers))
 
             Result.new(result.code, result.body)
           end

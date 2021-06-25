@@ -58,16 +58,15 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage.* puppetserver ca sign.*Display this command-specific help output.*/m
   end
 
-  #This test is not specific for clean, but just an action to validate our test
-  #would work with other options as well.
+  # This test is a representation of what to expect when the verbose flag
+  # is raised with an action. We're using the 'clean' action as an example 
   it 'raise the verbose flag' do
     args = ['--verbose', 'clean'].compact
     action_class = Puppetserver::Ca::Cli::VALID_ACTIONS[args[1]]
-    expect(action_class).to receive(:new).and_wrap_original  do |original, logger|
+    expect(action_class).to receive(:new).and_wrap_original do |original, logger|
       expect(logger.level).to eq(4)
       original.call(logger)
     end
     Puppetserver::Ca::Cli.run(args, StringIO.new, StringIO.new)
   end
-
 end
