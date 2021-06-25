@@ -65,8 +65,9 @@ BANNER
 
       def self.run(cli_args = ARGV, out = STDOUT, err = STDERR)
         parser, general_options, unparsed = parse_general_inputs(cli_args)
-        logger = general_options.key?('verbose') ? Puppetserver::Ca::Logger.new(:debug, out, err)
-                                                    : Puppetserver::Ca::Logger.new(:info, out, err)
+        level = general_options.delete('verbose') ? :debug : :info
+
+        logger = Puppetserver::Ca::Logger.new(level, out, err)
 
         if general_options['version']
           logger.inform Puppetserver::Ca::VERSION

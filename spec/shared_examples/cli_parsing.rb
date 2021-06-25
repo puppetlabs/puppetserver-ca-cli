@@ -17,12 +17,4 @@ RSpec.shared_examples 'basic cli args' do |action, usage|
     expect(stderr.string).to be_empty
     expect(first_code).to be 0
   end
-
-  it 'raise the verbose flag' do
-    args = ['--verbose', action].compact
-    _,parsed,_ = Puppetserver::Ca::Cli.parse_general_inputs(args)
-    expect(parsed['verbose']).to be true
-    logger = Puppetserver::Ca::Logger.new(:debug, stdout, stderr)
-    expect(logger.level).to be Puppetserver::Ca::Logger::LEVELS[:debug]
-  end
 end

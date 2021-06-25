@@ -55,7 +55,7 @@ To create a new keypair and certificate for a certname:
 puppetserver ca generate --certname foo.example.com
 ```
 
-For enabling verbose mode:
+To enable verbose mode:
 ```
 puppetserver ca --verbose <action>
 ```
