@@ -66,5 +66,25 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
       expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
       expect(out.string).to match(/Missing Certificates:.*fake.*/m)
     end
+
+    it 'errors when unknown format option is passed in' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'test'})
+      expect(exit_code).to eq(1)
+    end
+
+    it 'does not throw error when json format option is passed in' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'json'})
+      expect(exit_code).to eq(0)
+      expect(out.string).to match(/\{.*"name\":\"foo\".*\"fingerprints\".*\}/) 
+    end
+
+    it 'returns the correct output, including empty keys with the --all option' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'all' => true, 'format' => 'json'})
+      expect(exit_code).to eq(0)
+      expect(out.string).to match(/\{.*"requested\".*\}.*.\{.*"signed\".*\}.*.\{.*"revoked\".*\}.*.\{.*"missing\".*\}/)
+    end
   end
 end

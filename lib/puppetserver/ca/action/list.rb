@@ -30,6 +30,7 @@ Options:
       BANNER
 
         BODY = JSON.dump({desired_state: 'signed'})
+        VALID_FORMAT = ['text', 'json']
 
         def initialize(logger)
           @logger = logger
@@ -47,6 +48,9 @@ Options:
             opts.on('--all', 'List all certificates') do |a|
               parsed['all'] = true
             end
+            opts.on('--format FORMAT', "Valid formats are: 'text' (default), 'json'") do |f|
+              parsed['format'] = f
+            end
             opts.on('--certname NAME[,NAME]', Array, 'List the specified cert(s)') do |cert|
               parsed['certname'] = cert
             end
@@ -57,6 +61,12 @@ Options:
           config = input['config']
           certnames = input['certname'] || []
           all = input['all']
+          output_format = input['format'] || "text"
+          
+          unless VALID_FORMAT.include?(output_format)
+            Errors.handle_with_usage(@logger, ["Unknown format flag '#{output_format}'. Valid formats are '#{VALID_FORMAT.join("', '")}'"])
+            return 1
+          end 
 
           if all && certnames.any?
             Errors.handle_with_usage(@logger, ['Cannot combine use of --all and --certname'])
@@ -79,16 +89,55 @@ Options:
           requested, signed, revoked = separate_certs(all_certs)
           missing = certnames - all_certs.map { |cert| cert['name'] }
 
-          (all || certnames.any?) \
-            ? output_certs_by_state(requested, signed, revoked, missing)
-            : output_certs_by_state(requested)
+          (all || certnames.any?)\
+          ? output_certs_by_state(all, output_format, requested, signed, revoked, missing)
+          : output_certs_by_state(all, output_format, requested)
 
           return missing.any? \
             ? 1
             : 0
         end
+        
+        def output_certs_by_state(all, output_format, requested, signed = [], revoked = [], missing = [])
+          if output_format == 'json'
+            output_certs_json_format(all, requested, signed, revoked, missing)
+          else
+            output_certs_text_format(requested, signed, revoked, missing)
+          end
+        end
 
-        def output_certs_by_state(requested, signed = [], revoked = [], missing = [])
+        def output_certs_json_format(all, requested, signed, revoked, missing)
+          if revoked.empty? && signed.empty? && requested.empty? && missing.empty?
+            @logger.inform([].to_json)
+            return
+          end
+
+          if all
+            grouped_cert = { "requested" => requested,
+                             "signed" => signed,
+                             "revoked" => revoked,
+                             "missing" => missing }.to_json
+            @logger.inform(grouped_cert)
+          else
+            unless requested.empty?
+              @logger.inform(requested.to_json)
+            end
+
+            unless signed.empty?
+              @logger.inform(signed.to_json)
+            end
+
+            unless revoked.empty?
+              @logger.inform(revoked.to_json)
+            end
+
+            unless missing.empty?
+              @logger.inform(missing.to_json)
+            end
+          end
+        end
+
+        def output_certs_text_format(requested, signed, revoked, missing)
           if revoked.empty? && signed.empty? && requested.empty? && missing.empty?
             @logger.inform "No certificates to list"
             return
@@ -113,7 +162,7 @@ Options:
             @logger.inform "Missing Certificates:"
             missing.each do |name|
               @logger.inform "    #{name}"
-            end
+            end 
           end
         end
 
