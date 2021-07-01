@@ -64,12 +64,12 @@ Options:
           output_format = input['format'] || "text"
           
           unless VALID_FORMAT.include?(output_format)
-            Errors.handle_with_usage(@logger, ["Unknown format flag '#{output_format}'. Valid formats are '#{VALID_FORMAT.join("', '")}'"])
+            Errors.handle_with_usage(@logger, ["Unknown format flag '#{output_format}'. Valid formats are '#{VALID_FORMAT.join("', '")}'."])
             return 1
           end 
 
           if all && certnames.any?
-            Errors.handle_with_usage(@logger, ['Cannot combine use of --all and --certname'])
+            Errors.handle_with_usage(@logger, ['Cannot combine use of --all and --certname.'])
             return 1
           end
 
@@ -107,33 +107,33 @@ Options:
         end
 
         def output_certs_json_format(all, requested, signed, revoked, missing)
-          if revoked.empty? && signed.empty? && requested.empty? && missing.empty?
-            @logger.inform([].to_json)
-            return
-          end
+          grouped_cert = {}
 
           if all
             grouped_cert = { "requested" => requested,
                              "signed" => signed,
-                             "revoked" => revoked,
-                             "missing" => missing }.to_json
+                             "revoked" => revoked }.to_json
             @logger.inform(grouped_cert)
           else
             unless requested.empty?
-              @logger.inform(requested.to_json)
+              grouped_cert["requested"] = requested
             end
 
             unless signed.empty?
-              @logger.inform(signed.to_json)
+              grouped_cert["signed"] = signed
             end
 
             unless revoked.empty?
-              @logger.inform(revoked.to_json)
+              grouped_cert["revoked"] = revoked
             end
 
             unless missing.empty?
-              @logger.inform(missing.to_json)
+              grouped_cert["missing"] = missing
             end
+
+            grouped_cert.empty? \
+            ? @logger.inform({ "requested" => requested }.to_json) 
+            : @logger.inform(grouped_cert.to_json)
           end
         end
 
