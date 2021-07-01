@@ -62,11 +62,11 @@ Options:
           certnames = input['certname'] || []
           all = input['all']
           output_format = input['format'] || "text"
-          
+
           unless VALID_FORMAT.include?(output_format)
             Errors.handle_with_usage(@logger, ["Unknown format flag '#{output_format}'. Valid formats are '#{VALID_FORMAT.join("', '")}'."])
             return 1
-          end 
+          end
 
           if all && certnames.any?
             Errors.handle_with_usage(@logger, ['Cannot combine use of --all and --certname.'])
@@ -81,23 +81,25 @@ Options:
           puppet = Config::Puppet.parse(config)
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
-          filter_names = certnames.any? \
-            ? lambda { |x| certnames.include?(x['name']) }
-            : lambda { |x| true }
+          if certnames.any?
+            filter_names = lambda { |x| certnames.include?(x['name']) }
+          else
+            filter_names = lambda { |x| true }
+          end
 
           all_certs = get_all_certs(puppet.settings).select { |cert| filter_names.call(cert) }
           requested, signed, revoked = separate_certs(all_certs)
           missing = certnames - all_certs.map { |cert| cert['name'] }
 
-          (all || certnames.any?)\
-          ? output_certs_by_state(all, output_format, requested, signed, revoked, missing)
-          : output_certs_by_state(all, output_format, requested)
+          if (all || certnames.any?)
+            output_certs_by_state(all, output_format, requested, signed, revoked, missing)
+          else
+            output_certs_by_state(all, output_format, requested)
+          end
 
-          return missing.any? \
-            ? 1
-            : 0
+          return missing.any? ? 1 : 0
         end
-        
+
         def output_certs_by_state(all, output_format, requested, signed = [], revoked = [], missing = [])
           if output_format == 'json'
             output_certs_json_format(all, requested, signed, revoked, missing)
@@ -115,25 +117,20 @@ Options:
                              "revoked" => revoked }.to_json
             @logger.inform(grouped_cert)
           else
-            unless requested.empty?
-              grouped_cert["requested"] = requested
-            end
+            grouped_cert["requested"] = requested unless requested.empty?
+            grouped_cert["signed"] = signed unless signed.empty?
+            grouped_cert["revoked"] = revoked unless revoked.empty?
+            grouped_cert["missing"] = missing unless missing.empty?
 
-            unless signed.empty?
-              grouped_cert["signed"] = signed
+            # If neither the '--all' flag or the '--certname' flag was passed in
+            # and the requested cert array is empty, we output a JSON object
+            # with an empty 'requested' key. Otherwise, we display
+            # any of the classes that are currently in grouped_cert
+            if grouped_cert.empty?
+              @logger.inform({ "requested" => requested }.to_json)
+            else
+              @logger.inform(grouped_cert.to_json)
             end
-
-            unless revoked.empty?
-              grouped_cert["revoked"] = revoked
-            end
-
-            unless missing.empty?
-              grouped_cert["missing"] = missing
-            end
-
-            grouped_cert.empty? \
-            ? @logger.inform({ "requested" => requested }.to_json) 
-            : @logger.inform(grouped_cert.to_json)
           end
         end
 
@@ -162,7 +159,7 @@ Options:
             @logger.inform "Missing Certificates:"
             missing.each do |name|
               @logger.inform "    #{name}"
-            end 
+            end
           end
         end
 
@@ -214,7 +211,12 @@ Options:
 
         def get_all_certs(settings)
           result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses
-          result ? JSON.parse(result.body) : []
+
+          if result
+            return JSON.parse(result.body)
+          else
+            return []
+          end
         end
 
         def parse(args)
@@ -225,8 +227,11 @@ Options:
 
           errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
-          exit_code = errors_were_handled ? 1 : nil
-
+          if errors_were_handled
+            exit_code = 1
+          else
+            exit_code = nil
+          end
           return results, exit_code
         end
       end
