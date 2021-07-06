@@ -97,7 +97,7 @@ To test your changes on a VM:
 1. To confirm that installation was successful, run `puppetserver ca --help`
 
 ### Releasing
-To release a new version, run the [release pipeline](https://jenkins-master-prod-1.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_main/), which will bump the version, tag, build, and release the gem.
+To release a new version, run the [release pipeline](https://jenkins-platform.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_main/), which will bump the version, tag, build, and release the gem.
 
 ## Contributing & Support
 
