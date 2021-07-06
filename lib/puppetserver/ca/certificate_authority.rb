@@ -23,7 +23,7 @@ module Puppetserver
 
       def initialize(logger, settings)
         @logger = logger
-        @client = HttpClient.new(settings)
+        @client = HttpClient.new(@logger, settings)
         @ca_server = settings[:ca_server]
         @ca_port = settings[:ca_port]
       end

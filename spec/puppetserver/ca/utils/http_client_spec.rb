@@ -41,7 +41,7 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       FileUtils.cp(settings[:cacert], settings[:localcacert])
       FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      client = Puppetserver::Ca::Utils::HttpClient.new(settings)
+      client = Puppetserver::Ca::Utils::HttpClient.new(logger, settings)
       store = client.store
 
       expect(store.verify(hostcert)).to be(true)

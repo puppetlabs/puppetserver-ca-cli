@@ -1,6 +1,7 @@
 require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/cli'
 require 'puppetserver/ca/logger'
+require 'json'
 
 RSpec.describe 'Puppetserver::Ca::Action::List' do
   let(:err)    { StringIO.new }
@@ -65,6 +66,49 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
       expect(exit_code).to eq(1)
       expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
       expect(out.string).to match(/Missing Certificates:.*fake.*/m)
+    end
+
+    it 'errors when unknown format option is passed in' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'test'})
+      expect(exit_code).to eq(1)
+    end
+
+    it 'does not throw error when json format option is passed in' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'json'})
+      expect(exit_code).to eq(0)
+      parsed_output = JSON.parse(out.string)
+      expect(parsed_output).to be_a_kind_of(Hash)
+      expect(parsed_output).to have_key("signed")
+      expect(parsed_output).to have_key("requested")
+    end
+
+    it 'does not throw error when text format option is passed in' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'text'})
+      expect(exit_code).to eq(0)
+      expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
+    end
+
+    it 'returns the correct output, including empty keys with the --all option' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'all' => true, 'format' => 'json'})
+      expect(exit_code).to eq(0)
+      parsed_output = JSON.parse(out.string)
+      expect(parsed_output).to be_a_kind_of(Hash)
+      expect(parsed_output).to have_key("signed")
+      expect(parsed_output).to have_key("requested")
+      expect(parsed_output).to have_key("revoked")
+    end
+
+    it 'output the non-existent cert as a JSON object with the missing key' do
+      allow(action).to receive(:get_all_certs).and_return(result)
+      exit_code = action.run({'certname' => ['pup'], 'format' => 'json'})
+      expect(exit_code).to eq(1)
+      parsed_output = JSON.parse(out.string)
+      expect(parsed_output).to be_a_kind_of(Hash)
+      expect(parsed_output).to have_key("missing")
     end
   end
 end

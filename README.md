@@ -55,6 +55,11 @@ To create a new keypair and certificate for a certname:
 puppetserver ca generate --certname foo.example.com
 ```
 
+To enable verbose mode:
+```
+puppetserver ca --verbose <action>
+```
+
 For more details, see the help output:
 ```
 puppetserver ca --help
@@ -68,7 +73,7 @@ for more details.
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then,
-run `rake spec` to run the tests. You can also run `bin/console` for an
+run `bundle exec rake spec` to run the tests. You can also run `bin/console` for an
 interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
@@ -93,6 +98,7 @@ To test your changes on a VM:
 
 ### Releasing
 To release a new version, run the [release pipeline](https://jenkins-master-prod-1.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_main/), which will bump the version, tag, build, and release the gem.
+To release a new version, run the [release pipeline](https://jenkins-platform.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_1.x/), which will bump the version, tag, build, and release the gem.
 
 
 ## Contributing & Support
