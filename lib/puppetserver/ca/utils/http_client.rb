@@ -19,7 +19,8 @@ module Puppetserver
 
         # Not all connections require a client cert to be present.
         # For example, when querying the status endpoint.
-        def initialize(settings, with_client_cert: true)
+        def initialize(logger, settings, with_client_cert: true)
+          @logger = logger
           @store = make_store(settings[:localcacert],
                               settings[:certificate_revocation],
                               settings[:hostcrl])
@@ -50,7 +51,7 @@ module Puppetserver
         # The Connection object should have HTTP verbs defined on it that take
         # a body (and optional overrides). Returns whatever the block given returned.
         def with_connection(url, &block)
-          request = ->(conn) { block.call(Connection.new(conn, url)) }
+          request = ->(conn) { block.call(Connection.new(conn, url, @logger)) }
 
           begin
             Net::HTTP.start(url.host, url.port,
@@ -85,28 +86,34 @@ module Puppetserver
         # and defines methods named after HTTP verbs that are called on the
         # saved connection, returning a Result.
         class Connection
-          def initialize(net_http_connection, url_struct)
+          def initialize(net_http_connection, url_struct, logger)
             @conn = net_http_connection
             @url = url_struct
+            @logger = logger
           end
 
           def get(url_overide = nil, headers = {})
             url = url_overide || @url
             headers = DEFAULT_HEADERS.merge(headers)
 
+            @logger.debug("Making a GET request at #{url.full_url}")
+
             request = Net::HTTP::Get.new(url.to_uri, headers)
             result = @conn.request(request)
-
             Result.new(result.code, result.body)
+
           end
 
           def put(body, url_override = nil, headers = {})
             url = url_override || @url
             headers = DEFAULT_HEADERS.merge(headers)
 
+            @logger.debug("Making a PUT request at #{url.full_url}")
+
             request = Net::HTTP::Put.new(url.to_uri, headers)
             request.body = body
             result = @conn.request(request)
+
 
             Result.new(result.code, result.body)
           end
@@ -114,6 +121,8 @@ module Puppetserver
           def delete(url_override = nil, headers = {})
             url = url_override || @url
             headers = DEFAULT_HEADERS.merge(headers)
+
+            @logger.debug("Making a DELETE request at #{url.full_url}")
 
             result = @conn.request(Net::HTTP::Delete.new(url.to_uri, headers))
 
@@ -171,7 +180,7 @@ module Puppetserver
             # we commonly won't have one, don't require one for creating the connection.
             # Additionally, we want to ensure the server is stopped before migrating the CA dir to
             # avoid issues with writing to the CA dir and moving it.
-            self.new(settings, with_client_cert: false).with_connection(status_url) do |conn|
+            self.new(logger, settings, with_client_cert: false).with_connection(status_url) do |conn|
               result = conn.get
               if result.body == "running"
                 logger.err "Puppetserver service is running. Please stop it before attempting to run this command."
