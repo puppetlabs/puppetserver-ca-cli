@@ -8,6 +8,7 @@ require 'puppetserver/ca/action/list'
 require 'puppetserver/ca/action/revoke'
 require 'puppetserver/ca/action/setup'
 require 'puppetserver/ca/action/sign'
+require 'puppetserver/ca/action/prune'
 require 'puppetserver/ca/action/migrate'
 require 'puppetserver/ca/errors'
 require 'puppetserver/ca/logger'
@@ -28,8 +29,8 @@ BANNER
       INIT_ACTIONS = {
         'import'   => Action::Import,
         'setup'    => Action::Setup,
-        'enable' => Action::Enable,
-        'migrate' => Action::Migrate,
+        'enable'   => Action::Enable,
+        'migrate'  => Action::Migrate
       }
 
       MAINT_ACTIONS = {
@@ -37,7 +38,8 @@ BANNER
         'generate' => Action::Generate,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
-        'sign'     => Action::Sign
+        'sign'     => Action::Sign,
+        'prune'    => Action::Prune
       }
 
       VALID_ACTIONS = INIT_ACTIONS.merge(MAINT_ACTIONS).sort.to_h
