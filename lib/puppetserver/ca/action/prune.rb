@@ -43,9 +43,8 @@ BANNER
         #Checklist:
         # 1. Ensure that everything is offline (Done)
         # 2. Get the path to the CRL (Done)
-        # 3. Separate by issuers
-        # 4. PRUNE!!!
-        # 5. Repack and write it out?
+        # 3. Prune each issuer revoked list
+        # 4. Repack the CRL and write it out?
         def run(inputs)
           config_path = inputs['config']
 
@@ -68,28 +67,31 @@ BANNER
           # Getting the CRL(s)
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
-          revoked_lists_by_issuer = separate_revoke_list(loader.crls)
-
-          # Ready to prune for each issuer!!!!
-
+          crl_list = loader.crls    # Array of CRL
+          prune_per_issuer(crl_list)
           return 0
         end
 
-        # Pruning based on the serial number ?
-        def prune(revoked_cert_list)
-          # TBD
-        end
+        # Given that we have an array of CRL, each CRL contain a list of revoked
+        # certs signed by a specific issuer.  Thus by iterating through each
+        # item of the CRL array, we can invoke each item's list of revoked cert.
+        # Since it is another array, we will have to iterate through that as well
+        # to prune.  Currently pruning by serial number. Subject to future changes.
+        def prune_per_issuer(crl_list)
+          crl_list.each do |list|
+            revoked_serial_number_tracker = {} # Is this local inside the scope of the do block?
+            revoked_list = list.revoked
 
-        # Given that our PEM file may have multiple CRLs,
-        # I decide to have a hash map where each key is
-        # an issuer and its value is the revoked certs list
-        def separate_revoke_list(crl_array)
-          revoke_hashmap = {}
-
-          crl_array.each do |list|
-            revoke_hashmap[list.issuer.to_s] = list.revoked
+            revoked_list.delete_if do |revoked|
+              if not revoked_serial_number_tracker.key?(revoked.serial)
+                # Add that serial number to the tracker
+                revoked_serial_number_tracker[revoked.serial] = true
+              else
+                # Remove the current array element from the revoked list by returning true
+                true
+              end
+            end
           end
-          return revoke_hashmap
         end
 
         # I copy and pasted this, might need to change to adapt
