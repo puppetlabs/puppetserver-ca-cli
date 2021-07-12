@@ -44,7 +44,8 @@ BANNER
         # 1. Ensure that everything is offline (Done)
         # 2. Get the path to the CRL (Done)
         # 3. Prune each issuer revoked list (In progress)
-        # 4. Repack the CRL and write it out?
+        # 4. Addin debug output
+        # 5. Repack the CRL and write it out?
 
         def run(inputs)
           config_path = inputs['config']
@@ -68,35 +69,41 @@ BANNER
           # Getting the CRL(s)
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
-          crl_list = loader.crls    # A reference to the CRL list
-          prune_per_issuer(crl_list)
+          crl_list = loader.crls
+          prune_per_issuer(crl_list)  # Prune the list
           return 0                  # Place holder return value for now
         end
 
-        # Given that we have an array of CRL, each CRL contain a list of revoked
-        # certs signed by a specific issuer.  Thus by iterating through each
-        # item of the CRL array, we can invoke each item's list of revoked cert.
-        # Since it is another array, we will have to iterate through that as well
-        # to prune.  Currently pruning by serial number ?
+        # Further note: The class Revoked override the == method.  We could make
+        # use of this by using array.uniq method to dedup ?
         def prune_per_issuer(crl_list)
           crl_list.each do |list|
             existed_serial_number = Set.new()
             revoked_list = list.revoked
 
             revoked_list.delete_if do |revoked|
-              # Add that serial number to the tracker and evaluate block to false
               if existed_serial_number.add?(revoked.serial)
                 false
               else
-                # Mark the current array element for removal from the revoked list by evaluate block to true
-                # TO-DO: Add in logger debug here for the removed cert
+                debug_output(list, revoked)
                 true
               end
             end
+            puts "Finished pruning CRL by #{list.issuer.to_s(OpenSSL::X509::Name::RFC2253)}\n"
           end
         end
 
-        # I copy and pasted this, might need to change to adapt to future changes
+        # Output for debug
+        #  - Name of issuer
+        #  - Reason for revocation
+        #  - Time of revocation
+        def debug_output(curr_crl, curr_revoked_cert)
+          issuer_name = curr_crl.issuer.to_s(OpenSSL::X509::Name::RFC2253)
+          reason = curr_revoked_cert.extensions.join(', ') # Potentially ugly format.  Need more testing
+          time = curr_revoked_cert.time
+          @logger.debug("Issuer: #{issuer_name}\nReason for revoke : #{reason}\nTime of revocation: #{time}")  # Sample test
+        end
+
         def parse(args)
           results = {}
           parser = self.class.parser(results)
