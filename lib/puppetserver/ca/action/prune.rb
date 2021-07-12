@@ -12,7 +12,7 @@ module Puppetserver
       class Prune
         include Puppetserver::Ca::Utils
 
-        SUMMARY = "Prune the local CRL on disk to remove any duplicates certificate"
+        SUMMARY = "Prune the local CRL on disk to remove any duplicated certificates"
         BANNER = <<-BANNER
 Usage:
   puppetserver ca prune [--help]
@@ -40,11 +40,12 @@ BANNER
           end
         end
 
-        #Checklist:
+        # TODO:
         # 1. Ensure that everything is offline (Done)
         # 2. Get the path to the CRL (Done)
-        # 3. Prune each issuer revoked list
+        # 3. Prune each issuer revoked list (In progress)
         # 4. Repack the CRL and write it out?
+
         def run(inputs)
           config_path = inputs['config']
 
@@ -67,34 +68,35 @@ BANNER
           # Getting the CRL(s)
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
-          crl_list = loader.crls    # Array of CRL
+          crl_list = loader.crls    # A reference to the CRL list
           prune_per_issuer(crl_list)
-          return 0
+          return 0                  # Place holder return value for now
         end
 
         # Given that we have an array of CRL, each CRL contain a list of revoked
         # certs signed by a specific issuer.  Thus by iterating through each
         # item of the CRL array, we can invoke each item's list of revoked cert.
         # Since it is another array, we will have to iterate through that as well
-        # to prune.  Currently pruning by serial number. Subject to future changes.
+        # to prune.  Currently pruning by serial number ?
         def prune_per_issuer(crl_list)
           crl_list.each do |list|
-            revoked_serial_number_tracker = {} # Is this local inside the scope of the do block?
+            existed_serial_number = Set.new()
             revoked_list = list.revoked
 
             revoked_list.delete_if do |revoked|
-              if not revoked_serial_number_tracker.key?(revoked.serial)
-                # Add that serial number to the tracker
-                revoked_serial_number_tracker[revoked.serial] = true
+              # Add that serial number to the tracker and evaluate block to false
+              if existed_serial_number.add?(revoked.serial)
+                false
               else
-                # Remove the current array element from the revoked list by returning true
+                # Mark the current array element for removal from the revoked list by evaluate block to true
+                # TO-DO: Add in logger debug here for the removed cert
                 true
               end
             end
           end
         end
 
-        # I copy and pasted this, might need to change to adapt
+        # I copy and pasted this, might need to change to adapt to future changes
         def parse(args)
           results = {}
           parser = self.class.parser(results)
