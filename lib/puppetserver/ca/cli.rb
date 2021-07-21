@@ -26,11 +26,12 @@ Manage the Private Key Infrastructure for
 Puppet Server's built-in Certificate Authority
 BANNER
 
-      INIT_ACTIONS = {
+      ADMIN_ACTIONS = {
         'import'   => Action::Import,
         'setup'    => Action::Setup,
         'enable'   => Action::Enable,
-        'migrate'  => Action::Migrate
+        'migrate'  => Action::Migrate,
+        'prune'    => Action::Prune
       }
 
       MAINT_ACTIONS = {
@@ -38,19 +39,18 @@ BANNER
         'generate' => Action::Generate,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
-        'sign'     => Action::Sign,
-        'prune'    => Action::Prune
+        'sign'     => Action::Sign
       }
 
-      VALID_ACTIONS = INIT_ACTIONS.merge(MAINT_ACTIONS).sort.to_h
+      VALID_ACTIONS = ADMIN_ACTIONS.merge(MAINT_ACTIONS).sort.to_h
 
       ACTION_LIST = "\nAvailable Actions:\n\n" +
         "  Certificate Actions (requires a running Puppet Server):\n\n" +
         MAINT_ACTIONS.map do |action, cls|
           "    #{action}\t#{cls::SUMMARY}"
         end.join("\n") + "\n\n" +
-        "  Initialization Actions (requires Puppet Server to be stopped):\n\n" +
-        INIT_ACTIONS.map do |action, cls|
+        "  Administrative Actions (requires Puppet Server to be stopped):\n\n" +
+        ADMIN_ACTIONS.map do |action, cls|
           "    #{action}\t#{cls::SUMMARY}"
         end.join("\n")
 
