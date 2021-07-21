@@ -17,8 +17,12 @@ module Puppetserver
         @level
       end
 
+      def debug?
+        return @level >= LEVELS[:debug]
+      end
+
       def debug(text)
-        if @level >= LEVELS[:debug]
+        if debug?
           @out.puts(text)
         end
       end
