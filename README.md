@@ -55,6 +55,11 @@ To create a new keypair and certificate for a certname:
 puppetserver ca generate --certname foo.example.com
 ```
 
+To remove duplicated entries from Puppet's CRL:
+```
+puppetserver ca prune
+```
+
 To enable verbose mode:
 ```
 puppetserver ca --verbose <action>
