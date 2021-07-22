@@ -58,8 +58,13 @@ RSpec.describe Puppetserver::Ca::Cli do
       /.*Usage.* puppetserver ca sign.*Display this command-specific help output.*/m
   end
 
+  describe 'the prune action' do
+    include_examples 'basic cli args',
+      'prune',
+      /.*Usage.* puppetserver ca prune.*Display this command-specific help output.*/m
+  end
   # This test is a representation of what to expect when the verbose flag
-  # is raised with an action. We're using the 'clean' action as an example 
+  # is raised with an action. We're using the 'clean' action as an example
   it 'raise the verbose flag' do
     args = ['--verbose', 'clean'].compact
     action_class = Puppetserver::Ca::Cli::VALID_ACTIONS[args[1]]
