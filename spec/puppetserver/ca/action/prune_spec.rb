@@ -104,7 +104,7 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
 
       extensions = ca_crl.extensions.select { |ext| ext.oid == "crlNumber"}
       extensions.each do |ext|
-        expect(ext.value).to match("1")
+        expect(ext.value).to eq("1")
       end
     end
   end

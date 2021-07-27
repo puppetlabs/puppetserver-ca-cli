@@ -50,15 +50,22 @@ BANNER
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
           puppet_crl = loader.crls.select { |crl| crl.verify(loader.key) }
-          prune_CRLs(puppet_crl)
-          update_pruned_CRL(puppet_crl, loader.key)
-          FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0644)
+          update_flag = prune_CRLs(puppet_crl)
 
-          @logger.inform("Finished pruning Puppet's CRL")
+          if update_flag
+            update_pruned_CRL(puppet_crl, loader.key)
+            FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0644)
+            @logger.inform("Finished pruning Puppet's CRL.")
+          else
+            @logger.inform("No duplicate revocations found in the CRL.")
+          end
+
           return 0
         end
 
         def prune_CRLs(crl_list)
+          update_flag = false
+
           crl_list.each do |crl|
             existed_serial_number = Set.new()
             revoked_list = crl.revoked
@@ -69,6 +76,7 @@ BANNER
               if existed_serial_number.add?(revoked.serial)
                 false
               else
+                update_flag = true
                 @logger.debug("Removing duplicate of #{revoked.serial}, " \
                   "revoked on #{revoked.time}\n") if @logger.debug?
                 true
@@ -76,16 +84,17 @@ BANNER
             end
             crl.revoked=(revoked_list)
           end
+
+          return update_flag
         end
 
         def update_pruned_CRL(crl_list, pkey)
           crl_list.each do |crl|
-            extension_key = crl.extensions.select { |ext| ext.oid != "crlNumber" }
-            extension_number = crl.extensions.select { |ext| ext.oid == "crlNumber" }
-            extension_number.each do |crl_number|
-              crl_number.value=((crl_number.value.to_i + 1).to_s)
+            number_ext, other_ext = crl.extensions.partition{ |ext| ext.oid == "crlNumber"}
+            number_ext.each do |crl_number|
+              crl_number.value=(OpenSSL::ASN1::Integer(crl_number.value.to_i + 1))
             end
-            crl.extensions=(extension_number + extension_key)
+            crl.extensions=(number_ext + other_ext)
             crl.sign(pkey, OpenSSL::Digest::SHA256.new)
           end
         end
