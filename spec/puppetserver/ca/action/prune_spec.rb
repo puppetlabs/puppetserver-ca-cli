@@ -95,13 +95,17 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
   end
 
   describe 'update' do
-    it 'bumps CRL version up by 1' do
+    it 'bumps CRL number up by 1' do
       ca_key = OpenSSL::PKey::RSA.new(512)
       ca_cert = create_cert(ca_key, "Bazzup")
       ca_crl = create_crl(ca_cert, ca_key)
 
       subject.update_pruned_CRL([ca_crl], ca_key)
-      expect(ca_crl.version).to eq(2)
+
+      extensions = ca_crl.extensions.select { |ext| ext.oid == "crlNumber"}
+      extensions.each do |ext|
+        expect(ext.value).to match("1")
+      end
     end
   end
 end

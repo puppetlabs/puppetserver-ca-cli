@@ -80,7 +80,12 @@ BANNER
 
         def update_pruned_CRL(crl_list, pkey)
           crl_list.each do |crl|
-            crl.version=(crl.version + 1)
+            extension_key = crl.extensions.select { |ext| ext.oid != "crlNumber" }
+            extension_number = crl.extensions.select { |ext| ext.oid == "crlNumber" }
+            extension_number.each do |crl_number|
+              crl_number.value=((crl_number.value.to_i + 1).to_s)
+            end
+            crl.extensions=(extension_number + extension_key)
             crl.sign(pkey, OpenSSL::Digest::SHA256.new)
           end
         end
