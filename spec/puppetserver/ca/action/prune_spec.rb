@@ -76,8 +76,9 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
       revoked_cert = create_cert(ca_key, 'revoked')
       ca_crl = create_crl(ca_cert, ca_key, Array.new(5, revoked_cert))
 
-      subject.prune_CRLs([ca_crl])
+      number_of_removed_duplicates = subject.prune_CRLs([ca_crl])
       expect(ca_crl.revoked.length).to eq(1)
+      expect(number_of_removed_duplicates).to eq(4)
     end
 
     it 'deduplicates a CRL with multiple certs that have duplicate of themselves' do
@@ -89,19 +90,24 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
 
       ca_crl = create_crl(ca_cert, ca_key, first_cert + second_cert + third_cert)
 
-      subject.prune_CRLs([ca_crl])
+      number_of_removed_duplicates = subject.prune_CRLs([ca_crl])
       expect(ca_crl.revoked.length).to eq(3)
+      expect(number_of_removed_duplicates).to eq(15)
     end
   end
 
   describe 'update' do
-    it 'bumps CRL version up by 1' do
+    it 'bumps CRL number up by 1' do
       ca_key = OpenSSL::PKey::RSA.new(512)
       ca_cert = create_cert(ca_key, "Bazzup")
       ca_crl = create_crl(ca_cert, ca_key)
 
       subject.update_pruned_CRL([ca_crl], ca_key)
-      expect(ca_crl.version).to eq(2)
+
+      extensions = ca_crl.extensions.select { |ext| ext.oid == "crlNumber"}
+      extensions.each do |ext|
+        expect(ext.value).to eq("1")
+      end
     end
   end
 end
