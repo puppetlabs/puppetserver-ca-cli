@@ -50,12 +50,12 @@ BANNER
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
           puppet_crl = loader.crls.select { |crl| crl.verify(loader.key) }
-          update_flag = prune_CRLs(puppet_crl)
+          number_of_removed_duplicates = prune_CRLs(puppet_crl)
 
-          if update_flag
+          if number_of_removed_duplicates > 0
             update_pruned_CRL(puppet_crl, loader.key)
             FileSystem.write_file(puppet.settings[:cacrl], loader.crls, 0644)
-            @logger.inform("Finished pruning Puppet's CRL.")
+            @logger.inform("Removed #{number_of_removed_duplicates} duplicated certs from Puppet's CRL.")
           else
             @logger.inform("No duplicate revocations found in the CRL.")
           end
@@ -64,7 +64,7 @@ BANNER
         end
 
         def prune_CRLs(crl_list)
-          update_flag = false
+          number_of_removed_duplicates = 0
 
           crl_list.each do |crl|
             existed_serial_number = Set.new()
@@ -76,7 +76,7 @@ BANNER
               if existed_serial_number.add?(revoked.serial)
                 false
               else
-                update_flag = true
+                number_of_removed_duplicates += 1
                 @logger.debug("Removing duplicate of #{revoked.serial}, " \
                   "revoked on #{revoked.time}\n") if @logger.debug?
                 true
@@ -85,14 +85,15 @@ BANNER
             crl.revoked=(revoked_list)
           end
 
-          return update_flag
+          return number_of_removed_duplicates
         end
 
         def update_pruned_CRL(crl_list, pkey)
           crl_list.each do |crl|
-            number_ext, other_ext = crl.extensions.partition{ |ext| ext.oid == "crlNumber"}
+            number_ext, other_ext = crl.extensions.partition{ |ext| ext.oid == "crlNumber" }
             number_ext.each do |crl_number|
-              crl_number.value=(OpenSSL::ASN1::Integer(crl_number.value.to_i + 1))
+              updated_crl_number = OpenSSL::BN.new(crl_number.value) + OpenSSL::BN.new(1)
+              crl_number.value=(OpenSSL::ASN1::Integer(updated_crl_number))
             end
             crl.extensions=(number_ext + other_ext)
             crl.sign(pkey, OpenSSL::Digest::SHA256.new)
