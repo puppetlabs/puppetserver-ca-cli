@@ -71,7 +71,7 @@ RSpec.describe Puppetserver::Ca::Action::Clean do
 
       code = subject.run({'certnames' => ['foo']})
       expect(code).to eq(0)
-      expect(stdout.string).to match(/Revoked.*foo/)
+      expect(stdout.string).to match(/Certificate.*foo/)
       expect(stdout.string).to include('Cleaned files related to foo')
       expect(stderr.string).to be_empty
     end

@@ -141,7 +141,7 @@ module Puppetserver
         when :revoke
           case result.code
           when '200', '204'
-            @logger.inform "Revoked certificate for #{certname}"
+            @logger.inform "Certificate for #{certname} has been revoked"
             return :success
           when '404'
             @logger.err 'Error:'
@@ -215,7 +215,7 @@ module Puppetserver
       def check_revocation(certname, result)
         case result.code
         when '200', '204'
-          @logger.inform "Revoked certificate for #{certname}"
+          @logger.inform "Certificate for #{certname} has been revoked"
           return :success
         when '409'
           return :invalid

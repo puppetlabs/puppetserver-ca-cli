@@ -68,7 +68,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
 
       code = subject.run({'certnames' => ['foo']})
       expect(code).to eq(0)
-      expect(stdout.string.chomp).to eq('Revoked certificate for foo')
+      expect(stdout.string.chomp).to eq('Certificate for foo has been revoked')
       expect(stderr.string).to be_empty
     end
 
@@ -78,7 +78,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
 
       code = subject.run({'certnames' => ['foo', 'bar']})
       expect(code).to eq(1)
-      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stdout.string.chomp).to eq('Certificate for bar has been revoked')
       expect(stderr.string).to match(/Error.*not find certificate for foo/m)
     end
 
@@ -88,7 +88,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
 
       code = subject.run({'certnames' => ['foo', 'bar']})
       expect(code).to eq(24)
-      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stdout.string.chomp).to eq('Certificate for bar has been revoked')
       expect(stderr.string).to match(/Error.*not revoke unsigned csr for foo/m)
     end
 
@@ -99,7 +99,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
 
       code = subject.run({'certnames' => ['foo', 'bar', 'baz']})
       expect(code).to eq(1)
-      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stdout.string.chomp).to eq('Certificate for bar has been revoked')
       expect(stderr.string).to match(/Error.*not revoke unsigned csr for baz/m)
       expect(stderr.string).to match(/Error.*not find certificate for foo/m)
     end
@@ -110,7 +110,7 @@ RSpec.describe Puppetserver::Ca::Action::Revoke do
 
       code = subject.run({'certnames' => ['foo', 'bar']})
       expect(code).to eq(1)
-      expect(stdout.string.chomp).to eq('Revoked certificate for bar')
+      expect(stdout.string.chomp).to eq('Certificate for bar has been revoked')
       expect(stderr.string).
         to match(/Error.*attempting to revoke.*code: 500.*body: Internal Server Error/m)
     end
