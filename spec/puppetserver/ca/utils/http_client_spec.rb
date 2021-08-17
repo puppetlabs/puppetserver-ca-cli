@@ -48,4 +48,12 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
       expect(store.verify(cacert)).to be(true)
     end
   end
+
+  it 'create a URL with query params correctly' do
+    query = { :state => "requested" }
+    url = Puppetserver::Ca::Utils::HttpClient::URL.new('https', 'localhost', '8140',
+                                                       'puppet-ca', 'v1', 'certificate_statuses', 'any_key', query)
+    result = url.to_uri
+    expect(result.to_s).to eq("https://localhost:8140/puppet-ca/v1/certificate_statuses/any_key?state=requested")
+  end
 end
