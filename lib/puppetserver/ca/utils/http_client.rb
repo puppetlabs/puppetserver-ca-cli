@@ -1,5 +1,6 @@
 require 'net/https'
 require 'openssl'
+require 'uri'
 
 require 'puppetserver/ca/errors'
 
@@ -114,7 +115,6 @@ module Puppetserver
             request.body = body
             result = @conn.request(request)
 
-
             Result.new(result.code, result.body)
           end
 
@@ -136,10 +136,13 @@ module Puppetserver
         # Like URI, but not... maybe of suspicious value
         URL = Struct.new(:protocol, :host, :port,
                          :endpoint, :version,
-                         :resource_type, :resource_name) do
+                         :resource_type, :resource_name, :query) do
                 def full_url
-                  protocol + '://' + host + ':' + port + '/' +
-                  [endpoint, version, resource_type, resource_name].join('/')
+                  url = protocol + '://' + host + ':' + port + '/' +
+                        [endpoint, version, resource_type, resource_name].join('/')
+
+                  url = url + "?" + URI.encode_www_form(query) unless query.empty?
+                  return url
                 end
 
                 def to_uri

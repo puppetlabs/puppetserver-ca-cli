@@ -20,14 +20,14 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
 
   describe 'error handling' do
     it 'logs when no certs are found' do
-      allow(action).to receive(:get_all_certs).and_return([])
+      allow(action).to receive(:get_certs_or_csrs).and_return([])
       exit_code = action.run({})
       expect(exit_code).to eq(0)
       expect(out.string).to include('No certificates to list')
     end
 
     it 'logs requested certs' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({})
       expect(exit_code).to eq(0)
       expect(out.string).to match(/Requested Certificates:.*baz.*\(SHA256\).*two.*alt names:.*"DNS:baz", "DNS:bar".*/m)
@@ -36,7 +36,7 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'logs requested, signed, and revoked certs with --all flag' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'all' => true})
       expect(exit_code).to eq(0)
       expect(out.string).to match(/Requested Certificates:.*baz.*\(SHA256\).*two.*alt names:.*"DNS:baz", "DNS:bar".*authorization extensions: \[pp_cli_auth: true, pp_provisioner: true\].*/m)
@@ -45,7 +45,7 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'logs requested certs with --certs flag' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['foo','baz']})
       expect(exit_code).to eq(0)
       expect(out.string).to match(/Requested Certificates:.*baz.*\(SHA256\).*two.*alt names:.*"DNS:baz", "DNS:bar".*/m)
@@ -54,14 +54,14 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'logs a non-existent cert as missing when requested with --certs flag' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['fake']})
       expect(exit_code).to eq(1)
       expect(out.string).to match(/Missing Certificates:.*fake.*/m)
     end
 
     it 'errors when any requested certs are missing with --certs flag' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['foo','fake']})
       expect(exit_code).to eq(1)
       expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
@@ -69,13 +69,13 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'errors when unknown format option is passed in' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'test'})
       expect(exit_code).to eq(1)
     end
 
     it 'does not throw error when json format option is passed in' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'json'})
       expect(exit_code).to eq(0)
       parsed_output = JSON.parse(out.string)
@@ -85,14 +85,14 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'does not throw error when text format option is passed in' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['foo', 'baz'], 'format' => 'text'})
       expect(exit_code).to eq(0)
       expect(out.string).to match(/Signed Certificates:.*foo.*\(SHA256\).*three.*alt names:.*"DNS:foo", "DNS:bar".*/m)
     end
 
     it 'returns the correct output, including empty keys with the --all option' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'all' => true, 'format' => 'json'})
       expect(exit_code).to eq(0)
       parsed_output = JSON.parse(out.string)
@@ -103,7 +103,7 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
     end
 
     it 'output the non-existent cert as a JSON object with the missing key' do
-      allow(action).to receive(:get_all_certs).and_return(result)
+      allow(action).to receive(:get_certs_or_csrs).and_return(result)
       exit_code = action.run({'certname' => ['pup'], 'format' => 'json'})
       expect(exit_code).to eq(1)
       parsed_output = JSON.parse(out.string)

@@ -41,8 +41,8 @@ module Puppetserver
       end
 
       # Returns a URI-like wrapper around CA specific urls
-      def make_ca_url(resource_type = nil, certname = nil)
-        HttpClient::URL.new('https', @ca_server, @ca_port, 'puppet-ca', 'v1', resource_type, certname)
+      def make_ca_url(resource_type = nil, certname = nil, query = {})
+        HttpClient::URL.new('https', @ca_server, @ca_port, 'puppet-ca', 'v1', resource_type, certname, query)
       end
 
       def process_ttl_input(ttl)
@@ -141,7 +141,7 @@ module Puppetserver
         when :revoke
           case result.code
           when '200', '204'
-            @logger.inform "Revoked certificate for #{certname}"
+            @logger.inform "Certificate for #{certname} has been revoked"
             return :success
           when '404'
             @logger.err 'Error:'
@@ -215,7 +215,7 @@ module Puppetserver
       def check_revocation(certname, result)
         case result.code
         when '200', '204'
-          @logger.inform "Revoked certificate for #{certname}"
+          @logger.inform "Certificate for #{certname} has been revoked"
           return :success
         when '409'
           return :invalid
@@ -250,8 +250,8 @@ module Puppetserver
       end
 
       # Returns nil for errors, else the result of the GET request
-      def get_certificate_statuses
-        result = get('certificate_statuses', 'any_key')
+      def get_certificate_statuses(query = {})
+        result = get('certificate_statuses', 'any_key', query)
 
         unless result.code == '200'
           @logger.err 'Error:'
@@ -287,8 +287,8 @@ module Puppetserver
       # @param resource_type [String] the resource type of url
       # @param resource_name [String] the resource name of url
       # @return [Struct] an instance of the Result struct with :code, :body
-      def get(resource_type, resource_name)
-        url = make_ca_url(resource_type, resource_name)
+      def get(resource_type, resource_name, query = {})
+        url = make_ca_url(resource_type, resource_name, query)
         @client.with_connection(url) do |connection|
           connection.get(url)
         end
