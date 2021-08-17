@@ -62,6 +62,7 @@ Options:
           certnames = input['certname'] || []
           all = input['all']
           output_format = input['format'] || "text"
+          missing = []
 
           unless VALID_FORMAT.include?(output_format)
             Errors.handle_with_usage(@logger, ["Unknown format flag '#{output_format}'. Valid formats are '#{VALID_FORMAT.join("', '")}'."])
@@ -87,14 +88,14 @@ Options:
             filter_names = lambda { |x| true }
           end
 
-          all_certs = get_all_certs(puppet.settings).select { |cert| filter_names.call(cert) }
-          requested, signed, revoked = separate_certs(all_certs)
-          missing = certnames - all_certs.map { |cert| cert['name'] }
-
           if (all || certnames.any?)
+            all_certs = get_certs_or_csrs(puppet.settings).select { |cert| filter_names.call(cert) }
+            requested, signed, revoked = separate_certs(all_certs)
+            missing = certnames - all_certs.map { |cert| cert['name'] }
             output_certs_by_state(all, output_format, requested, signed, revoked, missing)
           else
-            output_certs_by_state(all, output_format, requested)
+            all_csrs = get_certs_or_csrs(puppet.settings, "requested")
+            output_certs_by_state(all, output_format, all_csrs)
           end
 
           return missing.any? ? 1 : 0
@@ -209,8 +210,9 @@ Options:
           return requested, signed, revoked
         end
 
-        def get_all_certs(settings)
-          result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses
+        def get_certs_or_csrs(settings, queried_state = nil)
+          query = queried_state ? { :state => queried_state } : {}
+          result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses(query)
 
           if result
             return JSON.parse(result.body)
