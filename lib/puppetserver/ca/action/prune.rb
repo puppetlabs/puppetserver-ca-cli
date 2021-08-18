@@ -50,7 +50,8 @@ BANNER
           loader = X509Loader.new(puppet.settings[:cacert], puppet.settings[:cakey], puppet.settings[:cacrl])
 
           puppet_crl = loader.crls.select { |crl| crl.verify(loader.key) }
-          number_of_removed_duplicates = prune_CRLs(puppet_crl)
+          number_of_removed_duplicates, number_of_certificates = prune_CRLs(puppet_crl)
+          @logger.inform("Total number of certificates found in Puppet's CRL is: #{number_of_certificates}.")
 
           if number_of_removed_duplicates > 0
             update_pruned_CRL(puppet_crl, loader.key)
@@ -65,10 +66,12 @@ BANNER
 
         def prune_CRLs(crl_list)
           number_of_removed_duplicates = 0
+          number_of_certificates = 0
 
           crl_list.each do |crl|
             existed_serial_number = Set.new()
             revoked_list = crl.revoked
+            number_of_certificates += revoked_list.length
             @logger.debug("Pruning duplicate entries in CRL for issuer " \
               "#{crl.issuer.to_s(OpenSSL::X509::Name::RFC2253)}") if @logger.debug?
 
@@ -85,7 +88,7 @@ BANNER
             crl.revoked=(revoked_list)
           end
 
-          return number_of_removed_duplicates
+          return number_of_removed_duplicates, number_of_certificates
         end
 
         def update_pruned_CRL(crl_list, pkey)

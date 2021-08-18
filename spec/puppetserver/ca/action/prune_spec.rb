@@ -76,9 +76,10 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
       revoked_cert = create_cert(ca_key, 'revoked')
       ca_crl = create_crl(ca_cert, ca_key, Array.new(5, revoked_cert))
 
-      number_of_removed_duplicates = subject.prune_CRLs([ca_crl])
+      number_of_removed_duplicates, number_of_certificates = subject.prune_CRLs([ca_crl])
       expect(ca_crl.revoked.length).to eq(1)
       expect(number_of_removed_duplicates).to eq(4)
+      expect(number_of_certificates).to eq(5)
     end
 
     it 'deduplicates a CRL with multiple certs that have duplicate of themselves' do
@@ -90,9 +91,10 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
 
       ca_crl = create_crl(ca_cert, ca_key, first_cert + second_cert + third_cert)
 
-      number_of_removed_duplicates = subject.prune_CRLs([ca_crl])
+      number_of_removed_duplicates, number_of_certificates = subject.prune_CRLs([ca_crl])
       expect(ca_crl.revoked.length).to eq(3)
       expect(number_of_removed_duplicates).to eq(15)
+      expect(number_of_certificates).to eq(18)
     end
   end
 
