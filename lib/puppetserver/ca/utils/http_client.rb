@@ -141,7 +141,7 @@ module Puppetserver
                   url = protocol + '://' + host + ':' + port + '/' +
                         [endpoint, version, resource_type, resource_name].join('/')
 
-                  url = url + "?" + URI.encode_www_form(query) unless query.empty?
+                  url = url + "?" + URI.encode_www_form(query) unless query.nil? || query.empty?
                   return url
                 end
 
