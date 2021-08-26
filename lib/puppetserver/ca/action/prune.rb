@@ -1,5 +1,6 @@
 require 'optparse'
 require 'openssl'
+require 'set'
 require 'puppetserver/ca/errors'
 require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
