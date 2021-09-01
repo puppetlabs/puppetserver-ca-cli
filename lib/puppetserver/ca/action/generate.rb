@@ -26,7 +26,7 @@ Usage:
   puppetserver ca generate [--help]
   puppetserver ca generate --certname NAME[,NAME] [--config PATH]
                            [--subject-alt-names NAME[,NAME]]
-                           [--ca-client]
+                           [--ca-client] [--force]
 
 Description:
   Generates a new certificate signed by the intermediate CA
@@ -74,6 +74,10 @@ BANNER
                     'Whether this cert will be used to request CA actions.',
                     'Causes the cert to be generated offline.') do |ca_client|
               parsed['ca-client'] = true
+            end
+            opts.on('--force', 'Suppress errors when signing cert offline.',
+                    "To be used with '--ca-client'") do |force|
+              parsed['force'] = true
             end
             opts.on('--ttl TTL', 'The time-to-live for each cert generated and signed') do |ttl|
               parsed['ttl'] = ttl
@@ -140,7 +144,18 @@ BANNER
           # Generate and save certs and associated keys
           if input['ca-client']
             # Refused to generate certs offfline if the CA service is running
-            return 1 if HttpClient.check_server_online(puppet.settings, @logger)
+            begin
+              return 1 if HttpClient.check_server_online(puppet.settings, @logger)
+            rescue Puppetserver::Ca::ConnectionFailed => e
+              if input['force']
+                @logger.inform("Could not determine that Puppet Server is offline, " \
+                  "connection check failed with error: #{e.wrapped}.\nContinuing with certificate signing.")
+              else
+                @logger.inform("Could not determine if Puppet Server is online. Please ensure it is offline, " \
+                  "then run this command again with the '--force' flag")
+                raise e
+              end
+            end
             all_passed = generate_authorized_certs(certnames, alt_names, puppet.settings, signer.digest)
           else
             all_passed = generate_certs(certnames, alt_names, puppet.settings, signer.digest, input['ttl'])
