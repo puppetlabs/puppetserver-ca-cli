@@ -143,7 +143,7 @@ BANNER
 
           # Generate and save certs and associated keys
           if input['ca-client']
-            # Refused to generate certs offfline if the CA service is running
+            # Refuse to generate certs offline if the CA service is running
             begin
               return 1 if HttpClient.check_server_online(puppet.settings, @logger)
             rescue Puppetserver::Ca::ConnectionFailed => e
