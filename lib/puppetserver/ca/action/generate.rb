@@ -26,7 +26,7 @@ Usage:
   puppetserver ca generate [--help]
   puppetserver ca generate --certname NAME[,NAME] [--config PATH]
                            [--subject-alt-names NAME[,NAME]]
-                           [--ca-client] [--force]
+                           [--ca-client [--force]]
 
 Description:
   Generates a new certificate signed by the intermediate CA
