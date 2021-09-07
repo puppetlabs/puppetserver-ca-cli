@@ -143,16 +143,18 @@ BANNER
 
           # Generate and save certs and associated keys
           if input['ca-client']
-            # Refused to generate certs offfline if the CA service is running
+            # Refuse to generate certs offline if the CA service is running
             begin
               return 1 if HttpClient.check_server_online(puppet.settings, @logger)
             rescue Puppetserver::Ca::ConnectionFailed => e
+              base_message = "Could not determine whether Puppet Server is online."
               if input['force']
-                @logger.inform("Could not determine that Puppet Server is offline, " \
-                  "connection check failed with error: #{e.wrapped}.\nContinuing with certificate signing.")
+                @logger.inform("#{base_message} Connection check failed with " \
+                  "error: #{e.wrapped}\nContinuing with certificate signing.")
               else
-                @logger.inform("Could not determine if Puppet Server is online. Please ensure it is offline, " \
-                  "then run this command again with the '--force' flag")
+                @logger.inform("#{base_message} If you are certain that the " \
+                  "Puppetserver service is stopped, run this command again " \
+                  "with the '--force' flag.")
                 raise e
               end
             end
