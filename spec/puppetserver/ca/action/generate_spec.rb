@@ -410,6 +410,40 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
     end
 
+    it "refuses to generate a cert if server status can't be determined" do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          allow(subject).to receive(:generate_authorized_certs) { true }
+          allow(httpclient).to receive(:check_server_online).and_raise(
+            Puppetserver::Ca::ConnectionFailed.create(
+              StandardError.new,
+                'UnknownException'))
+          expect { subject.run({'certname' => ['foo'],
+                                'config' => config,
+                                'subject-alt-names' => '',
+                                'ca-client' => true})}.to raise_error(Puppetserver::Ca::ConnectionFailed)
+        end
+      end
+    end
+
+    it "generates a cert if server status can't be determined and --force is used" do
+      Dir.mktmpdir do |tmpdir|
+        with_temp_dirs tmpdir do |config|
+          allow(subject).to receive(:generate_authorized_certs) { true }
+          allow(httpclient).to receive(:check_server_online).and_raise(
+            Puppetserver::Ca::ConnectionFailed.create(
+             StandardError.new,
+                'UnknownException'))
+          expect { subject.run({'certname' => ['foo'],
+                                'config' => config,
+                                'subject-alt-names' => '',
+                                'ca-client' => true,
+                                'force' => true})}.not_to raise_error
+          expect(stdout.string).to include("Continuing with certificate signing")
+        end
+      end
+    end
+
     it "does not contact the CA API when a ca-client cert is requested" do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |config|
@@ -495,45 +529,6 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
           expect(code).to eq(0)
           serial = File.read(File.join(ca_dir, "serial")).chomp.to_i
           expect(serial).to eq(2)
-        end
-      end
-    end
-  end
-
-  describe "force flag" do
-    it 'errors when generate offline without --force flag when error is not CONNREFUSED' do
-
-      Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |config|
-          allow(subject).to receive(:generate_authorized_certs) { true }
-          allow(httpclient).to receive(:check_server_online).and_raise(
-            Puppetserver::Ca::ConnectionFailed.create(
-              StandardError.new,
-                'UnknownException'))
-
-          expect { subject.run({'certname' => ['foo'],
-                              'config' => config,
-                              'subject-alt-names' => '',
-                              'ca-client' => true})}.to raise_error(Puppetserver::Ca::ConnectionFailed)
-        end
-      end
-    end
-
-    it 'signs when generate offline whilst there is a ConnectionFailed error' do
-      Dir.mktmpdir do |tmpdir|
-        with_temp_dirs tmpdir do |config|
-          allow(subject).to receive(:generate_authorized_certs) { true }
-          allow(httpclient).to receive(:check_server_online).and_raise(
-            Puppetserver::Ca::ConnectionFailed.create(
-             StandardError.new,
-                'UnknownException'))
-
-          expect { subject.run({'certname' => ['foo'],
-                                'config' => config,
-                                'subject-alt-names' => '',
-                                'ca-client' => true,
-                                'force' => true})}.not_to raise_error
-          expect(stdout.string).to include("Continuing with certificate signing")
         end
       end
     end
