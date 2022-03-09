@@ -89,12 +89,23 @@ Options:
           end
 
           if (all || certnames.any?)
-            all_certs = get_certs_or_csrs(puppet.settings).select { |cert| filter_names.call(cert) }
+            found_certs = get_certs_or_csrs(puppet.settings)
+            if found_certs.nil?
+               # nil is different from no certs found
+               @logger.inform('Error while getting certificates')
+               return 1
+            end
+            all_certs = found_certs.select { |cert| filter_names.call(cert) }
             requested, signed, revoked = separate_certs(all_certs)
             missing = certnames - all_certs.map { |cert| cert['name'] }
             output_certs_by_state(all, output_format, requested, signed, revoked, missing)
           else
             all_csrs = get_certs_or_csrs(puppet.settings, "requested")
+            if all_csrs.nil?
+               # nil is different from no certs found
+               @logger.inform('Error while getting certificates')
+               return 1
+            end
             output_certs_by_state(all, output_format, all_csrs)
           end
 
@@ -214,9 +225,14 @@ Options:
           query = queried_state ? { :state => queried_state } : {}
           result = Puppetserver::Ca::CertificateAuthority.new(@logger, settings).get_certificate_statuses(query)
 
-          if result
+          if result.nil?
+            # nil returned from an errored lookup
+            return nil
+          elsif result
+            # values from a legit lookup
             return JSON.parse(result.body)
           else
+            # empty result from a legit lookup
             return []
           end
         end
