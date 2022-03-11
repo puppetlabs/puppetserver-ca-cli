@@ -33,6 +33,13 @@ RSpec.describe 'Puppetserver::Ca::Action::List' do
       expect(err.string).to include('Error while getting certificates')
     end
 
+    it 'exit-1 when run on a non-CA, no inputs' do
+      allow(action).to receive(:get_certs_or_csrs).and_return(nil)
+      exit_code = action.run({})
+      expect(exit_code).to eq(1)
+      expect(err.string).to include('Error while getting certificate requests')
+    end
+
     it 'logs when no certs are found' do
       allow(action).to receive(:get_certs_or_csrs).and_return([])
       exit_code = action.run({})
