@@ -63,14 +63,14 @@ module Puppetserver
       # and if neither exist we generate a new key. This logic is necessary for
       # proper bootstrapping for certain server workflows.
       def create_private_key(keylength, private_path = '', public_path = '')
-        if File.exists?(private_path) && File.exists?(public_path)
+        if File.exist?(private_path) && File.exist?(public_path)
           return OpenSSL::PKey.read(File.read(private_path))
-        elsif !File.exists?(private_path) && !File.exists?(public_path)
+        elsif !File.exist?(private_path) && !File.exist?(public_path)
           return OpenSSL::PKey::RSA.new(keylength)
-        elsif !File.exists?(private_path) && File.exists?(public_path)
+        elsif !File.exist?(private_path) && File.exist?(public_path)
           @errors << "Missing private key to match public key at #{public_path}"
           return nil
-        elsif File.exists?(private_path) && !File.exists?(public_path)
+        elsif File.exist?(private_path) && !File.exist?(public_path)
           @errors << "Missing public key to match private key at #{private_path}"
           return nil
         end
