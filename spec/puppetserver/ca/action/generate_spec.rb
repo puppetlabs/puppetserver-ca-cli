@@ -245,7 +245,11 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
           :csr_attributes => '$confdir/csr_attributes.yaml' } }
 
       before(:each) do
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:exist?).with(/csr_attributes\.yaml/).and_return(true)
+        allow(File).to receive(:exist?).with(/puppet\.conf/).and_return(true)
+        allow(File).to receive(:exist?).with(/ssl/).and_return(true)
+        allow(File).to receive(:exist?).with('').and_return(false)
+
         allow_any_instance_of(Puppetserver::Ca::Action::Generate)
           .to receive(:check_for_existing_ssl_files).and_return([])
       end

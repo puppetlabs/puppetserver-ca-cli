@@ -78,10 +78,12 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       }
 
       before(:each) do
-        allow(File).to receive(:exist?).with(/bundle.pem/).and_return(true)
-        allow(File).to receive(:exist?).with(/key.pem/).and_return(true)
-        allow(File).to receive(:exist?).with(/chain.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/bundle\.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/key\.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/chain\.pem/).and_return(true)
         allow(File).to receive(:exist?).with(/serial/).and_return(false)
+        allow(File).to receive(:exist?).with(/public_keys/).and_return(false)
+        allow(File).to receive(:exist?).with(/private_keys/).and_return(false)
 
         # The Host#{create_server_cert,create_intermediate_cert,create_root_cert}
         # methods all call `create_csr` and don't pass the `csr_attributes_path`
