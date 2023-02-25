@@ -12,40 +12,41 @@ RSpec.describe Puppetserver::Ca::Utils::HttpClient do
   include Utils::SSL
 
   it 'creates a store that can validate connections to CA' do
-    tmpdir = Dir.mktmpdir
-    stdout = StringIO.new
-    stderr = StringIO.new
-    logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
+    Dir.mktmpdir do |tmpdir|
+      stdout = StringIO.new
+      stderr = StringIO.new
+      logger = Puppetserver::Ca::Logger.new(:info, stdout, stderr)
 
-    with_ca_in(tmpdir) do |config, confdir|
-      settings = Puppetserver::Ca::Config::Puppet.new(config).load(cli_overrides: {
-        :hostcert    => "#{tmpdir}/hostcert.pem",
-        :hostprivkey => "#{tmpdir}/hostkey.pem",
-        :confdir     => confdir
-      }, logger: logger)
+      with_ca_in(tmpdir) do |config, confdir|
+        settings = Puppetserver::Ca::Config::Puppet.new(config).load(cli_overrides: {
+          :hostcert    => "#{tmpdir}/hostcert.pem",
+          :hostprivkey => "#{tmpdir}/hostkey.pem",
+          :confdir     => confdir
+        }, logger: logger)
 
-      setup_action = Puppetserver::Ca::Action::Setup.new(logger)
+        setup_action = Puppetserver::Ca::Action::Setup.new(logger)
 
-      signer = Puppetserver::Ca::Utils::SigningDigest.new
-      setup_action.generate_pki(settings, signer.digest)
+        signer = Puppetserver::Ca::Utils::SigningDigest.new
+        setup_action.generate_pki(settings, signer.digest)
 
-      loader = Puppetserver::Ca::X509Loader.new(settings[:cacert], settings[:cakey], settings[:cacrl])
-      cakey = loader.key
-      cacert = loader.cert
+        loader = Puppetserver::Ca::X509Loader.new(settings[:cacert], settings[:cakey], settings[:cacrl])
+        cakey = loader.key
+        cacert = loader.cert
 
-      hostkey = OpenSSL::PKey::RSA.new(512)
-      hostcert = create_cert(hostkey, 'foobar', cakey, cacert)
-      File.write("#{tmpdir}/hostcert.pem", hostcert)
-      File.write("#{tmpdir}/hostkey.pem", hostkey)
+        hostkey = OpenSSL::PKey::RSA.new(512)
+        hostcert = create_cert(hostkey, 'foobar', cakey, cacert)
+        File.write("#{tmpdir}/hostcert.pem", hostcert)
+        File.write("#{tmpdir}/hostkey.pem", hostkey)
 
-      FileUtils.cp(settings[:cacert], settings[:localcacert])
-      FileUtils.cp(settings[:cacrl], settings[:hostcrl])
+        FileUtils.cp(settings[:cacert], settings[:localcacert])
+        FileUtils.cp(settings[:cacrl], settings[:hostcrl])
 
-      client = Puppetserver::Ca::Utils::HttpClient.new(logger, settings)
-      store = client.store
+        client = Puppetserver::Ca::Utils::HttpClient.new(logger, settings)
+        store = client.store
 
-      expect(store.verify(hostcert)).to be(true)
-      expect(store.verify(cacert)).to be(true)
+        expect(store.verify(hostcert)).to be(true)
+        expect(store.verify(cacert)).to be(true)
+      end
     end
   end
 
