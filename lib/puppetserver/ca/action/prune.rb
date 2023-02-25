@@ -6,6 +6,7 @@ require 'puppetserver/ca/utils/cli_parsing'
 require 'puppetserver/ca/utils/file_system'
 require 'puppetserver/ca/utils/config'
 require 'puppetserver/ca/x509_loader'
+require 'puppetserver/ca/config/puppet'
 
 module Puppetserver
   module Ca
