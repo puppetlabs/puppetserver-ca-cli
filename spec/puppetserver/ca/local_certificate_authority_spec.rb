@@ -34,11 +34,13 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
     end
 
     context 'when an ssl asset is missing' do
+      let(:cadir) { Dir.mktmpdir }
       let(:settings) {
-        with_ca_in(Dir.mktmpdir) do |config|
+        with_ca_in(cadir) do |config|
           return Puppetserver::Ca::Config::Puppet.new(config).load(cli_overrides: {cacert: '/some/rando/path'}, logger: logger)
         end
       }
+      after(:each) { FileUtils.rm_rf(cadir) }
       it 'does not load ssl assets if they are not found' do
         expect(subject.cert).to be_nil
         expect(subject.key).to be_nil

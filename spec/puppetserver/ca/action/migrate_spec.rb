@@ -91,6 +91,8 @@ RSpec.describe Puppetserver::Ca::Action::Migrate do
       expect(File.readlink(old_cadir)).to eq(new_cadir)
       expect(File.exist?(File.join(old_cadir, 'newfile')))
       expect(File.exist?(File.join(new_cadir, 'newfile')))
+      FileUtils.rm_rf(new_cadir.gsub('/ca',''))
+      FileUtils.rm_rf(old_cadir.gsub('/ca',''))
     end
   end
 end
