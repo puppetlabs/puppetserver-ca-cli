@@ -5,7 +5,7 @@ require 'puppetserver/ca/utils/config'
 module Utils
   module SSL
 
-    def create_cert(subject_key, name, signer_key = nil, signer_cert = nil)
+    def create_cert(subject_key, name, signer_key = nil, signer_cert = nil, not_before = Time.now - 1, not_after = Time.now + 360000, serial = rand(2**128))
       cert = OpenSSL::X509::Certificate.new
 
       signer_cert ||= cert
@@ -15,9 +15,9 @@ module Utils
       cert.subject = OpenSSL::X509::Name.parse("/CN=#{name}")
       cert.issuer = signer_cert.subject
       cert.version = 2
-      cert.serial = rand(2**128)
-      cert.not_before = Time.now - 1
-      cert.not_after = Time.now + 360000
+      cert.serial = serial
+      cert.not_before = not_before
+      cert.not_after = not_after
       ef = OpenSSL::X509::ExtensionFactory.new
       ef.issuer_certificate = signer_cert
       ef.subject_certificate = cert
