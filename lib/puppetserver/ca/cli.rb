@@ -1,6 +1,7 @@
 require 'optparse'
 
 require 'puppetserver/ca/action/clean'
+require 'puppetserver/ca/action/delete'
 require 'puppetserver/ca/action/generate'
 require 'puppetserver/ca/action/import'
 require 'puppetserver/ca/action/enable'
@@ -36,6 +37,7 @@ BANNER
 
       MAINT_ACTIONS = {
         'clean'    => Action::Clean,
+        'delete'   => Action::Delete,
         'generate' => Action::Generate,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
