@@ -148,6 +148,72 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
         end
       end
     end
+
+    describe '--certname' do
+      before(:each) { allow(connection).to receive(:get).and_return(offline) }
+
+      it 'deletes the given single certname' do
+        # Single certname is transformed into an array by the parser
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            cadir = "#{tmpdir}/ca"
+            prepare_certs_and_inventory(cadir)
+            code = subject.run({'config' => config, 'certname' => ['foo']})
+            expect(code).to eq(0)
+            expect(stdout.string).to match(/1 certificate deleted./)
+            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+          end
+        end
+      end
+
+      it 'deletes the given multiple certnames' do
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            cadir = "#{tmpdir}/ca"
+            prepare_certs_and_inventory(cadir)
+            code = subject.run({'config' => config, 'certname' => ['foo', 'bar']})
+            expect(code).to eq(0)
+            expect(stdout.string).to match(/2 certificates deleted./)
+            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+          end
+        end
+      end
+
+      it 'shows an error when one of the certs does not exist' do
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            cadir = "#{tmpdir}/ca"
+            prepare_certs_and_inventory(cadir)
+            code = subject.run({'config' => config, 'certname' => ['foo', 'lolwut']})
+            expect(code).to eq(24)
+            expect(stderr.string).to match(/Could not find certificate file at.*lolwut.pem/)
+            expect(stdout.string).to match(/1 certificate deleted./)
+            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+          end
+        end
+      end
+
+      it 'works correctly with the --expired flag, adding on an additional cert' do
+        Dir.mktmpdir do |tmpdir|
+          with_temp_dirs tmpdir do |config|
+            cadir = "#{tmpdir}/ca"
+            prepare_certs_and_inventory(cadir)
+            code = subject.run({'config' => config, 'expired' => true, 'certname' => ['bar']})
+            expect(code).to eq(0)
+            expect(stdout.string).to match(/3 certificates deleted./)
+            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(false)
+          end
+        end
+      end
+    end
   end
 end
 

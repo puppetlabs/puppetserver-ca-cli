@@ -125,6 +125,11 @@ BANNER
             errored ||= err
           end
 
+          if args['certname']
+            count, errored = delete_certs(settings[:cadir], args['certname'])
+            deleted_count += count
+          end
+
           plural = deleted_count == 1 ? "" : "s"
           @logger.inform("#{deleted_count} certificate#{plural} deleted.")
           # If encountered non-fatal errors (an invalid entry in inventory.txt, cert not existing on disk)
