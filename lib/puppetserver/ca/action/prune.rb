@@ -20,11 +20,13 @@ Usage:
   puppetserver ca prune [--help]
   puppetserver ca prune [--config]
   puppetserver ca prune [--config] [--remove-duplicates]
+  puppetserver ca prune [--config] [--remove-expired]
   puppetserver ca prune [--config] [--remove-entries] [--serial NUMBER[,NUMBER]] [--certname NAME[,NAME]]
 
 Description:
   Prune the list of revoked certificates. If no options are provided or
   --remove-duplicates is specified, prune CRL of any duplicate entries.
+  If --remove-expired is specified, remove expired entries from CRL.
   If --remove-entries is specified, remove matching entries provided by
   --serial and/or --certname values. This command will only prune the CRL
   issued by Puppet's CA cert.
@@ -39,6 +41,7 @@ BANNER
         def run(inputs)
           config_path = inputs['config']
           remove_duplicates = inputs['remove-duplicates']
+          remove_expired = inputs['remove-expired']
           remove_entries = inputs['remove-entries']
           serialnumbers = inputs['serial']
           certnames = inputs['certname']
@@ -84,9 +87,15 @@ BANNER
                 number_of_removed_crl_entries += prune_using_certname(puppet_crl, loader.key, inventory_file, cadir, certnames)
               end
             end
-            if (remove_duplicates || (!remove_entries))
+
+            if remove_expired
+              number_of_removed_crl_entries += prune_expired(puppet_crl, loader.key, inventory_file, cadir)
+            end
+
+            if (remove_duplicates || (!remove_entries && !remove_expired))
                number_of_removed_duplicates += prune_CRL(puppet_crl)
             end
+
 
             if (number_of_removed_duplicates > 0 || number_of_removed_crl_entries > 0)
               update_pruned_CRL(puppet_crl, loader.key)
@@ -170,7 +179,7 @@ BANNER
               end
             end
           else
-            @logger.inform "Reading inventory file at #{inventory_file} failed with error #{errors}"
+            @logger.warn "Reading inventory file at #{inventory_file} failed with error #{errors}"
           end
           if certnames
             @logger.debug("Checking CA dir #{cadir} for matching cert names")
@@ -187,6 +196,38 @@ BANNER
           end
         end
 
+        def prune_expired (crl, key, inventory_file, cadir)
+          serialnumbers = []
+          signed_dir = "#{cadir}/signed"
+          @logger.debug("Checking inventory file #{inventory_file} for expired entries") if @logger.debug?
+          errors = FileSystem.validate_file_paths(inventory_file)
+          if errors.empty?
+            File.open(inventory_file).each_line do |line|
+              if line.match(/\/CN=.*$/) && line.split.length == 4
+                not_after = line.split[2]
+                begin
+                  not_after = Time.parse(line.split[2])
+                  serialnumbers.push(line.split.first) if not_after < Time.now
+                rescue ArgumentError
+                  @logger.warn "Invalid not_after time found in inventory.txt file at #{line}"
+                  next
+                end
+              end
+            end
+          else
+            @logger.warn "Reading inventory file at #{inventory_file} failed with error #{errors}"
+          end
+          @logger.debug("Checking CA dir #{cadir} for expired certs")
+          Dir.foreach(signed_dir) do |filename|
+            if File.extname(filename) == '.pem'
+              raw = File.read("#{signed_dir}/#{filename}")
+              certificate = OpenSSL::X509::Certificate.new(raw)
+              serialnumbers.push(certificate.serial.to_s(16)) if certificate.not_after < Time.now
+            end
+          end
+          prune_using_serial(crl, key, serialnumbers)
+        end
+
         def self.parser(parsed = {})
           OptionParser.new do |opts|
             opts.banner = BANNER
@@ -198,6 +239,9 @@ BANNER
             end
             opts.on('--remove-duplicates', 'Remove duplicate entries from CRL(default)') do |remove_duplicates|
               parsed['remove-duplicates'] = true
+            end
+            opts.on('--remove-expired', 'Remove expired  entries from CRL(default)') do |remove_expired|
+              parsed['remove-expired'] = true
             end
             opts.on('--remove-entries', 'Remove entries from CRL') do |remove_entries|
               parsed['remove-entries'] = true

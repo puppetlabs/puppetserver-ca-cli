@@ -29,6 +29,12 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
       expect(result['remove-duplicates']).to eq(true)
     end
 
+    it 'takes --remove-expired option' do
+      result, maybe_code = subject.parse(['--remove-expired'])
+      expect(maybe_code).to eq(nil)
+      expect(result['remove-expired']).to eq(true)
+    end
+
     it 'takes --remove-entries option' do
       result, maybe_code = subject.parse(['--remove-entries'])
       expect(maybe_code).to eq(nil)
@@ -147,6 +153,41 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
       expect(number_of_removed_duplicates).to eq(15)
     end
 
+    it 'reduces a CRL with duplicate revoked certs when called without any arguments' do
+      allow(connection).to receive(:get).and_return(offline)
+      Dir.mktmpdir do |tmpdir|
+        with_files_in tmpdir do |bundle, key, chain, conf|
+          puppet_conf = File.join(tmpdir, 'puppet.conf')
+          File.open puppet_conf, 'w' do |f|
+            f.puts(<<-INI)
+              [agent]
+                publickeydir = /agent/pubkeys
+              [main]
+                certname = fooberry
+              [master]
+                ssldir = /foo/bar
+                cacrl = #{tmpdir}/ca//crl.pem
+                cadir = #{tmpdir}/ca
+            INI
+          end
+          conf = Puppetserver::Ca::Config::Puppet.new(puppet_conf)
+          conf.load(logger: logger)
+          ca_key = OpenSSL::PKey::RSA.new(512)
+          ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+          revoked_cert = create_cert(ca_key, 'revoked')
+          ca_crl = create_crl(ca_cert, ca_key, Array.new(5, revoked_cert))
+          File.write("#{tmpdir}/ca/ca_crt.pem", ca_cert)
+          File.write("#{tmpdir}/ca/ca_key.pem", ca_key)
+          File.write("#{tmpdir}/ca/crl.pem", ca_crl)
+
+          exit_code = subject.run({"config"=>puppet_conf})
+          updated_crl = OpenSSL::X509::CRL::new(File.read("#{tmpdir}/ca/crl.pem"))
+          expect(exit_code).to eq(0)
+          expect(updated_crl.revoked.length).to eq(1)
+          expect(stdout.string).to include("Removed 4 duplicated certs from Puppet's CRL.")
+        end
+      end
+    end
     it 'reduces a CRL with duplicate revoked certs when called with --remove-duplicates' do
       allow(connection).to receive(:get).and_return(offline)
       Dir.mktmpdir do |tmpdir|
@@ -181,6 +222,106 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
           expect(stdout.string).to include("Removed 4 duplicated certs from Puppet's CRL.")
         end
       end
+    end
+
+    it 'remove expired crl entries using inventory.txt and scanning CA directory' do
+      allow(connection).to receive(:get).and_return(offline)
+      ca_key = OpenSSL::PKey::RSA.new(512)
+      ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+      first_revoked_cert = create_cert(ca_key, 'foo')
+      second_revoked_cert = create_cert(ca_key, 'bar')
+      first_revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      first_revoked_cert.not_after = Time.now  - (60 * 60 * 24 * 365 * 1)
+      second_revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      second_revoked_cert.not_after = Time.now  - (60 * 60 * 24 * 60)
+      ca_crl = create_crl(ca_cert, ca_key, [first_revoked_cert, second_revoked_cert])
+      inventory_entries = ca.inventory_entry(first_revoked_cert)
+      File.write(settings[:cert_inventory], inventory_entries)
+      File.write("#{settings[:cadir]}/signed/bar.pem", second_revoked_cert)
+      allow(File).to receive(:exist?).and_return(true)
+      number_of_removed_crl_entries = subject.prune_expired(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir])
+      expect(number_of_removed_crl_entries).to eq(2)
+      expect(ca_crl.revoked.length).to eq(0)
+    end
+
+    it 'does not remove unexpired crl entries ' do
+      allow(connection).to receive(:get).and_return(offline)
+      ca_key = OpenSSL::PKey::RSA.new(512)
+      ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+      first_revoked_cert = create_cert(ca_key, 'foo')
+      second_revoked_cert = create_cert(ca_key, 'bar')
+      third_revoked_cert = create_cert(ca_key, 'baz')
+      fourth_revoked_cert = create_cert(ca_key, 'wine')
+      first_revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      first_revoked_cert.not_after = Time.now  - (60 * 60 * 24 * 365 * 1)
+      second_revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      second_revoked_cert.not_after = Time.now  - (60 * 60 * 24 * 60)
+      ca_crl = create_crl(ca_cert, ca_key, [first_revoked_cert, \
+                                            second_revoked_cert, \
+                                            third_revoked_cert, \
+                                            fourth_revoked_cert])
+      inventory_entries = ca.inventory_entry(first_revoked_cert) + "\n" + ca.inventory_entry(third_revoked_cert)
+      File.write(settings[:cert_inventory], inventory_entries)
+      File.write("#{settings[:cadir]}/signed/bar.pem", second_revoked_cert)
+      File.write("#{settings[:cadir]}/signed/wine.pem", fourth_revoked_cert)
+      allow(File).to receive(:exist?).and_return(true)
+      number_of_removed_crl_entries = subject.prune_expired(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir])
+      expect(number_of_removed_crl_entries).to eq(2)
+      expect(ca_crl.revoked.length).to eq(2)
+    end
+
+    it 'continue to scan CA directory and remove expired entries if inventory.txt is missing' do
+      allow(connection).to receive(:get).and_return(offline)
+      ca_key = OpenSSL::PKey::RSA.new(512)
+      ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+      revoked_cert = create_cert(ca_key, 'foo')
+      revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      revoked_cert.not_after = Time.now  - (60 * 60 * 24 * 365 * 1)
+      ca_crl = create_crl(ca_cert, ca_key, [revoked_cert])
+      inventory_entries = ca.inventory_entry(revoked_cert)
+      File.write("#{settings[:cadir]}/signed/foo.pem", revoked_cert)
+      allow(File).to receive(:exist?).with(settings[:cert_inventory]).and_return(false)
+      allow(File).to receive(:exist?).with("#{settings[:cadir]}/signed/foo.pem").and_return(true)
+      number_of_removed_crl_entries = subject.prune_expired(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir])
+      expect(number_of_removed_crl_entries).to eq(1)
+      expect(ca_crl.revoked.length).to eq(0)
+    end
+
+    it 'correctly parse inventory.txt file with miscellaneous entries when checking for expired entries' do
+      allow(connection).to receive(:get).and_return(offline)
+      ca_key = OpenSSL::PKey::RSA.new(512)
+      ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+      revoked_cert = create_cert(ca_key, 'foo.example.com')
+      revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      revoked_cert.not_after = Time.now  - 1
+      ca_crl = create_crl(ca_cert, ca_key, Array.new(1, revoked_cert))
+      File.write(settings[:cert_inventory], "\n"+"I am bad /CN=foo.example.com\n"+ca.inventory_entry(revoked_cert)+"\nHello")
+      allow(File).to receive(:exist?).and_return(true)
+      number_of_removed_crl_entries = subject.prune_expired(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir])
+      expect(number_of_removed_crl_entries).to eq(1)
+      expect(ca_crl.revoked.length).to eq(0)
+      expect(stderr.string).to include("Invalid not_after time found in inventory.txt file at I am bad /CN=foo.example.com")
+    end
+
+    it 'scan CA directory and remove expired entries even if miscellaneous files exist' do
+      allow(connection).to receive(:get).and_return(offline)
+      ca_key = OpenSSL::PKey::RSA.new(512)
+      ca_cert = create_cert(ca_key, "You-Shall-Not-Pass")
+      revoked_cert = create_cert(ca_key, 'foo')
+      revoked_cert.not_before = Time.now - (60 * 60 * 24 * 365 * 2)
+      revoked_cert.not_after = Time.now  - (60 * 60 * 24)
+      ca_crl = create_crl(ca_cert, ca_key, [revoked_cert])
+      inventory_entries = ca.inventory_entry(revoked_cert)
+      File.write("#{settings[:cadir]}/signed/foo.pem", revoked_cert)
+      File.write("#{settings[:cadir]}/signed/hello", "hello")
+      File.write("#{settings[:cadir]}/signed/test.txt", "testing")
+      allow(File).to receive(:exist?).with(settings[:cert_inventory]).and_return(false)
+      allow(File).to receive(:exist?).with("#{settings[:cadir]}/signed/foo.pem").and_return(true)
+      allow(File).to receive(:exist?).with("#{settings[:cadir]}/signed/hello").and_return(true)
+      allow(File).to receive(:exist?).with("#{settings[:cadir]}/signed/test.txt").and_return(true)
+      number_of_removed_crl_entries = subject.prune_expired(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir])
+      expect(number_of_removed_crl_entries).to eq(1)
+      expect(ca_crl.revoked.length).to eq(0)
     end
 
     it 'removes crl entry when passing single serial number' do
@@ -257,12 +398,12 @@ RSpec.describe Puppetserver::Ca::Action::Prune do
       revoked_cert = create_cert(ca_key, 'foo')
       ca_crl = create_crl(ca_cert, ca_key, [revoked_cert])
       File.write("#{settings[:cadir]}/signed/foo.pem", revoked_cert)
-      allow(File).to receive(:exists?).with(settings[:cert_inventory]).and_return(false)
-      allow(File).to receive(:exists?).with("#{settings[:cadir]}/signed/foo.pem").and_return(true)
+      allow(File).to receive(:exist?).with(settings[:cert_inventory]).and_return(false)
+      allow(File).to receive(:exist?).with("#{settings[:cadir]}/signed/foo.pem").and_return(true)
       number_of_removed_crl_entries = subject.prune_using_certname(ca_crl, ca_key, settings[:cert_inventory], settings[:cadir], ["foo"])
       expect(number_of_removed_crl_entries).to eq(1)
       expect(ca_crl.revoked.length).to eq(0)
-      expect(stdout.string).to include("Reading inventory file at #{settings[:cert_inventory]} failed with error")
+      expect(stderr.string).to include("Reading inventory file at #{settings[:cert_inventory]} failed with error")
     end
 
     it 'correctly parse inventory.txt file with miscellaneous entries' do
