@@ -151,9 +151,9 @@ module Utils
       FileUtils.mkdir_p Puppetserver::Ca::Utils::Config.default_ssldir(confdir)
       FileUtils.mkdir_p Puppetserver::Ca::Utils::Config.new_default_cadir(confdir)
 
-      bundle_file = File.join(fixtures_dir, 'bundle.pem')
-      key_file = File.join(fixtures_dir, 'key.pem')
-      chain_file = File.join(fixtures_dir, 'chain.pem')
+      bundle_file = File.join(fixtures_dir, 'ca_crt.pem')
+      key_file = File.join(fixtures_dir, 'ca_key.pem')
+      chain_file = File.join(fixtures_dir, 'ca_crl.pem')
       config_file = File.join(fixtures_dir, 'puppet.conf')
 
       File.open(config_file, 'w') do |f|
@@ -201,9 +201,9 @@ module Utils
       FileUtils.mkdir_p ssl_dir
       FileUtils.mkdir_p "#{ca_dir}/signed"
 
-      bundle_file = File.join(ca_dir, 'bundle.pem')
-      key_file = File.join(ca_dir, 'key.pem')
-      chain_file = File.join(ca_dir, 'chain.pem')
+      bundle_file = File.join(ca_dir, 'ca_crt.pem')
+      key_file = File.join(ca_dir, 'ca_key.pem')
+      chain_file = File.join(ca_dir, 'ca_crl.pem')
       config_file = File.join(ca_dir, 'puppet.conf')
 
       File.open(config_file, 'w') do |f|
