@@ -80,9 +80,9 @@ RSpec.describe Puppetserver::Ca::LocalCertificateAuthority do
       }
 
       before(:each) do
-        allow(File).to receive(:exist?).with(/bundle\.pem/).and_return(true)
-        allow(File).to receive(:exist?).with(/key\.pem/).and_return(true)
-        allow(File).to receive(:exist?).with(/chain\.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/ca_crt\.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/ca_key\.pem/).and_return(true)
+        allow(File).to receive(:exist?).with(/ca_crl\.pem/).and_return(true)
         allow(File).to receive(:exist?).with(/serial/).and_return(false)
         allow(File).to receive(:exist?).with(/public_keys/).and_return(false)
         allow(File).to receive(:exist?).with(/private_keys/).and_return(false)

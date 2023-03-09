@@ -56,24 +56,27 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
 
   def prepare_certs_and_inventory(cadir)
     FileUtils.mkdir_p "#{cadir}/signed"
-    # Foo expires now, Bar expires far in the future, Baz is expired and not present in inventory
-    # Include a line for an old Bar cert to ensure we aren't deleting it and only acting based off
+    # nodeA expires now, nodeB expires far in the future, nodeC is expired and not present in inventory
+    # Include a line for an old nodeB cert to ensure we aren't deleting it and only acting based off
     # the newest entry for a cert
-    key = OpenSSL::PKey::RSA.new(512)
+    #
+    # Loads the key if this is run inside a with_ca_in block. Otherwise, creates a new one.
+    key = File.exist?("#{cadir}/ca_key.pem") ? OpenSSL::PKey::RSA.new(File.read("#{cadir}/ca_key.pem")) : OpenSSL::PKey::RSA.new(512)
     not_before_unexpired = Time.now - 1
     not_after_unexpired = Time.now + 360000
     not_before_expired = Time.now - 100
     not_after_expired = Time.now - 1
-    File.write("#{cadir}/signed/foo.pem", create_cert(key, 'foo', nil, nil, not_before_expired, not_after_expired, 1))
-    File.write("#{cadir}/signed/bar.pem", create_cert(key, 'bar', nil, nil, not_before_unexpired, not_after_unexpired, 3))
-    File.write("#{cadir}/signed/baz.pem", create_cert(key, 'baz', nil, nil, not_before_expired, not_after_expired, 4))
+    File.write("#{cadir}/signed/nodeA.pem", create_cert(key, 'nodeA', nil, nil, not_before_expired, not_after_expired, 1))
+    File.write("#{cadir}/signed/nodeB.pem", create_cert(key, 'nodeB', nil, nil, not_before_unexpired, not_after_unexpired, 3))
+    File.write("#{cadir}/signed/nodeC.pem", create_cert(key, 'nodeC', nil, nil, not_before_expired, not_after_expired, 4))
     inventory = <<~INV
-      0x0001 #{timefmt(not_before_expired)} #{timefmt(not_after_expired)} /CN=foo
-      0x0002 #{timefmt(not_before_expired)} #{timefmt(not_after_expired)} /CN=bar
-      0x0003 #{timefmt(not_before_unexpired)} #{timefmt(not_after_unexpired)} /CN=bar
+      0x0001 #{timefmt(not_before_expired)} #{timefmt(not_after_expired)} /CN=nodeA
+      0x0002 #{timefmt(not_before_expired)} #{timefmt(not_after_expired)} /CN=nodeB
+      0x0003 #{timefmt(not_before_unexpired)} #{timefmt(not_after_unexpired)} /CN=nodeB
 
     INV
     File.write("#{cadir}/inventory.txt", inventory)
+    key
   end
 
   context 'running the action' do
@@ -107,28 +110,26 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
 
       it 'clears the two expired certs and leaves the other one alone' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
             code = subject.run({'config' => config, 'expired' => true})
             expect(code).to eq(0)
             expect(stdout.string).to match(/2 certificates deleted./)
-            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(true)
-            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(false)
           end
         end
       end
 
       it 'handles one of the certs from inventory.txt being missing' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            FileUtils.rm_f("#{cadir}/signed/foo.pem")
+            FileUtils.rm_f("#{cadir}/signed/nodeA.pem")
             code = subject.run({'config' => config, 'expired' => true})
             expect(code).to eq(24)
-            expect(stderr.string).to match(/Could not find certificate file at #{cadir}\/signed\/foo.pem/)
+            expect(stderr.string).to match(/Could not find certificate file at #{cadir}\/signed\/nodeA.pem/)
             expect(stdout.string).to match(/1 certificate deleted./)
           end
         end
@@ -136,13 +137,12 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
 
       it 'handles a cert on disk not in the inventory file being a bad cert file' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            File.write("#{cadir}/signed/baz.pem", "badcert")
+            File.write("#{cadir}/signed/nodeC.pem", "badcert")
             code = subject.run({'config' => config, 'expired' => true})
             expect(code).to eq(24)
-            expect(stderr.string).to match(/Error reading certificate at #{cadir}\/signed\/baz.pem/)
+            expect(stderr.string).to match(/Error reading certificate at #{cadir}\/signed\/nodeC.pem/)
             expect(stdout.string).to match(/1 certificate deleted./)
           end
         end
@@ -155,64 +155,136 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
       it 'deletes the given single certname' do
         # Single certname is transformed into an array by the parser
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            code = subject.run({'config' => config, 'certname' => ['foo']})
+            code = subject.run({'config' => config, 'certname' => ['nodeA']})
             expect(code).to eq(0)
             expect(stdout.string).to match(/1 certificate deleted./)
-            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(true)
-            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(true)
           end
         end
       end
 
       it 'deletes the given multiple certnames' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            code = subject.run({'config' => config, 'certname' => ['foo', 'bar']})
+            code = subject.run({'config' => config, 'certname' => ['nodeA', 'nodeB']})
             expect(code).to eq(0)
             expect(stdout.string).to match(/2 certificates deleted./)
-            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(true)
           end
         end
       end
 
       it 'shows an error when one of the certs does not exist' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            code = subject.run({'config' => config, 'certname' => ['foo', 'lolwut']})
+            code = subject.run({'config' => config, 'certname' => ['nodeA', 'lolwut']})
             expect(code).to eq(24)
             expect(stderr.string).to match(/Could not find certificate file at.*lolwut.pem/)
             expect(stdout.string).to match(/1 certificate deleted./)
-            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(true)
-            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(true)
           end
         end
       end
 
       it 'works correctly with the --expired flag, adding on an additional cert' do
         Dir.mktmpdir do |tmpdir|
-          with_temp_dirs tmpdir do |config|
-            cadir = "#{tmpdir}/ca"
+          with_ca_in tmpdir do |config, cadir|
             prepare_certs_and_inventory(cadir)
-            code = subject.run({'config' => config, 'expired' => true, 'certname' => ['bar']})
+            code = subject.run({'config' => config, 'expired' => true, 'certname' => ['nodeB']})
             expect(code).to eq(0)
             expect(stdout.string).to match(/3 certificates deleted./)
-            expect(File.exist?("#{cadir}/signed/foo.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/bar.pem")).to eq(false)
-            expect(File.exist?("#{cadir}/signed/baz.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(false)
           end
         end
       end
+    end
+
+    describe '--revoked' do
+      before(:each) { allow(connection).to receive(:get).and_return(offline) }
+
+      def prepare_revoked(cadir)
+        # This should be run inside a with_ca_in block so we pick up the right key
+        ca_key = prepare_certs_and_inventory(cadir)
+        ca_crt = OpenSSL::X509::Certificate.new(File.read("#{cadir}/ca_crt.pem"))
+        # Create nodeD.pem at serial 5 and revoke it (test it deletes currently revoked cert)
+        # Revoke nodeB at serial 3, regen at serial 6 (test it finds the old serial and doesn't delete the current cert)
+        # Revoke nodeC (test it searches the disk for the serial and deletes it)
+        not_before = Time.now - 1
+        not_after = Time.now + 360000
+        nodeD_cert = create_cert(ca_key, 'nodeD', nil, nil, not_before, not_after, 5)
+        nodeB_cert = OpenSSL::X509::Certificate.new(File.read("#{cadir}/signed/nodeB.pem"))
+        nodeB_new_cert = create_cert(ca_key, 'nodeB', nil, nil, not_before, not_after, 6)
+        nodeC_cert = OpenSSL::X509::Certificate.new(File.read("#{cadir}/signed/nodeC.pem"))
+        File.write("#{cadir}/signed/nodeB.pem", nodeB_new_cert)
+        File.write("#{cadir}/signed/nodeD.pem", nodeD_cert)
+        File.write("#{cadir}/ca_crl.pem", create_crl(ca_crt, ca_key, [nodeB_cert, nodeC_cert, nodeD_cert]))
+        newinv = <<~INV
+        0x0005 #{timefmt(not_before)} #{timefmt(not_after)} /CN=nodeD
+        0x0006 #{timefmt(not_before)} #{timefmt(not_after)} /CN=nodeB
+        INV
+        File.write("#{cadir}/inventory.txt", newinv, mode: 'a')
+      end
+
+      it 'deletes a currently revoked cert on disk, does not delete cert for certname with old serial that was revoked, and deletes cert that is revoked but not in inventory.txt' do
+        Dir.mktmpdir do |tmpdir|
+          with_ca_in tmpdir do |config, cadir|
+            prepare_revoked(cadir)
+            code = subject.run({'config' => config, 'revoked' => true})
+            expect(code).to eq(0)
+            expect(stdout.string).to match(/2 certificates deleted./)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeD.pem")).to eq(false)
+          end
+        end
+      end
+
+      it 'handles trying to read a bad certificate when verifying current cert does not have the old serial' do
+        Dir.mktmpdir do |tmpdir|
+          with_ca_in tmpdir do |config, cadir|
+            prepare_revoked(cadir)
+            File.write("#{cadir}/signed/nodeB.pem", 'bad data')
+            code = subject.run({'config' => config, 'revoked' => true})
+            expect(code).to eq(24)
+            expect(stdout.string).to match(/2 certificates deleted./)
+            expect(stderr.string).to match(/Error reading serial from certificate for nodeB/)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeD.pem")).to eq(false)
+          end
+        end
+      end
+
+      it 'handles not finding a revoked serial in inventory.txt or in files on disk' do
+        Dir.mktmpdir do |tmpdir|
+          with_ca_in tmpdir do |config, cadir|
+            prepare_revoked(cadir)
+            FileUtils.rm_f("#{cadir}/signed/nodeC.pem")
+            code = subject.run({'config' => config, 'revoked' => true})
+            expect(code).to eq(24)
+            expect(stdout.string).to match(/1 certificate deleted./)
+            expect(stderr.string).to match(/Could not find serial 4 in inventory.txt or in any certificate file currently on disk./)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(true)
+            expect(File.exist?("#{cadir}/signed/nodeD.pem")).to eq(false)
+          end
+        end
+      end
+
     end
   end
 end
