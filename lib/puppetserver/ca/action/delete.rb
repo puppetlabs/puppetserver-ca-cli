@@ -182,7 +182,9 @@ BANNER
             inventory, err = Inventory.parse_inventory_file(inventory_file_path, @logger)
             errored ||= err
             expired_in_inventory = inventory.select { |k,v| v[:not_after] < Time.now }.map(&:first)
-            count, err = delete_certs(cadir, expired_in_inventory)
+            # Don't print errors if the cert is not found, since the inventory
+            # file can contain old entries that have already been deleted.
+            count, err = delete_certs(cadir, expired_in_inventory, false)
             deleted_count += count
             errored ||= err
             other_certs_to_check = find_certs_not_in_inventory(cadir, inventory.map(&:first))

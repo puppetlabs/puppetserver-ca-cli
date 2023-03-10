@@ -138,8 +138,8 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
             prepare_certs_and_inventory(cadir)
             FileUtils.rm_f("#{cadir}/signed/nodeA.pem")
             code = subject.run({'config' => config, 'expired' => true})
-            expect(code).to eq(24)
-            expect(stderr.string).to match(/Could not find certificate file at #{cadir}\/signed\/nodeA.pem/)
+            expect(code).to eq(0)
+            expect(stderr.string).not_to match(/Could not find certificate file at #{cadir}\/signed\/nodeA.pem/)
             expect(stdout.string).to match(/1 certificate deleted./)
           end
         end
