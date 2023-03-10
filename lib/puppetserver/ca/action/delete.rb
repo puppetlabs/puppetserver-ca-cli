@@ -80,6 +80,10 @@ BANNER
             errors << '  Must pass one of the valid flags to determine which certs to delete'
           end
 
+          if results['all'] && (results['expired'] || results['revoked'] || results['certname'])
+            errors << '  The --all flag must not be used with --expired, --revoked, or --certname'
+          end
+
           errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
 
           exit_code = errors_were_handled ? 1 : nil
@@ -190,6 +194,12 @@ BANNER
           if args['certname']
             count, errored = delete_certs(cadir, args['certname'])
             deleted_count += count
+          end
+
+          if args['all']
+            certnames = Dir.glob("#{cadir}/signed/*.pem").map{ |c| File.basename(c, '.pem') }
+            # Since we don't run this with any other flags, we can set these variables directly
+            deleted_count, errored = delete_certs(cadir, certnames)
           end
 
           plural = deleted_count == 1 ? "" : "s"
