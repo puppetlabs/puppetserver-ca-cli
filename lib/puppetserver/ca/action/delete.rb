@@ -273,7 +273,7 @@ BANNER
           files.each do |f|
             begin
               s = get_cert_serial(f)
-              return File.basename(f)[0...-4] if s == serial # Remove .pem
+              return File.basename(f, '.pem') if s == serial # Remove .pem
             rescue Exception => e
               @logger.debug("Error reading certificate at #{f} with exception #{e}. Skipping this file.")
             end
