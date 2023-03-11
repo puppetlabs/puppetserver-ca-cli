@@ -240,7 +240,7 @@ BANNER
             opts.on('--remove-duplicates', 'Remove duplicate entries from CRL(default)') do |remove_duplicates|
               parsed['remove-duplicates'] = true
             end
-            opts.on('--remove-expired', 'Remove expired  entries from CRL(default)') do |remove_expired|
+            opts.on('--remove-expired', 'Remove expired  entries from CRL') do |remove_expired|
               parsed['remove-expired'] = true
             end
             opts.on('--remove-entries', 'Remove entries from CRL') do |remove_entries|
