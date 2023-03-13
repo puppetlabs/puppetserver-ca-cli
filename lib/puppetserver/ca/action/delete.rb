@@ -17,7 +17,7 @@ module Puppetserver
 
         CERTNAME_BLOCKLIST = %w{--config --expired --revoked --all}
 
-        SUMMARY = 'Delete certificate(s)'
+        SUMMARY = 'Delete signed certificate(s) from disk'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca delete [--help]
