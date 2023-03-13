@@ -17,7 +17,7 @@ module Puppetserver
 
         CERTNAME_BLOCKLIST = %w{--config --expired --revoked --all}
 
-        SUMMARY = 'Delete certificate(s)'
+        SUMMARY = 'Delete signed certificate(s) from disk'
         BANNER = <<-BANNER
 Usage:
   puppetserver ca delete [--help]
@@ -78,6 +78,10 @@ BANNER
 
           unless results['help'] || results['expired'] || results['revoked'] || results['certname'] || results['all']
             errors << '  Must pass one of the valid flags to determine which certs to delete'
+          end
+
+          if results['all'] && (results['expired'] || results['revoked'] || results['certname'])
+            errors << '  The --all flag must not be used with --expired, --revoked, or --certname'
           end
 
           errors_were_handled = Errors.handle_with_usage(@logger, errors, parser.help)
@@ -178,7 +182,9 @@ BANNER
             inventory, err = Inventory.parse_inventory_file(inventory_file_path, @logger)
             errored ||= err
             expired_in_inventory = inventory.select { |k,v| v[:not_after] < Time.now }.map(&:first)
-            count, err = delete_certs(cadir, expired_in_inventory)
+            # Don't print errors if the cert is not found, since the inventory
+            # file can contain old entries that have already been deleted.
+            count, err = delete_certs(cadir, expired_in_inventory, false)
             deleted_count += count
             errored ||= err
             other_certs_to_check = find_certs_not_in_inventory(cadir, inventory.map(&:first))
@@ -190,6 +196,12 @@ BANNER
           if args['certname']
             count, errored = delete_certs(cadir, args['certname'])
             deleted_count += count
+          end
+
+          if args['all']
+            certnames = Dir.glob("#{cadir}/signed/*.pem").map{ |c| File.basename(c, '.pem') }
+            # Since we don't run this with any other flags, we can set these variables directly
+            deleted_count, errored = delete_certs(cadir, certnames)
           end
 
           plural = deleted_count == 1 ? "" : "s"
@@ -261,7 +273,7 @@ BANNER
           files.each do |f|
             begin
               s = get_cert_serial(f)
-              return File.basename(f)[0...-4] if s == serial # Remove .pem
+              return File.basename(f, '.pem') if s == serial # Remove .pem
             rescue Exception => e
               @logger.debug("Error reading certificate at #{f} with exception #{e}. Skipping this file.")
             end

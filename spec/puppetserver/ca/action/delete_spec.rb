@@ -48,6 +48,16 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
       expect(code).to eq(1)
       expect(stderr.string).to include('Must pass one of the valid flags')
     end
+
+    it 'disallows running --all with other action flags' do
+      result, with_revoked_code = subject.parse(['--all', '--revoked'])
+      result, with_expired_code = subject.parse(['--all', '--expired'])
+      result, with_certname_code = subject.parse(['--all', '--certname', 'foo'])
+      expect(with_revoked_code).to eq(1)
+      expect(with_expired_code).to eq(1)
+      expect(with_certname_code).to eq(1)
+      expect(stderr.string).to match(/The --all flag must not be used with --expired, --revoked, or --certname/)
+    end
   end
 
   def timefmt(time)
@@ -128,8 +138,8 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
             prepare_certs_and_inventory(cadir)
             FileUtils.rm_f("#{cadir}/signed/nodeA.pem")
             code = subject.run({'config' => config, 'expired' => true})
-            expect(code).to eq(24)
-            expect(stderr.string).to match(/Could not find certificate file at #{cadir}\/signed\/nodeA.pem/)
+            expect(code).to eq(0)
+            expect(stderr.string).not_to match(/Could not find certificate file at #{cadir}\/signed\/nodeA.pem/)
             expect(stdout.string).to match(/1 certificate deleted./)
           end
         end
@@ -284,7 +294,24 @@ RSpec.describe Puppetserver::Ca::Action::Delete do
           end
         end
       end
+    end
 
+    describe '--all' do
+      before(:each) { allow(connection).to receive(:get).and_return(offline) }
+
+      it 'deletes all certs in the signed directory' do
+        Dir.mktmpdir do |tmpdir|
+          with_ca_in tmpdir do |config, cadir|
+            prepare_certs_and_inventory(cadir)
+            code = subject.run({'config' => config, 'all' => true})
+            expect(code).to eq(0)
+            expect(stdout.string).to match(/3 certificates deleted./)
+            expect(File.exist?("#{cadir}/signed/nodeA.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeB.pem")).to eq(false)
+            expect(File.exist?("#{cadir}/signed/nodeC.pem")).to eq(false)
+          end
+        end
+      end
     end
   end
 end

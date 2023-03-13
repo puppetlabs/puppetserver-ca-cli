@@ -28,6 +28,7 @@ Puppet Server's built-in Certificate Authority
 BANNER
 
       ADMIN_ACTIONS = {
+        'delete'   => Action::Delete,
         'import'   => Action::Import,
         'setup'    => Action::Setup,
         'enable'   => Action::Enable,
@@ -37,7 +38,6 @@ BANNER
 
       MAINT_ACTIONS = {
         'clean'    => Action::Clean,
-        'delete'   => Action::Delete,
         'generate' => Action::Generate,
         'list'     => Action::List,
         'revoke'   => Action::Revoke,
