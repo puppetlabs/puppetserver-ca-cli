@@ -10,17 +10,12 @@ module Puppetserver
       # Utilities for doing HTTPS against the CA that wraps Net::HTTP constructs
       class HttpClient
 
-        DEFAULT_HEADERS = {
-          'User-Agent'   => 'PuppetserverCaCli',
-          'Content-Type' => 'application/json',
-          'Accept'       => 'application/json'
-        }
-
         attr_reader :store
 
         # Not all connections require a client cert to be present.
         # For example, when querying the status endpoint.
         def initialize(logger, settings, with_client_cert: true)
+          @default_headers = make_headers(ENV['HOME'])
           @logger = logger
           @store = make_store(settings[:localcacert],
                               settings[:certificate_revocation],
@@ -52,7 +47,7 @@ module Puppetserver
         # The Connection object should have HTTP verbs defined on it that take
         # a body (and optional overrides). Returns whatever the block given returned.
         def with_connection(url, &block)
-          request = ->(conn) { block.call(Connection.new(conn, url, @logger)) }
+          request = ->(conn) { block.call(Connection.new(conn, url, @logger, @default_headers)) }
 
           begin
             Net::HTTP.start(url.host, url.port,
@@ -68,7 +63,22 @@ module Puppetserver
 
         private
 
-       def load_with_errors(path, setting, &block)
+        def make_headers(home)
+          headers = {
+            'User-Agent'   => 'PuppetserverCaCli',
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json'
+          }
+
+          token_path = "#{home}/.puppetlabs/token"
+          if File.exist?(token_path)
+            headers['X-Authentication'] = File.read(token_path)
+          end
+
+          headers
+        end
+
+        def load_with_errors(path, setting, &block)
           begin
             content = File.read(path)
             block.call(content)
@@ -81,21 +91,23 @@ module Puppetserver
                     "Could not parse '#{setting}' at '#{path}'.\n" +
                     "  OpenSSL returned: #{e.message}")
           end
-       end
+        end
 
         # Helper class that wraps a Net::HTTP connection, a HttpClient::URL
         # and defines methods named after HTTP verbs that are called on the
         # saved connection, returning a Result.
         class Connection
-          def initialize(net_http_connection, url_struct, logger)
+
+          def initialize(net_http_connection, url_struct, logger, default_headers)
             @conn = net_http_connection
             @url = url_struct
             @logger = logger
+            @default_headers = default_headers
           end
 
-          def get(url_overide = nil, headers = {})
+          def get(url_overide = nil, header_overrides = {})
             url = url_overide || @url
-            headers = DEFAULT_HEADERS.merge(headers)
+            headers = @default_headers.merge(header_overrides)
 
             @logger.debug("Making a GET request at #{url.full_url}")
 
@@ -105,9 +117,9 @@ module Puppetserver
 
           end
 
-          def put(body, url_override = nil, headers = {})
+          def put(body, url_override = nil, header_overrides = {})
             url = url_override || @url
-            headers = DEFAULT_HEADERS.merge(headers)
+            headers = @default_headers.merge(header_overrides)
 
             @logger.debug("Making a PUT request at #{url.full_url}")
 
@@ -118,9 +130,9 @@ module Puppetserver
             Result.new(result.code, result.body)
           end
 
-          def delete(url_override = nil, headers = {})
+          def delete(url_override = nil, header_overrides = {})
             url = url_override || @url
-            headers = DEFAULT_HEADERS.merge(headers)
+            headers = @default_headers.merge(header_overrides)
 
             @logger.debug("Making a DELETE request at #{url.full_url}")
 
