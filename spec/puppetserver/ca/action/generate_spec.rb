@@ -290,7 +290,7 @@ RSpec.describe Puppetserver::Ca::Action::Generate do
       end
 
       it "return nil for csr if attribute name provided is private" do
-        csr_attributes['custom_attributes'].merge!({'extReq' => "ulla"})
+        csr_attributes['custom_attributes'].merge!({'msExtReq' => "ulla"})
         allow(YAML).to receive(:load_file).and_return(csr_attributes)
         _, csr = subject.generate_key_csr('foo', settings, OpenSSL::Digest::SHA256.new)
         expect(csr).to eq(nil)
