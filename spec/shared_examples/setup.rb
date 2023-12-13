@@ -9,7 +9,7 @@ end
 def default_config(conf, bundle, key, chain)
   shared_flags = {'config' => conf, 'subject-alt-names' => '', 'certname' => 'foocert'}
   import_flags = {'cert-bundle' => bundle, 'private-key' => key, 'crl-chain' => chain}
-  importing ? shared_flags.merge(import_flags) : shared_flags.merge({'ca-name' => ''})
+  importing ? shared_flags.merge(import_flags) : shared_flags.merge({'ca-name' => '', 'root-ca-name' => ''})
 end
 
 def flags_without_sans(*args)

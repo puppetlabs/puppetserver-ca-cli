@@ -19,7 +19,7 @@ module Puppetserver
 Usage:
   puppetserver ca setup [--help]
   puppetserver ca setup [--config PATH] [--subject-alt-names NAME[,NAME]]
-                           [--certname NAME] [--ca-name NAME]
+                           [--certname NAME] [--ca-name NAME] [--root-ca-name NAME]
 
 Description:
   Setup a root and intermediate signing CA for Puppet Server
@@ -51,6 +51,7 @@ BANNER
           settings_overrides = {}
           settings_overrides[:certname] = input['certname'] unless input['certname'].empty?
           settings_overrides[:ca_name] = input['ca-name'] unless input['ca-name'].empty?
+          settings_overrides[:root_ca_name] = input['root-ca-name'] unless input['root-ca-name'].empty?
           # Since puppet expects the key to be called 'dns_alt_names', we need to use that here
           # to ensure that the overriding works correctly.
           settings_overrides[:dns_alt_names] = input['subject-alt-names'] unless input['subject-alt-names'].empty?
@@ -153,6 +154,7 @@ ERR
         def self.parser(parsed = {})
           parsed['subject-alt-names'] = ''
           parsed['ca-name'] = ''
+          parsed['root-ca-name'] = ''
           parsed['certname'] = ''
           OptionParser.new do |opts|
             opts.banner = BANNER
@@ -169,6 +171,10 @@ ERR
             opts.on('--ca-name NAME',
                     'Common name to use for the CA signing cert') do |name|
               parsed['ca-name'] = name
+            end
+            opts.on('--root-ca-name NAME',
+                    'Common name to use for the self-signed Root CA cert') do |name|
+              parsed['root-ca-name'] = name
             end
             opts.on('--certname NAME',
                     'Common name to use for the server cert') do |name|
