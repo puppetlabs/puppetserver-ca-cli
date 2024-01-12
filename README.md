@@ -101,16 +101,11 @@ To test your changes on a VM:
     ```
 1. To confirm that installation was successful, run `puppetserver ca --help`
 
-### Releasing
-To release a new version, run the [release pipeline](https://jenkins-platform.delivery.puppetlabs.net/job/platform_puppetserver-ca_init-multijob_main/), which will bump the version, tag, build, and release the gem.
-
 ## Contributing & Support
 
-Bug reports and feature requests are welcome in JIRA at
-https://tickets.puppetlabs.com/projects/SERVER/issues.
+Bug reports and feature requests are welcome via GitHub issues.
 
-For interactive questions feel free to post to #puppet or #puppet-dev on
-Freenode, or the Puppet Community Slack channel.
+For interactive questions feel free to post to #puppet or #puppet-dev on the Puppet Community Slack channel.
 
 Contributions are welcome at https://github.com/puppetlabs/puppetserver-ca-cli/pulls.
 Contributors should both be sure to read the
