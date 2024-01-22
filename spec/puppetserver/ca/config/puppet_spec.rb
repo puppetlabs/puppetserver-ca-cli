@@ -55,6 +55,21 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
     expect(parsed).to include({ca: {cadir: '/var/www/ca'}})
   end
 
+  it 'correctly parses values with spaces and comments' do
+    parsed = subject.parse_text(<<-INI)
+    [master]
+      ca_name = Some Other CA
+      root_ca_name = Another Root CA # comment
+      cadir = /some/where discard/this # here
+    INI
+
+    expect(parsed[:master]).to include({
+      ca_name: 'Some Other CA',
+      root_ca_name: 'Another Root CA',
+      cadir: '/some/where'
+    })
+  end
+
   it 'resolves dependent settings properly' do
     Dir.mktmpdir do |tmpdir|
       puppet_conf = File.join(tmpdir, 'puppet.conf')

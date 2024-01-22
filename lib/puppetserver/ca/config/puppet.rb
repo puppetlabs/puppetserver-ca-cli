@@ -194,6 +194,9 @@ module Puppetserver
         # class keys/section names but nearly any character values (excluding
         # leading whitespace) up to one of whitespace, opening curly brace, or
         # hash sign (Our concern being to capture filesystem path values).
+        #
+        # ca_root and root_ca_name values may include whitespace
+        #
         # Put values without a section into :main.
         #
         # Return Hash of Symbol section names with Symbol setting keys and
@@ -205,10 +208,15 @@ module Puppetserver
             case line
             when /^\s*\[(\w+)\].*/
               current_section = $1.to_sym
-            when /^\s*(\w+)\s*=\s*([^\s{#]+).*$/
+            when /^\s*(\w+)\s*=\s*(.+?)\s*(?=[{#]|$)/
               # Using a Hash with a default key breaks RSpec expectations.
               res[current_section] ||= {}
-              res[current_section][$1.to_sym] = $2
+              res[current_section][$1.to_sym] =
+                if [:ca_name, :root_ca_name].include?($1.to_sym)
+                  $2
+                else
+                  $2.split(' ')[0]
+                end
             end
           end
 

@@ -32,6 +32,7 @@ RSpec.describe Puppetserver::Ca::Action::Setup do
         exit_code = subject.run({ 'config' => conf,
                                   'subject-alt-names' => '',
                                   'ca-name' => '',
+                                  'root-ca-name' => '',
                                   'certname' => '' })
         puts stderr.string
         expect(stderr.string).to be_empty
@@ -44,18 +45,20 @@ RSpec.describe Puppetserver::Ca::Action::Setup do
   include_examples 'properly sets up ca and ssl dir', Puppetserver::Ca::Action::Setup
 
   describe 'command line name overrides' do
-    it 'uses the ca_name as specified on the command line' do
+    it 'uses the ca_name and root_ca_name as specified on the command line' do
       Dir.mktmpdir do |tmpdir|
         with_temp_dirs tmpdir do |conf|
           exit_code = subject.run({ 'config' => conf,
                                     'subject-alt-names' => '',
                                     'ca-name' => 'Foo CA',
+                                    'root-ca-name' => 'Foo Root CA',
                                     'certname' => '' })
           expect(exit_code).to eq(0)
           ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
           expect(File.exist?(ca_cert_file)).to be true
           ca_cert = OpenSSL::X509::Certificate.new(File.read(ca_cert_file))
           expect(ca_cert.subject.to_s).to include('Foo CA')
+          expect(ca_cert.issuer.to_s).to include('Foo Root CA')
         end
       end
     end
@@ -66,12 +69,14 @@ RSpec.describe Puppetserver::Ca::Action::Setup do
           exit_code = subject.run({ 'config' => conf,
                                     'subject-alt-names' => '',
                                     'ca-name' => '',
+                                    'root-ca-name' => '',
                                     'certname' => '' })
           expect(exit_code).to eq(0)
           ca_cert_file = File.join(tmpdir, 'ca', 'ca_crt.pem')
           expect(File.exist?(ca_cert_file)).to be true
           ca_cert = OpenSSL::X509::Certificate.new(File.read(ca_cert_file))
           expect(ca_cert.subject.to_s).to include('Puppet CA')
+          expect(ca_cert.issuer.to_s).to match(/Puppet Root CA: ([0-9a-f]{14})/)
         end
       end
     end
