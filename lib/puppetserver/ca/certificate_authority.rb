@@ -19,13 +19,21 @@ module Puppetserver
       }
 
       REVOKE_BODY = JSON.dump({ desired_state: 'revoked' })
-      SIGN_BODY =   JSON.dump({ desired_state: 'signed' })
 
       def initialize(logger, settings)
         @logger = logger
         @client = HttpClient.new(@logger, settings)
         @ca_server = settings[:ca_server]
         @ca_port = settings[:ca_port]
+      end
+
+      def server_has_bulk_signing_endpoints
+        url = HttpClient::URL.new('https', @ca_server, @ca_port, 'status', 'v1', 'services')
+        result = @client.with_connection(url) do |connection|
+          connection.get(url)
+        end
+        version = process_results(:server_version, nil, result)
+        return version >= Gem::Version.new('8.4.0')
       end
 
       def worst_result(previous_result, current_result)
@@ -61,13 +69,26 @@ module Puppetserver
         end
       end
 
+      def sign_all
+        return post(resource_type: 'sign',
+          resource_name: 'all',
+          body: '{}',
+          type: :sign_all)
+      end
+
+      def sign_bulk(certnames)
+        return post(resource_type: 'sign',
+          body: "{\"certnames\":#{certnames}}",
+          type: :sign_bulk
+        )
+      end
+
       def sign_certs(certnames, ttl=nil)
         results = []
         if ttl
           lifetime = process_ttl_input(ttl)
           return false if lifetime.nil?
-          body = JSON.dump({ desired_state: 'signed',
-                             cert_ttl: lifetime})
+          body = JSON.dump({ desired_state: 'signed', cert_ttl: lifetime})
           results = put(certnames,
             resource_type: 'certificate_status',
             body: body,
@@ -75,7 +96,7 @@ module Puppetserver
         else
           results = put(certnames,
                         resource_type: 'certificate_status',
-                        body: SIGN_BODY,
+                        body: JSON.dump({ desired_state: 'signed' }),
                         type: :sign)
         end
 
@@ -119,6 +140,48 @@ module Puppetserver
         end
       end
 
+      # Make an HTTP POST request to CA
+      # @param endpoint [String] the endpoint to post to for the url
+      # @param body [JSON/String] body of the post request
+      # @param type [Symbol] type of error processing to perform on result
+      # @return [Boolean] whether all requests were successful
+      def post(resource_type:, resource_name: nil, body:, type:, headers: {})
+        url = make_ca_url(resource_type, resource_name)
+        results = @client.with_connection(url) do |connection|
+          result = connection.post(body, url, headers)
+          process_results(type, nil, result)
+        end
+      end
+
+      # Handle the result data from the /sign and /sign/all endpoints
+      def process_bulk_sign_result_data(result)
+        data = JSON.parse(result.body)
+        signed = data.dig('signed') || []
+        no_csr = data.dig('no-csr') || []
+        signing_errors = data.dig('signing-errors') || []
+
+        if !signed.empty?
+          @logger.inform "Successfully signed the following certificate requests:"
+          signed.each { |s| @logger.inform "  #{s}" }
+        end
+
+        @logger.err 'Error:' if !no_csr.empty? || !signing_errors.empty?
+        if !no_csr.empty?
+          @logger.err '    No certificate request found for the following nodes when attempting to sign:'
+          no_csr.each { |s| @logger.err "      #{s}" }
+        end
+        if !signing_errors.empty?
+          @logger.err '    Error encountered when attempting to sign the certificate request for the following nodes:'
+          signing_errors.each { |s| @logger.err "      #{s}" }
+        end
+        if no_csr.empty? && signing_errors.empty?
+          @logger.err 'No waiting certificate requests to sign.' if signed.empty?
+          return signed.empty? ? :no_requests : :success
+        else
+          return :error
+        end
+      end
+
       # logs the action and returns true/false for success
       def process_results(type, certname, result)
         case type
@@ -134,6 +197,50 @@ module Puppetserver
           else
             @logger.err 'Error:'
             @logger.err "    When attempting to sign certificate request '#{certname}', received"
+            @logger.err "      code: #{result.code}"
+            @logger.err "      body: #{result.body.to_s}" if result.body
+            return :error
+          end
+        when :sign_all
+          if result.code == '200'
+            if !result.body
+              @logger.err 'Error:'
+              @logger.err '    Response from /sign/all endpoint did not include a body. Unable to verify certificate requests were signed.'
+              return :error
+            end
+            begin
+              return process_bulk_sign_result_data(result)
+            rescue JSON::ParserError
+              @logger.err 'Error:'
+              @logger.err '    Unable to parse the response from the /sign/all endpoint.'
+              @logger.err "      body #{result.body.to_s}"
+              return :error
+            end
+          else
+            @logger.err 'Error:'
+            @logger.err '    When attempting to sign all certificate requests, received:'
+            @logger.err "      code: #{result.code}"
+            @logger.err "      body: #{result.body.to_s}" if result.body
+            return :error
+          end
+        when :sign_bulk
+          if result.code == '200'
+            if !result.body
+              @logger.err 'Error:'
+              @logger.err '    Response from /sign endpoint did not include a body. Unable to verify certificate requests were signed.'
+              return :error
+            end
+            begin
+              return process_bulk_sign_result_data(result)
+            rescue JSON::ParserError
+              @logger.err 'Error:'
+              @logger.err '    Unable to parse the response from the /sign endpoint.'
+              @logger.err "      body #{result.body.to_s}"
+              return :error
+            end
+          else
+            @logger.err 'Error:'
+            @logger.err '    When attempting to sign certificate requests, received:'
             @logger.err "      code: #{result.code}"
             @logger.err "      body: #{result.body.to_s}" if result.body
             return :error
@@ -170,6 +277,19 @@ module Puppetserver
             @logger.err "      body: #{result.body.to_s}" if result.body
             return :error
           end
+        when :server_version
+          if result.code == '200' && result.body
+            begin
+              data = JSON.parse(result.body)
+              version_str = data.dig('ca','service_version')
+              return Gem::Version.new(version_str.match('^\d+\.\d+\.\d+')[0])
+            rescue JSON::ParserError, NoMethodError
+              # If we get bad JSON, version_str is nil, or the matcher doesn't match,
+              # fall through to returning a version of 0.
+            end
+          end
+          @logger.debug 'Could not detect server version. Defaulting to legacy signing endpoints.'
+          return Gem::Version.new(0)
         end
       end
 

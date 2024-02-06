@@ -66,17 +66,33 @@ Options:
           return 1 if Errors.handle_with_usage(@logger, puppet.errors)
 
           ca = Puppetserver::Ca::CertificateAuthority.new(@logger, puppet.settings)
+          bulk_sign = ca.server_has_bulk_signing_endpoints
 
-          if input['all']
-            requested_certnames = get_all_pending_certs(ca)
-            return 1 if requested_certnames.nil?
-            return 24 if requested_certnames.empty?
+          # Bulk sign endpoints don't allow setting TTL, so
+          # use single signing endpoint if TTL is specified.
+          success = false
+          if input['ttl'] || !bulk_sign
+            if input['all']
+              requested_certnames = get_all_pending_certs(ca)
+              return 1 if requested_certnames.nil?
+              return 24 if requested_certnames.empty?
+            else
+              requested_certnames = input['certname']
+            end
+
+            success = ca.sign_certs(requested_certnames, input['ttl'])
+            return success ? 0 : 1
           else
-            requested_certnames = input['certname']
+            result = input['all'] ? ca.sign_all : ca.sign_bulk(input['certname'])
+            case result
+            when :success
+              return 0
+            when :no_requests
+              return 24
+            else
+              return 1
+            end
           end
-
-          success = ca.sign_certs(requested_certnames, input['ttl'])
-          return success ? 0 : 1
         end
 
         def get_all_pending_certs(ca)

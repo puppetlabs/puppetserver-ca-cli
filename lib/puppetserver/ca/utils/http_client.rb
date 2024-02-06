@@ -130,6 +130,19 @@ module Puppetserver
             Result.new(result.code, result.body)
           end
 
+          def post(body, url_override = nil, header_overrides = {})
+            url = url_override || @url
+            headers = @default_headers.merge(header_overrides)
+
+            @logger.debug("Making a POST request at #{url.full_url}")
+
+            request = Net::HTTP::Post.new(url.to_uri, headers)
+            request.body = body
+            result = @conn.request(request)
+
+            Result.new(result.code, result.body)
+          end
+
           def delete(url_override = nil, header_overrides = {})
             url = url_override || @url
             headers = @default_headers.merge(header_overrides)
@@ -151,7 +164,7 @@ module Puppetserver
                          :resource_type, :resource_name, :query) do
                 def full_url
                   url = protocol + '://' + host + ':' + port + '/' +
-                        [endpoint, version, resource_type, resource_name].join('/')
+                        [endpoint, version, resource_type, resource_name].compact.join('/')
 
                   url = url + "?" + URI.encode_www_form(query) unless query.nil? || query.empty?
                   return url
