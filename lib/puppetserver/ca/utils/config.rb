@@ -10,7 +10,10 @@ module Puppetserver
         end
 
         def self.munge_alt_names(names)
-          raw_names = names.split(/\s*,\s*/).map(&:strip)
+          # Tolerate a nil/empty value. A puppet.conf key that is present but
+          # has no value (e.g. `dns_alt_names =`) is read as nil rather than
+          # using the absent-key default, so callers can hand us nil here.
+          raw_names = names.to_s.split(/\s*,\s*/).map(&:strip)
           munged_names = raw_names.map do |name|
             # Prepend the DNS tag if no tag was specified
             if !name.start_with?("IP:") && !name.start_with?("DNS:")
