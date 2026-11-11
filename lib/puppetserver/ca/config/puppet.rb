@@ -77,8 +77,9 @@ module Puppetserver
         end
 
         def default_certname
-          hostname = Facter.value(:hostname)
-          domain = Facter.value(:domain)
+          networking = Facter.value(:networking)
+          hostname = networking['hostname']
+          domain = networking['domain']
           if domain and domain != ''
             fqdn = [hostname, domain].join('.')
           else

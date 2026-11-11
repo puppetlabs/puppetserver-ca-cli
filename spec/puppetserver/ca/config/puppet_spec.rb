@@ -338,16 +338,14 @@ RSpec.describe 'Puppetserver::Ca::Config::Puppet' do
 
   context 'building the default certname' do
     it 'when there is a domain, concatenates the hostname and domain' do
-      expect(Facter).to receive(:value).with(:hostname).and_return("foo")
-      expect(Facter).to receive(:value).with(:domain).and_return("example.com")
+      expect(Facter).to receive(:value).with(:networking).and_return({'domain' => 'example.com', 'hostname' => 'foo'})
 
       conf = Puppetserver::Ca::Config::Puppet.new
       expect(conf.default_certname).to eq("foo.example.com")
     end
 
     it 'when domain is nil, returns just the hostname' do
-      expect(Facter).to receive(:value).with(:hostname).and_return("foo")
-      expect(Facter).to receive(:value).with(:domain).and_return(nil)
+      expect(Facter).to receive(:value).with(:networking).and_return({'domain' => nil, 'hostname' => 'foo'})
 
       conf = Puppetserver::Ca::Config::Puppet.new
       expect(conf.default_certname).to eq("foo")
