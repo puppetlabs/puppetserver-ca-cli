@@ -80,7 +80,6 @@ module Puppetserver
         csr = OpenSSL::X509::Request.new
         csr.public_key = key.public_key
         csr.subject = OpenSSL::X509::Name.new([["CN", name]])
-        csr.version = 2
 
         custom_attributes = get_custom_attributes(csr_attributes_path)
         extension_requests = get_extension_requests(csr_attributes_path)
